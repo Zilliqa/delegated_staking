@@ -30,7 +30,7 @@ contract Upgrade is Script {
         vm.startBroadcast(deployerPrivateKey);
 
         address payable newImplementation = payable(
-            new DelegationV3()
+            new DelegationV2()
         );
 
         console.log("New implementation deployed: %s",

@@ -82,11 +82,18 @@ contract DelegationV3 is Initializable, PausableUpgradeable, Ownable2StepUpgrade
         require(success, "deposit failed");
     } 
 
+    event Log(uint256 _totalSupply, uint256 _msgValue, uint256 _getStake, uint256 _getReward, uint256 shares);
     function stake() public payable whenNotPaused {
         require(msg.value >= MIN_DELEGATION, "delegated amount too low");
         //TODO: topup deposit by msg.value so that msg.value becomes part of getStake()
         Storage storage $ = _getStorage();
-        uint256 shares = NonRebasingLST($.lst).totalSupply() * msg.value / (getStake() + getRewards());
+        uint256 _totalSupply = NonRebasingLST($.lst).totalSupply();
+        uint256 _msgValue = msg.value;
+        uint256 _getRewards = getRewards();
+        uint256 _getStake = getStake();
+        //uint256 shares = NonRebasingLST($.lst).totalSupply() * msg.value / (getStake() + getRewards());
+        uint256 shares = _totalSupply * _msgValue / (_getStake + _getRewards);
+        emit Log(_totalSupply, _msgValue, _getStake, _getRewards, shares);
         NonRebasingLST($.lst).mint(msg.sender, shares);
         emit Staked(msg.sender, msg.value, shares);
     }
