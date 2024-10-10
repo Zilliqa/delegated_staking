@@ -82,18 +82,12 @@ contract DelegationV3 is Initializable, PausableUpgradeable, Ownable2StepUpgrade
         require(success, "deposit failed");
     } 
 
-    event Log(uint256 _totalSupply, uint256 _msgValue, uint256 _getStake, uint256 _getReward, uint256 shares);
     function stake() public payable whenNotPaused {
         require(msg.value >= MIN_DELEGATION, "delegated amount too low");
-        //TODO: topup deposit by msg.value so that msg.value becomes part of getStake()
+        //TODO: topup the deposit by msg.value so that msg.value becomes part of getStake(),
+        //      currently it's part of getRewards() since this contrac is the reward address
         Storage storage $ = _getStorage();
-        uint256 _totalSupply = NonRebasingLST($.lst).totalSupply();
-        uint256 _msgValue = msg.value;
-        uint256 _getRewards = getRewards();
-        uint256 _getStake = getStake();
-        //uint256 shares = NonRebasingLST($.lst).totalSupply() * msg.value / (getStake() + getRewards());
-        uint256 shares = _totalSupply * _msgValue / (_getStake + _getRewards);
-        emit Log(_totalSupply, _msgValue, _getStake, _getRewards, shares);
+        uint256 shares = NonRebasingLST($.lst).totalSupply() * msg.value / (getStake() + getRewards());
         NonRebasingLST($.lst).mint(msg.sender, shares);
         emit Staked(msg.sender, msg.value, shares);
     }
@@ -102,8 +96,8 @@ contract DelegationV3 is Initializable, PausableUpgradeable, Ownable2StepUpgrade
         Storage storage $ = _getStorage();
         NonRebasingLST($.lst).burn(msg.sender, shares);
         uint256 amount = (getStake() + getRewards()) * shares / NonRebasingLST($.lst).totalSupply();
-        //TODO: deduct the commission
-        //TODO: don't transfer the amount, msg.sender can claim it after the unbonding period
+        //TODO: deduct the commission from the rewards but not from the deposit
+        //TODO: store but don't transfer the amount, msg.sender can claim it after the unbonding period
         (bool success, bytes memory data) = msg.sender.call{
             value: amount
         }("");
