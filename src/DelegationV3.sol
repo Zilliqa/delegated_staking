@@ -98,6 +98,7 @@ contract DelegationV3 is Initializable, PausableUpgradeable, Ownable2StepUpgrade
         Storage storage $ = _getStorage();
         NonRebasingLST($.lst).burn(msg.sender, shares);
         uint256 commission = (getRewards() * $.commission / DIVISOR) * shares / NonRebasingLST($.lst).totalSupply();
+        //TODO: transfer the commission to another wallet otherwise it remains part of the rewards
         uint256 amount = (getStake() + getRewards()) * shares / NonRebasingLST($.lst).totalSupply() - commission;
         //TODO: store but don't transfer the amount, msg.sender can claim it after the unbonding period
         (bool success, bytes memory data) = msg.sender.call{
@@ -105,6 +106,11 @@ contract DelegationV3 is Initializable, PausableUpgradeable, Ownable2StepUpgrade
         }("");
         require(success, "transfer of funds failed");
         emit UnStaked(msg.sender, amount, shares);
+    }
+
+    function getCommission() public view returns(uint16) {
+        Storage storage $ = _getStorage();
+        return $.commission;
     }
 
     function setCommission(uint16 _commission) public onlyOwner {
