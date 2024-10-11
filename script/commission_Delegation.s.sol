@@ -10,7 +10,7 @@ contract Stake is Script {
     function run(address payable proxy) external {
 
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-        //address owner = vm.addr(deployerPrivateKey);
+        address owner = vm.addr(deployerPrivateKey);
 
         DelegationV3 delegation = DelegationV3(
                 proxy
@@ -20,25 +20,28 @@ contract Stake is Script {
             delegation.version()
         );
 
-        console.log("Current stake: %s \r\n  Current rewards: %s",
-            delegation.getStake(),
-            delegation.getRewards()
-        );
-
         NonRebasingLST lst = NonRebasingLST(delegation.getLST());
         console.log("LST address: %s",
             address(lst)
         );
 
-        console.log("Current commission is: %s",
-            delegation.getCommission()
+        console.log("Current commission rate and commission address: %s.%s%% %s",
+            uint256(delegation.getCommissionNumerator()) * 100 / uint256(delegation.DENOMINATOR()),
+            uint256(delegation.getCommissionNumerator()) % (uint256(delegation.DENOMINATOR()) / 100),
+            delegation.getCommissionAddress()
         );
 
-        vm.broadcast(deployerPrivateKey);
-        delegation.setCommission(1000);
+        vm.startBroadcast(deployerPrivateKey);
 
-        console.log("New commission is: %s",
-            delegation.getCommission()
+        delegation.setCommissionNumerator(1000);
+        delegation.setCommissionAddress(owner);
+
+        vm.stopBroadcast();
+
+        console.log("New commission rate and commission address: %s.%s%% %s",
+            uint256(delegation.getCommissionNumerator()) * 100 / uint256(delegation.DENOMINATOR()),
+            uint256(delegation.getCommissionNumerator()) % (uint256(delegation.DENOMINATOR()) / 100),
+            delegation.getCommissionAddress()
         );
     }
 }

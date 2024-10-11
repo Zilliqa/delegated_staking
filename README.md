@@ -60,9 +60,19 @@ The output will look like this:
   Upgraded to version: 3
 ```
 
-Now (or at a later time) you can set the commission on the rewards the validator earns to e.g. 10%:
+## Contract Configuration
+
+Now or at a later time you can set the commission on the rewards the validator earns to e.g. 10% and the wallet address the commission will be sent to e.g. the validator node's address:
 ```bash
 forge script script/commission_Delegation.s.sol --rpc-url https://api.zq2-devnet.zilliqa.com --broadcast --legacy --sig "run(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2
+```
+
+The output will contain the following information:
+```
+  Running version: 3
+  LST address: 0x9e5c257D1c6dF74EaA54e58CdccaCb924669dc83
+  Current commission rate and commission address is: 0.0% 0x0000000000000000000000000000000000000000
+  New commission rate and commission address is: 10.0% 0x15fc323DFE5D5DCfbeEdc25CEcbf57f676634d77
 ```
 
 ## Validator Activation

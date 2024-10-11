@@ -16,7 +16,8 @@ contract DelegationV3 is Initializable, PausableUpgradeable, Ownable2StepUpgrade
         bytes blsPubKey;
         bytes peerId;
         address lst;
-        uint16 commission;
+        uint16 commissionNumerator;
+        address commissionAddress;
     }
 
     // keccak256(abi.encode(uint256(keccak256("zilliqa.storage.Delegation")) - 1)) & ~bytes32(uint256(0xff))
@@ -30,7 +31,7 @@ contract DelegationV3 is Initializable, PausableUpgradeable, Ownable2StepUpgrade
 
     uint256 public constant MIN_DELEGATION = 100 ether;
     address public constant DEPOSIT_CONTRACT = 0x000000000000000000005a494C4445504F534954;
-    uint16 public constant DIVISOR = 10_000;
+    uint16 public constant DENOMINATOR = 10_000;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -97,26 +98,39 @@ contract DelegationV3 is Initializable, PausableUpgradeable, Ownable2StepUpgrade
     function unstake(uint256 shares) public whenNotPaused {
         Storage storage $ = _getStorage();
         NonRebasingLST($.lst).burn(msg.sender, shares);
-        uint256 commission = (getRewards() * $.commission / DIVISOR) * shares / NonRebasingLST($.lst).totalSupply();
-        //TODO: transfer the commission to another wallet otherwise it remains part of the rewards
+        uint256 commission = (getRewards() * $.commissionNumerator / DENOMINATOR) * shares / NonRebasingLST($.lst).totalSupply();
+        (bool success, bytes memory data) = $.commissionAddress.call{
+            value: commission
+        }("");
+        require(success, "transfer of commission failed");
         uint256 amount = (getStake() + getRewards()) * shares / NonRebasingLST($.lst).totalSupply() - commission;
         //TODO: store but don't transfer the amount, msg.sender can claim it after the unbonding period
-        (bool success, bytes memory data) = msg.sender.call{
+        (success, data) = msg.sender.call{
             value: amount
         }("");
         require(success, "transfer of funds failed");
         emit UnStaked(msg.sender, amount, shares);
     }
 
-    function getCommission() public view returns(uint16) {
+    function getCommissionNumerator() public view returns(uint16) {
         Storage storage $ = _getStorage();
-        return $.commission;
+        return $.commissionNumerator;
     }
 
-    function setCommission(uint16 _commission) public onlyOwner {
-        require(_commission < DIVISOR, "invalid commission");
+    function setCommissionNumerator(uint16 _commissionNumerator) public onlyOwner {
+        require(_commissionNumerator < DENOMINATOR, "invalid commission");
         Storage storage $ = _getStorage();
-        $.commission = _commission;
+        $.commissionNumerator = _commissionNumerator;
+    }
+
+    function getCommissionAddress() public view returns(address) {
+        Storage storage $ = _getStorage();
+        return $.commissionAddress;
+    }
+
+    function setCommissionAddress(address _commissionAddress) public onlyOwner {
+        Storage storage $ = _getStorage();
+        $.commissionAddress = _commissionAddress;
     }
 
     function claim() public whenNotPaused {
