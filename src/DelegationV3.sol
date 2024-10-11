@@ -16,6 +16,7 @@ contract DelegationV3 is Initializable, PausableUpgradeable, Ownable2StepUpgrade
         bytes blsPubKey;
         bytes peerId;
         address lst;
+        uint16 commission;
     }
 
     // keccak256(abi.encode(uint256(keccak256("zilliqa.storage.Delegation")) - 1)) & ~bytes32(uint256(0xff))
@@ -29,6 +30,7 @@ contract DelegationV3 is Initializable, PausableUpgradeable, Ownable2StepUpgrade
 
     uint256 public constant MIN_DELEGATION = 100 ether;
     address public constant DEPOSIT_CONTRACT = 0x000000000000000000005a494C4445504F534954;
+    uint16 public constant DIVISOR = 10_000;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -95,14 +97,20 @@ contract DelegationV3 is Initializable, PausableUpgradeable, Ownable2StepUpgrade
     function unstake(uint256 shares) public whenNotPaused {
         Storage storage $ = _getStorage();
         NonRebasingLST($.lst).burn(msg.sender, shares);
-        uint256 amount = (getStake() + getRewards()) * shares / NonRebasingLST($.lst).totalSupply();
-        //TODO: deduct the commission from the rewards but not from the deposit
+        uint256 commission = (getRewards() * $.commission / DIVISOR) * shares / NonRebasingLST($.lst).totalSupply();
+        uint256 amount = (getStake() + getRewards()) * shares / NonRebasingLST($.lst).totalSupply() - commission;
         //TODO: store but don't transfer the amount, msg.sender can claim it after the unbonding period
         (bool success, bytes memory data) = msg.sender.call{
             value: amount
         }("");
         require(success, "transfer of funds failed");
         emit UnStaked(msg.sender, amount, shares);
+    }
+
+    function setCommission(uint16 _commission) public onlyOwner {
+        require(_commission < DIVISOR, "invalid commission");
+        Storage storage $ = _getStorage();
+        $.commission = _commission;
     }
 
     function claim() public whenNotPaused {
