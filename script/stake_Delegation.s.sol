@@ -3,11 +3,11 @@ pragma solidity ^0.8.26;
 
 import {Script} from "forge-std/Script.sol";
 import {NonRebasingLST} from "src/NonRebasingLST.sol";
-import {DelegationV3} from "src/DelegationV3.sol";
+import {DelegationV2} from "src/DelegationV2.sol";
 import "forge-std/console.sol";
 
 contract Stake is Script {
-    function run(address payable proxy) external {
+    function run(address payable proxy, uint256 amount) external {
 
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         address owner = vm.addr(deployerPrivateKey);
@@ -17,7 +17,7 @@ contract Stake is Script {
         address staker = msg.sender;
         //address payable proxy = payable(0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2);
 
-        DelegationV3 delegation = DelegationV3(
+        DelegationV2 delegation = DelegationV2(
                 proxy
             );
 
@@ -47,7 +47,7 @@ contract Stake is Script {
         vm.broadcast();
 
         delegation.stake{
-            value: 200 ether
+            value: amount
         }();
 
         console.log("Staker balance: %s",

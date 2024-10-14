@@ -4,7 +4,6 @@ pragma solidity ^0.8.26;
 import {Script} from "forge-std/Script.sol";
 import {Delegation} from "src/Delegation.sol";
 import {DelegationV2} from "src/DelegationV2.sol";
-import {DelegationV3} from "src/DelegationV3.sol";
 import "forge-std/console.sol";
 
 contract Upgrade is Script {

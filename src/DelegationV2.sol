@@ -13,13 +13,15 @@ contract DelegationV2 is Initializable, PausableUpgradeable, Ownable2StepUpgrade
 
     /// @custom:storage-location erc7201:zilliqa.storage.Delegation
     struct Storage {
+        address lst;
         bytes blsPubKey;
         bytes peerId;
-        address lst;
+        uint16 commissionNumerator;
+        address commissionAddress;
     }
 
     // keccak256(abi.encode(uint256(keccak256("zilliqa.storage.Delegation")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant STORAGE_POSITION = 0x4432bdf0e567007e5ad3c8ad839a7f885ef69723eaa659dd9f06e98a97274300;
+    bytes32 private constant STORAGE_POSITION = 0x669e9cfa685336547bc6d91346afdd259f6cd8c0cb6d0b16603b5fa60cb48800;
 
     function _getStorage() private pure returns (Storage storage $) {
         assembly {
@@ -29,6 +31,7 @@ contract DelegationV2 is Initializable, PausableUpgradeable, Ownable2StepUpgrade
 
     uint256 public constant MIN_DELEGATION = 100 ether;
     address public constant DEPOSIT_CONTRACT = 0x000000000000000000005a494C4445504F534954;
+    uint16 public constant DENOMINATOR = 10_000;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -40,8 +43,6 @@ contract DelegationV2 is Initializable, PausableUpgradeable, Ownable2StepUpgrade
     } 
 
     function reinitialize() reinitializer(version() + 1) public {
-        Storage storage $ = _getStorage();
-        $.lst = address(new NonRebasingLST(address(this)));
     }
 
     function _authorizeUpgrade(address newImplementation) internal onlyOwner override {}
@@ -49,8 +50,12 @@ contract DelegationV2 is Initializable, PausableUpgradeable, Ownable2StepUpgrade
     event Staked(address indexed delegator, uint256 amount, uint256 shares);
     event UnStaked(address indexed delegator, uint256 amount, uint256 shares);
 
-    // only for test purposes
-    receive() payable external {}
+    // currently not called as there is no transaction for issuing rewards
+    receive() payable external {
+        require (msg.sender == 0x0000000000000000000000000000000000000000, "rewards must be issues by zero address");
+        // topup deposit by msg.value to restake the rewards
+        // or use them for instant stake withdrawals
+    }
 
     // called by the node's account that deployed this contract and is its owner
     // with at least the minimum stake to request activation as a validator
@@ -82,7 +87,8 @@ contract DelegationV2 is Initializable, PausableUpgradeable, Ownable2StepUpgrade
 
     function stake() public payable whenNotPaused {
         require(msg.value >= MIN_DELEGATION, "delegated amount too low");
-        //TODO: topup deposit by msg.value so that msg.value becomes part of getStake()
+        //TODO: topup the deposit by msg.value so that msg.value becomes part of getStake(),
+        //      currently it's part of getRewards() since this contrac is the reward address
         Storage storage $ = _getStorage();
         uint256 shares = NonRebasingLST($.lst).totalSupply() * msg.value / (getStake() + getRewards());
         NonRebasingLST($.lst).mint(msg.sender, shares);
@@ -92,20 +98,53 @@ contract DelegationV2 is Initializable, PausableUpgradeable, Ownable2StepUpgrade
     function unstake(uint256 shares) public whenNotPaused {
         Storage storage $ = _getStorage();
         NonRebasingLST($.lst).burn(msg.sender, shares);
-        uint256 amount = (getStake() + getRewards()) * shares / NonRebasingLST($.lst).totalSupply();
-        //TODO: don't the transfer the amount, msg.sender can claim it after the unbonding period
-        msg.sender.call{
+        uint256 commission = (getRewards() * $.commissionNumerator / DENOMINATOR) * shares / NonRebasingLST($.lst).totalSupply();
+        (bool success, bytes memory data) = $.commissionAddress.call{
+            value: commission
+        }("");
+        require(success, "transfer of commission failed");
+        uint256 amount = (getStake() + getRewards()) * shares / NonRebasingLST($.lst).totalSupply() - commission;
+        //TODO: store but don't transfer the amount, msg.sender can claim it after the unbonding period
+        (success, data) = msg.sender.call{
             value: amount
         }("");
+        require(success, "transfer of funds failed");
         emit UnStaked(msg.sender, amount, shares);
     }
 
+    function getCommissionNumerator() public view returns(uint16) {
+        Storage storage $ = _getStorage();
+        return $.commissionNumerator;
+    }
+
+    function setCommissionNumerator(uint16 _commissionNumerator) public onlyOwner {
+        require(_commissionNumerator < DENOMINATOR, "invalid commission");
+        Storage storage $ = _getStorage();
+        $.commissionNumerator = _commissionNumerator;
+    }
+
+    function getCommissionAddress() public view returns(address) {
+        Storage storage $ = _getStorage();
+        return $.commissionAddress;
+    }
+
+    function setCommissionAddress(address _commissionAddress) public onlyOwner {
+        Storage storage $ = _getStorage();
+        $.commissionAddress = _commissionAddress;
+    }
+
     function claim() public whenNotPaused {
+        //
     } 
 
     function restake() public onlyOwner{
+        //
     } 
 
+/*    function getRewards() public view returns(uint256){
+        return 24391829365079365070369;
+    }
+*/
     function getRewards() public view returns(uint256) {
         Storage storage $ = _getStorage();
         (bool success, bytes memory data) = DEPOSIT_CONTRACT.staticcall(
@@ -116,6 +155,11 @@ contract DelegationV2 is Initializable, PausableUpgradeable, Ownable2StepUpgrade
         return rewardAddress.balance;
     }
 
+/*    //TODO: replace with the below getStake2() function once stake() tops up the deposit
+    function getStake() public view returns(uint256) {
+        return getStake2() + address(this).balance;
+    }
+*/
     function getStake() public view returns(uint256) {
         Storage storage $ = _getStorage();
         (bool success, bytes memory data) = DEPOSIT_CONTRACT.staticcall(
@@ -128,6 +172,19 @@ contract DelegationV2 is Initializable, PausableUpgradeable, Ownable2StepUpgrade
     function getLST() public view returns(address) {
         Storage storage $ = _getStorage();
         return $.lst;
+    }
+
+    // only for testing purposes, will be removed later
+    function setup(bytes calldata blsPubKey, bytes calldata peerId) public onlyOwner {
+        Storage storage $ = _getStorage();
+        $.blsPubKey = blsPubKey;
+        $.peerId = peerId;
+        (bool success, bytes memory data) = owner().call{
+            value: address(this).balance
+        }("");
+        require(success, "transfer failed");
+        $.lst = address(new NonRebasingLST(address(this)));
+        NonRebasingLST($.lst).mint(owner(), getStake());
     }
 
 }

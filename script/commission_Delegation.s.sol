@@ -3,16 +3,16 @@ pragma solidity ^0.8.26;
 
 import {Script} from "forge-std/Script.sol";
 import {NonRebasingLST} from "src/NonRebasingLST.sol";
-import {DelegationV3} from "src/DelegationV3.sol";
+import {DelegationV2} from "src/DelegationV2.sol";
 import "forge-std/console.sol";
 
 contract Stake is Script {
-    function run(address payable proxy) external {
+    function run(address payable proxy, uint16 commissionNumerator, address commissionAddress) external {
 
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         address owner = vm.addr(deployerPrivateKey);
 
-        DelegationV3 delegation = DelegationV3(
+        DelegationV2 delegation = DelegationV2(
                 proxy
             );
 
@@ -33,8 +33,8 @@ contract Stake is Script {
 
         vm.startBroadcast(deployerPrivateKey);
 
-        delegation.setCommissionNumerator(1000);
-        delegation.setCommissionAddress(owner);
+        delegation.setCommissionNumerator(commissionNumerator);
+        delegation.setCommissionAddress(commissionAddress);
 
         vm.stopBroadcast();
 

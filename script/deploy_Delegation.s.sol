@@ -39,10 +39,6 @@ contract Deploy is Script {
                 proxy
             );
 
-        delegation.stake();
-        delegation.unstake();
-        delegation.claim();
-
         console.log("Deployed version: %s",
             delegation.version()
         );

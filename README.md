@@ -9,13 +9,13 @@ forge install OpenZeppelin/openzeppelin-contracts --no-commit
 ```
 
 ## Contract Deployment
-The delegation contract is used by delegators to stake and unstake ZIL with the respective validator. It acts as the validator node's control address and interacts with the `Deposit` system contract. `DelegationV1` is the initial implementation of the delegation contract is upgradeable: `DelegationV2` deploys a `NonRebasingLST` contract when it is initialized and `DelegationV3` adds the newest features.
+The delegation contract is used by delegators to stake and unstake ZIL with the respective validator. It acts as the validator node's control address and interacts with the `Deposit` system contract. `Delegation` is the initial implementation of the delegation contract that creates a `NonRebasingLST` contract when it is initialized. `DelegationV2` implements staking, unstaking and other features.
 
 The delegation contract shall be deployed and upgraded by the account with the private key that was used to run the validator node and was used to generate its BLS keypair and peer id. Make sure the `PRIVATE_KEY` environment variable is set accordingly.
 
-To deploy `DelegationV1` run
+To deploy `Delegation` run
 ```bash
-forge script script/deploy_Delegation.s.sol --rpc-url https://api.zq2-devnet.zilliqa.com --broadcast --legacy
+forge script script/deploy_Delegation.s.sol --rpc-url http://localhost:4201 --broadcast --legacy
 ```
 You will see an output like this:
 ```
@@ -30,7 +30,7 @@ You will need the proxy address from the above output in all commands below.
 
 To upgrade the contract to `DelegationV2`, run
 ```bash
-forge script script/upgrade_Delegation.s.sol --rpc-url https://api.zq2-devnet.zilliqa.com --broadcast --legacy --sig "run(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2
+forge script script/upgrade_Delegation.s.sol --rpc-url http://localhost:4201 --broadcast --legacy --sig "run(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2
 ```
 
 The output will look like this:
@@ -42,34 +42,16 @@ The output will look like this:
   Upgraded to version: 2
 ```
 
-To upgrade the contract to `DelegationV3`, replace line 33 in `upgrade_Delegation.s.sol` with
-```solidity
-new DelegationV3()
-```
-and run once again
-```bash
-forge script script/upgrade_Delegation.s.sol --rpc-url https://api.zq2-devnet.zilliqa.com --broadcast --legacy --sig "run(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2
-```
-
-The output will look like this:
-```
-  Signer is 0x15fc323DFE5D5DCfbeEdc25CEcbf57f676634d77
-  Upgrading from version: 2
-  Owner is 0x15fc323DFE5D5DCfbeEdc25CEcbf57f676634d77
-  New implementation deployed: 0x90A65311b6C7246FFD1F212C123cfE351a6d65A9
-  Upgraded to version: 3
-```
-
 ## Contract Configuration
 
 Now or at a later time you can set the commission on the rewards the validator earns to e.g. 10% and the wallet address the commission will be sent to e.g. the validator node's address:
 ```bash
-forge script script/commission_Delegation.s.sol --rpc-url https://api.zq2-devnet.zilliqa.com --broadcast --legacy --sig "run(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2
+forge script script/commission_Delegation.s.sol --rpc-url http://localhost:4201 --broadcast --legacy --sig "run(address payable, uint16, address)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 1000 0x15fc323DFE5D5DCfbeEdc25CEcbf57f676634d77
 ```
 
 The output will contain the following information:
 ```
-  Running version: 3
+  Running version: 2
   LST address: 0x9e5c257D1c6dF74EaA54e58CdccaCb924669dc83
   Current commission rate and commission address is: 0.0% 0x0000000000000000000000000000000000000000
   New commission rate and commission address is: 10.0% 0x15fc323DFE5D5DCfbeEdc25CEcbf57f676634d77
@@ -78,7 +60,7 @@ The output will contain the following information:
 ## Validator Activation
 Now you are ready to use the contract to activate your node as a validator with a deposit of e.g. 10 million ZIL. Run
 ```bash
-cast send --legacy --value 10000000ether --rpc-url https://api.zq2-devnet.zilliqa.com --private-key $PRIVATE_KEY \
+cast send --legacy --value 10000000ether --rpc-url http://localhost:4201 --private-key $PRIVATE_KEY \
 0x7a0b7e6d24ede78260c9ddbd98e828b0e11a8ea2 "deposit(bytes,bytes,bytes)" \
 0x92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c \
 0x002408011220d5ed74b09dcbe84d3b32a56c01ab721cf82809848b6604535212a219d35c412f \
@@ -93,13 +75,13 @@ Note that the reward address registered for your validator node will be the addr
 ## Staking and Unstaking
 If the above transaction was successful and the node became a validator, it can accept delegations. In order to stake e.g. 200 ZIL, run 
 ```bash
-forge script script/stake_Delegation.s.sol --rpc-url https://api.zq2-devnet.zilliqa.com --broadcast --legacy --sig "run(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 --private-key 0x...
+forge script script/stake_Delegation.s.sol --rpc-url http://localhost:4201 --broadcast --legacy --sig "run(address payable, uint256)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 200000000000000000000 --private-key 0x...
 ```
 with the private key of the delegator account. Make sure the account's balance can cover the transaction fees plus the 200 ZIL to be delegated.
 
 The output will look like this:
 ```
-  Running version: 3
+  Running version: 2
   Current stake: 10000000000000000000000000 
   Current rewards: 110314207650273223687
   LST address: 0x9e5c257D1c6dF74EaA54e58CdccaCb924669dc83
@@ -110,25 +92,25 @@ The output will look like this:
 
 Note that the staker LST balance in the output will be different from the actual LST balance which you can query by running
 ```bash
-cast call 0x9e5c257D1c6dF74EaA54e58CdccaCb924669dc83 "balanceOf(address)(uint256)" 0xd819fFcE7A58b1E835c25617Db7b46a00888B013 --rpc-url https://api.zq2-devnet.zilliqa.com
+cast call 0x9e5c257D1c6dF74EaA54e58CdccaCb924669dc83 "balanceOf(address)(uint256)" 0xd819fFcE7A58b1E835c25617Db7b46a00888B013 --rpc-url http://localhost:4201  | sed 's/\[[^]]*\]//g'
 ```
 This is due to the fact that the above output was generated based on the local script execution before the transaction got submitted to the network.
 
 You can copy the LST address from the above output and add it to your wallet to transfer your liquid staking tokens to another account if you want to.
 
-Last but not least, to unstake, run 
+Last but not least, to unstake e.g. 100 LST, run
 ```bash
-forge script script/unstake_Delegation.s.sol --rpc-url https://api.zq2-devnet.zilliqa.com --broadcast --legacy --sig "run(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 --private-key 0x...
+forge script script/unstake_Delegation.s.sol --rpc-url http://localhost:4201 --broadcast --legacy --sig "run(address payable, uint256)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 100000000000000000000 --private-key 0x...
 ```
 with the private key of an account that holds some LST.
 
 The output will look like this:
 ```
-  Running version: 3
+  Running version: 2
   Current stake: 10000000000000000000000000 
   Current rewards: 331912568306010928520
   LST address: 0x9e5c257D1c6dF74EaA54e58CdccaCb924669dc83
   Owner balance: 10000000000000000000000000
   Staker balance: 199993784619390291653
-  Staker balance: 0
+  Staker balance: 99993784619390291653
 ```
