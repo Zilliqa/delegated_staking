@@ -7,17 +7,52 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "src/NonRebasingLST.sol";
 
+library WithdrawalQueue {
+
+    uint256 public constant UNBONDING_PERIOD = 30; //approx. 30s, used only for testing
+
+    struct Item {
+        uint256 blockNumber;
+        uint256 amount;
+    }
+
+    struct Fifo {
+        uint256 first;
+        uint256 last;
+        mapping(uint256 => Item) items;
+    }
+
+    function queue(Fifo storage fifo, uint256 amount) internal {
+        fifo.items[fifo.last] = Item(block.number + UNBONDING_PERIOD, amount);
+        fifo.last++;
+    }
+
+    function dequeue(Fifo storage fifo) internal returns(Item memory result) {
+        require(fifo.first < fifo.last, "queue empty");
+        result = fifo.items[fifo.first];
+        delete fifo.items[fifo.first];
+        fifo.first++;
+    }
+
+    function ready(Fifo storage fifo) internal view returns(bool) {
+        return fifo.first < fifo.last && fifo.items[fifo.first].blockNumber <= block.number;
+    }
+}
+
 // the contract is supposed to be deployed with the node's signer account
-// TODO: add events
 contract DelegationV2 is Initializable, PausableUpgradeable, Ownable2StepUpgradeable, UUPSUpgradeable {
+
+    using WithdrawalQueue for WithdrawalQueue.Fifo;
 
     /// @custom:storage-location erc7201:zilliqa.storage.Delegation
     struct Storage {
         address lst;
         bytes blsPubKey;
         bytes peerId;
-        uint16 commissionNumerator;
-        address commissionAddress;
+        uint256 commissionNumerator;
+        uint256 taxedRewards;
+        mapping(address => WithdrawalQueue.Fifo) withdrawals;
+        uint256 totalWithdrawals;
     }
 
     // keccak256(abi.encode(uint256(keccak256("zilliqa.storage.Delegation")) - 1)) & ~bytes32(uint256(0xff))
@@ -31,7 +66,7 @@ contract DelegationV2 is Initializable, PausableUpgradeable, Ownable2StepUpgrade
 
     uint256 public constant MIN_DELEGATION = 100 ether;
     address public constant DEPOSIT_CONTRACT = 0x000000000000000000005a494C4445504F534954;
-    uint16 public constant DENOMINATOR = 10_000;
+    uint256 public constant DENOMINATOR = 10_000;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -48,27 +83,29 @@ contract DelegationV2 is Initializable, PausableUpgradeable, Ownable2StepUpgrade
     function _authorizeUpgrade(address newImplementation) internal onlyOwner override {}
 
     event Staked(address indexed delegator, uint256 amount, uint256 shares);
-    event UnStaked(address indexed delegator, uint256 amount, uint256 shares);
+    event Unstaked(address indexed delegator, uint256 amount, uint256 shares);
+    event Claimed(address indexed delegator, uint256 amount);
 
-    // currently not called as there is no transaction for issuing rewards
+    // not called as there is no transaction for issuing rewards
     receive() payable external {
         require (msg.sender == 0x0000000000000000000000000000000000000000, "rewards must be issues by zero address");
-        // topup deposit by msg.value to restake the rewards
+        // we could deduct the commission from msg.value and
+        // topup the deposit to restake the rewards
         // or use them for instant stake withdrawals
     }
 
-    // called by the node's account that deployed this contract and is its owner
-    // with at least the minimum stake to request activation as a validator
-    function deposit(
+    function _deposit(
         bytes calldata blsPubKey,
         bytes calldata peerId,
-        bytes calldata signature
-    ) public payable onlyOwner {
+        bytes calldata signature,
+        uint256 depositAmount
+    ) internal {
         Storage storage $ = _getStorage();
+        require($.blsPubKey.length == 0, "deposit already performed");
         $.blsPubKey = blsPubKey;
         $.peerId = peerId;
         (bool success, bytes memory data) = DEPOSIT_CONTRACT.call{
-            value: msg.value
+            value: depositAmount
         }(
             //abi.encodeWithSignature("deposit(bytes,bytes,bytes,address,address)",
             //TODO: replace next line with the previous one once the signer address is implemented
@@ -81,72 +118,136 @@ contract DelegationV2 is Initializable, PausableUpgradeable, Ownable2StepUpgrade
                 //owner()
             )
         );
-        NonRebasingLST($.lst).mint(owner(), msg.value);
         require(success, "deposit failed");
+    }
+
+    // called by the node's account that deployed this contract and is its owner
+    // to request the node's activation as a validator using the delegated stake
+    function deposit2(
+        bytes calldata blsPubKey,
+        bytes calldata peerId,
+        bytes calldata signature
+    ) public onlyOwner {
+        _deposit(
+            blsPubKey,
+            peerId,
+            signature,
+            address(this).balance
+        );
+    }
+
+    // called by the node's account that deployed this contract and is its owner
+    // with at least the minimum stake to request the node's activation as a validator
+    // before any stake is delegated to it
+    function deposit(
+        bytes calldata blsPubKey,
+        bytes calldata peerId,
+        bytes calldata signature
+    ) public payable onlyOwner {
+        _deposit(
+            blsPubKey,
+            peerId,
+            signature,
+            msg.value
+        );
+        Storage storage $ = _getStorage();
+        require(NonRebasingLST($.lst).totalSupply() == 0, "stake already delegated");
+        NonRebasingLST($.lst).mint(owner(), msg.value);
     } 
 
     function stake() public payable whenNotPaused {
         require(msg.value >= MIN_DELEGATION, "delegated amount too low");
-        //TODO: topup the deposit by msg.value so that msg.value becomes part of getStake(),
-        //      currently it's part of getRewards() since this contrac is the reward address
+        uint256 shares;
         Storage storage $ = _getStorage();
-        uint256 shares = NonRebasingLST($.lst).totalSupply() * msg.value / (getStake() + getRewards());
+        if ($.blsPubKey.length > 0) {
+            //TODO: topup the deposit by msg.value so that msg.value becomes part of getStake(),
+            //      currently it's part of getRewards() since this contract is the reward address
+        }
+        taxRewards(); // before calculating the shares we must deduct the commission from the yet untaxed rewards
+        if (NonRebasingLST($.lst).totalSupply() == 0)
+            shares = msg.value;
+        else
+            shares = NonRebasingLST($.lst).totalSupply() * msg.value / (getStake() + $.taxedRewards);
         NonRebasingLST($.lst).mint(msg.sender, shares);
         emit Staked(msg.sender, msg.value, shares);
     }
 
     function unstake(uint256 shares) public whenNotPaused {
+        uint256 amount;
         Storage storage $ = _getStorage();
         NonRebasingLST($.lst).burn(msg.sender, shares);
-        uint256 commission = (getRewards() * $.commissionNumerator / DENOMINATOR) * shares / NonRebasingLST($.lst).totalSupply();
-        (bool success, bytes memory data) = $.commissionAddress.call{
-            value: commission
-        }("");
-        require(success, "transfer of commission failed");
-        uint256 amount = (getStake() + getRewards()) * shares / NonRebasingLST($.lst).totalSupply() - commission;
-        //TODO: store but don't transfer the amount, msg.sender can claim it after the unbonding period
-        (success, data) = msg.sender.call{
-            value: amount
-        }("");
-        require(success, "transfer of funds failed");
-        emit UnStaked(msg.sender, amount, shares);
+        taxRewards(); // before calculating the amount we must deduct the commission from the yet untaxed rewards
+        if (NonRebasingLST($.lst).totalSupply() == 0)
+            amount = shares;
+        else
+            amount = (getStake() + $.taxedRewards) * shares / NonRebasingLST($.lst).totalSupply();
+        $.withdrawals[msg.sender].queue(amount);
+        $.totalWithdrawals += amount;
+        if ($.blsPubKey.length > 0) {
+            //TODO: if the contract's balance is smaller than totalWithdrawals
+            //      then withdraw the difference from the deposit contract
+        }
+        emit Unstaked(msg.sender, amount, shares);
     }
 
-    function getCommissionNumerator() public view returns(uint16) {
+    function getCommissionNumerator() public view returns(uint256) {
         Storage storage $ = _getStorage();
         return $.commissionNumerator;
     }
 
-    function setCommissionNumerator(uint16 _commissionNumerator) public onlyOwner {
+    function setCommissionNumerator(uint256 _commissionNumerator) public onlyOwner {
         require(_commissionNumerator < DENOMINATOR, "invalid commission");
         Storage storage $ = _getStorage();
         $.commissionNumerator = _commissionNumerator;
     }
 
-    function getCommissionAddress() public view returns(address) {
+    function taxRewards() internal {
         Storage storage $ = _getStorage();
-        return $.commissionAddress;
-    }
-
-    function setCommissionAddress(address _commissionAddress) public onlyOwner {
-        Storage storage $ = _getStorage();
-        $.commissionAddress = _commissionAddress;
+        uint256 rewards = getRewards();
+        uint256 commission = (rewards - $.taxedRewards) * $.commissionNumerator / DENOMINATOR;
+        $.taxedRewards = rewards - commission;
+        if (commission == 0)
+            return;
+        // commissions are not subject to the unbonding period
+        (bool success, bytes memory data) = owner().call{
+            value: commission
+        }("");
+        require(success, "transfer of commission failed");
     }
 
     function claim() public whenNotPaused {
-        //
-    } 
-
-    function restake() public onlyOwner{
-        //
-    } 
-
-/*    function getRewards() public view returns(uint256){
-        return 24391829365079365070369;
+        Storage storage $ = _getStorage();
+        uint256 total;
+        while ($.withdrawals[msg.sender].ready())
+            total += $.withdrawals[msg.sender].dequeue().amount;
+        /*if (total == 0)
+            return;*/
+        taxRewards(); // before the balance changes we must deduct the commission from the yet untaxed rewards
+        //TODO: claim funds withdrawn from the deposit contract
+        (bool success, bytes memory data) = msg.sender.call{
+            value: total
+        }("");
+        require(success, "transfer of funds failed");
+        $.totalWithdrawals -= total;
+        emit Claimed(msg.sender, total);
     }
-*/
+
+    //TODO: call restake every time someone wants to stake, unstake or claim?
+    function restake() public onlyOwner {
+        taxRewards(); // before the balance changes, we must deduct the commission from the yet untaxed rewards
+        //TODO: topup the deposit by address(this).balance - $.totalWithdrawals
+        //      i.e. the rewards accrued minus the amount needed for the pending withdrawals
+    } 
+
+    function getTaxedRewards() public view returns(uint256) {
+        Storage storage $ = _getStorage();
+        return $.taxedRewards;
+    } 
+
     function getRewards() public view returns(uint256) {
         Storage storage $ = _getStorage();
+        if ($.blsPubKey.length == 0)
+            return 0;
         (bool success, bytes memory data) = DEPOSIT_CONTRACT.staticcall(
             abi.encodeWithSignature("getRewardAddress(bytes)", $.blsPubKey)
         );
@@ -155,13 +256,10 @@ contract DelegationV2 is Initializable, PausableUpgradeable, Ownable2StepUpgrade
         return rewardAddress.balance;
     }
 
-/*    //TODO: replace with the below getStake2() function once stake() tops up the deposit
-    function getStake() public view returns(uint256) {
-        return getStake2() + address(this).balance;
-    }
-*/
     function getStake() public view returns(uint256) {
         Storage storage $ = _getStorage();
+        if ($.blsPubKey.length == 0)
+            return address(this).balance;
         (bool success, bytes memory data) = DEPOSIT_CONTRACT.staticcall(
             abi.encodeWithSignature("getStake(bytes)", $.blsPubKey)
         );
@@ -172,19 +270,6 @@ contract DelegationV2 is Initializable, PausableUpgradeable, Ownable2StepUpgrade
     function getLST() public view returns(address) {
         Storage storage $ = _getStorage();
         return $.lst;
-    }
-
-    // only for testing purposes, will be removed later
-    function setup(bytes calldata blsPubKey, bytes calldata peerId) public onlyOwner {
-        Storage storage $ = _getStorage();
-        $.blsPubKey = blsPubKey;
-        $.peerId = peerId;
-        (bool success, bytes memory data) = owner().call{
-            value: address(this).balance
-        }("");
-        require(success, "transfer failed");
-        $.lst = address(new NonRebasingLST(address(this)));
-        NonRebasingLST($.lst).mint(owner(), getStake());
     }
 
 }

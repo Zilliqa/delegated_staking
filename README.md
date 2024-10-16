@@ -44,17 +44,22 @@ The output will look like this:
 
 ## Contract Configuration
 
-Now or at a later time you can set the commission on the rewards the validator earns to e.g. 10% and the wallet address the commission will be sent to e.g. the validator node's address:
+Now or at a later time you can set the commission on the rewards the validator earns to e.g. 10% as follows:
 ```bash
-forge script script/commission_Delegation.s.sol --rpc-url http://localhost:4201 --broadcast --legacy --sig "run(address payable, uint16, address)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 1000 0x15fc323DFE5D5DCfbeEdc25CEcbf57f676634d77
+forge script script/commission_Delegation.s.sol --rpc-url http://localhost:4201 --broadcast --legacy --sig "run(address payable, uint16)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 1000
 ```
 
 The output will contain the following information:
 ```
   Running version: 2
   LST address: 0x9e5c257D1c6dF74EaA54e58CdccaCb924669dc83
-  Current commission rate and commission address is: 0.0% 0x0000000000000000000000000000000000000000
-  New commission rate and commission address is: 10.0% 0x15fc323DFE5D5DCfbeEdc25CEcbf57f676634d77
+  Old commission rate: 0.0%
+  New commission rate: 10.0%
+```
+
+Note that the commission rate is specified as an integer to be devided by the `DENOMINATOR` which can be retrieved from the delegation contract:
+```bash
+cast call 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 "DENOMINATOR()(uint256)" --rpc-url http://localhost:4201  | sed 's/\[[^]]*\]//g'
 ```
 
 ## Validator Activation
@@ -82,12 +87,12 @@ with the private key of the delegator account. Make sure the account's balance c
 The output will look like this:
 ```
   Running version: 2
-  Current stake: 10000000000000000000000000 
-  Current rewards: 110314207650273223687
+  Current stake: 10000000000000000000000000 ZIL
+  Current rewards: 110314207650273223687 ZIL
   LST address: 0x9e5c257D1c6dF74EaA54e58CdccaCb924669dc83
-  Owner balance: 10000000000000000000000000
-  Staker balance: 0
-  Staker balance: 199993793908430833324
+  Owner balance: 10000000000000000000000000 LST
+  Staker balance before: 99899145245801454561224 ZIL 0 LST
+  Staker balance after: 99699145245801454561224 ZIL 199993793908430833324 LST
 ```
 
 Note that the staker LST balance in the output will be different from the actual LST balance which you can query by running
@@ -98,7 +103,7 @@ This is due to the fact that the above output was generated based on the local s
 
 You can copy the LST address from the above output and add it to your wallet to transfer your liquid staking tokens to another account if you want to.
 
-Last but not least, to unstake e.g. 100 LST, run
+To unstake e.g. 100 LST, run
 ```bash
 forge script script/unstake_Delegation.s.sol --rpc-url http://localhost:4201 --broadcast --legacy --sig "run(address payable, uint256)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 100000000000000000000 --private-key 0x...
 ```
@@ -107,10 +112,23 @@ with the private key of an account that holds some LST.
 The output will look like this:
 ```
   Running version: 2
-  Current stake: 10000000000000000000000000 
-  Current rewards: 331912568306010928520
+  Current stake: 10000000000000000000000000 ZIL
+  Current rewards: 331912568306010928520 ZIL
   LST address: 0x9e5c257D1c6dF74EaA54e58CdccaCb924669dc83
-  Owner balance: 10000000000000000000000000
-  Staker balance: 199993784619390291653
-  Staker balance: 99993784619390291653
+  Owner balance: 10000000000000000000000000 LST
+  Staker balance before: 99698814298179759361224 ZIL 199993784619390291653 LST
+  Staker balance after: 99698814298179759361224 ZIL 99993784619390291653 LST
+```
+
+Last but not least, to claim the amount that is available after the unbonding period, run
+```bash
+forge script script/claim_Delegation.s.sol --rpc-url http://localhost:4201 --broadcast --legacy --sig "run(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 --private-key 0x...
+```
+with the private key of an account that unstaked some LST.
+
+The output will look like this:
+```
+  Running version: 2
+  Staker balance before: 99698086421983460161224 ZIL
+  Staker balance after: 99798095485861371162343 ZIL
 ```

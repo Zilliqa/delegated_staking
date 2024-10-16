@@ -11,11 +11,7 @@ contract Stake is Script {
 
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         address owner = vm.addr(deployerPrivateKey);
-        //console.log("Owner is %s", owner);
-
-        //address staker = 0xd819fFcE7A58b1E835c25617Db7b46a00888B013;
         address staker = msg.sender;
-        //address payable proxy = payable(0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2);
 
         DelegationV2 delegation = DelegationV2(
                 proxy
@@ -25,7 +21,7 @@ contract Stake is Script {
             delegation.version()
         );
 
-        console.log("Current stake: %s \r\n  Current rewards: %s",
+        console.log("Current stake: %s ZIL \r\n  Current rewards: %s ZIL",
             delegation.getStake(),
             delegation.getRewards()
         );
@@ -35,22 +31,23 @@ contract Stake is Script {
             address(lst)
         );
 
-        console.log("Owner balance: %s",
+        console.log("Owner balance: %s LST",
             lst.balanceOf(owner)
         );
 
-        console.log("Staker balance: %s",
+        console.log("Staker balance before: %s ZIL %s LST",
+            staker.balance,
             lst.balanceOf(staker)
         );
 
-        //vm.broadcast(staker);
         vm.broadcast();
 
         delegation.stake{
             value: amount
         }();
 
-        console.log("Staker balance: %s",
+        console.log("Staker balance after: %s ZIL %s LST",
+            staker.balance,
             lst.balanceOf(staker)
         );
     }

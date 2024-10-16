@@ -7,7 +7,6 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "src/NonRebasingLST.sol";
 
-// the contract is supposed to be deployed with the node's signer account
 contract Delegation is Initializable, PausableUpgradeable, Ownable2StepUpgradeable, UUPSUpgradeable {
 
     /// @custom:storage-location erc7201:zilliqa.storage.Delegation

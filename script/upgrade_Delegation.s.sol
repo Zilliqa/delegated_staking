@@ -12,8 +12,6 @@ contract Upgrade is Script {
         address owner = vm.addr(deployerPrivateKey);
         console.log("Signer is %s", owner);
 
-        //address payable proxy = payable(0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2);
-
         Delegation oldDelegation = Delegation(
             proxy
         );
