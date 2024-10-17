@@ -85,13 +85,14 @@ contract DelegationV2 is Initializable, PausableUpgradeable, Ownable2StepUpgrade
     event Staked(address indexed delegator, uint256 amount, uint256 shares);
     event Unstaked(address indexed delegator, uint256 amount, uint256 shares);
     event Claimed(address indexed delegator, uint256 amount);
+    event CommissionPaid(address indexed owner, uint256 rewardsBefore, uint256 committion);
 
-    // not called as there is no transaction for issuing rewards
+    // called when stake withdrawn from the deposit contract is claimed
+    // but not called when rewards are assigned to the reward address
     receive() payable external {
-        require (msg.sender == 0x0000000000000000000000000000000000000000, "rewards must be issues by zero address");
-        // we could deduct the commission from msg.value and
-        // topup the deposit to restake the rewards
-        // or use them for instant stake withdrawals
+        Storage storage $ = _getStorage();
+        // do not deduct commission from the withdrawn stake
+        $.taxedRewards += msg.value;
     }
 
     function _deposit(
@@ -160,8 +161,16 @@ contract DelegationV2 is Initializable, PausableUpgradeable, Ownable2StepUpgrade
         uint256 shares;
         Storage storage $ = _getStorage();
         if ($.blsPubKey.length > 0) {
-            //TODO: topup the deposit by msg.value so that msg.value becomes part of getStake(),
-            //      currently it's part of getRewards() since this contract is the reward address
+            // topup the deposit before deducting the commission or calculating the shares
+            // otherwise the delegated amount will be treated as part of the rewards
+            (bool success, bytes memory data) = DEPOSIT_CONTRACT.call{
+                value: msg.value
+            }(
+                abi.encodeWithSignature("tempIncreaseDeposit(bytes)",
+                    $.blsPubKey
+                )
+            );
+            require(success, "deposit increase failed");
         }
         taxRewards(); // before calculating the shares we must deduct the commission from the yet untaxed rewards
         if (NonRebasingLST($.lst).totalSupply() == 0)
@@ -184,8 +193,16 @@ contract DelegationV2 is Initializable, PausableUpgradeable, Ownable2StepUpgrade
         $.withdrawals[msg.sender].queue(amount);
         $.totalWithdrawals += amount;
         if ($.blsPubKey.length > 0) {
-            //TODO: if the contract's balance is smaller than totalWithdrawals
-            //      then withdraw the difference from the deposit contract
+            // we shall maintain a balance that is always sufficient to cover the claims
+            if (address(this).balance < $.totalWithdrawals) {
+                (bool success, bytes memory data) = DEPOSIT_CONTRACT.call(
+                    abi.encodeWithSignature("tempDecreaseDeposit(bytes,uint256)",
+                        $.blsPubKey,
+                        $.totalWithdrawals - address(this).balance
+                    )
+                );
+                require(success, "deposit increase failed");
+            }
         }
         emit Unstaked(msg.sender, amount, shares);
     }
@@ -213,6 +230,7 @@ contract DelegationV2 is Initializable, PausableUpgradeable, Ownable2StepUpgrade
             value: commission
         }("");
         require(success, "transfer of commission failed");
+        emit CommissionPaid(owner(), rewards, commission);
     }
 
     function claim() public whenNotPaused {
@@ -223,12 +241,13 @@ contract DelegationV2 is Initializable, PausableUpgradeable, Ownable2StepUpgrade
         /*if (total == 0)
             return;*/
         taxRewards(); // before the balance changes we must deduct the commission from the yet untaxed rewards
-        //TODO: claim funds withdrawn from the deposit contract
+        //TODO: claim the withdrawals requested from the deposit contract
         (bool success, bytes memory data) = msg.sender.call{
             value: total
         }("");
         require(success, "transfer of funds failed");
         $.totalWithdrawals -= total;
+        $.taxedRewards -= total;
         emit Claimed(msg.sender, total);
     }
 

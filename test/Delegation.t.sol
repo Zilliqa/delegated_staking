@@ -132,9 +132,10 @@ contract DelegationTest is Test {
 
     function run(
         uint256 depositAmount,
-        uint256 rewardsBefore,
+        uint256 rewardsBeforeStaking,
+        uint256 taxedRewardsBeforeStaking,
         uint256 delegatedAmount,
-        uint256 rewardsAfter,
+        uint256 rewardsBeforeUnstaking,
         uint256 blocksUntil,
         bool initialDeposit
     ) public {
@@ -182,7 +183,8 @@ contract DelegationTest is Test {
             );
         } 
 
-        vm.deal(address(delegation), rewardsBefore);
+        vm.store(address(delegation), 0x669e9cfa685336547bc6d91346afdd259f6cd8c0cb6d0b16603b5fa60cb48804, bytes32(taxedRewardsBeforeStaking));
+        vm.deal(address(delegation), rewardsBeforeStaking);
         vm.deal(staker, 100_000 ether);
         vm.startPrank(staker);
 
@@ -265,7 +267,8 @@ contract DelegationTest is Test {
             lst.totalSupply()
         );
 
-        vm.deal(address(delegation), address(delegation).balance + rewardsAfter);
+        //vm.deal(address(delegation), address(delegation).balance + rewardsEarnedUntilUnstaking);
+        vm.deal(address(delegation), rewardsBeforeUnstaking);
 
         Console.log("LST price: %s.%s%s",
             10**18 * (delegation.getStake() + delegation.getRewards()) / lst.totalSupply()
@@ -397,148 +400,345 @@ contract DelegationTest is Test {
 
     }
 
-    function test_Real() public {
+    function test_0_RealCaseOnDevnet() public {
         //TODO: how could the price fall below 1.00 when rewardsAfter was based on 9969126831808605271675?
-        //      supply + rewards + 10k - tax < supply where tax = (rewards + 10k) / 10
-        //      supply + (rewards + 10k) * 9 / 10 < supply
-        //      because we deducted 10% of 10k as commission and it reduced the left hand side
-        uint256 rewardsBefore = 9961644437442408088600;
-        uint256 rewardsAfter = (10003845141667760201143 - rewardsBefore) * uint256(10) / 9;
-        rewardsBefore = rewardsBefore * uint256(10) / 9 - 10_000 ether;
+        uint256 delegatedAmount = 10_000 ether;
+        // We need to retrieve the following values
+        // from the block before the staking transaction:
+        // rewardsBeforeStaking
+        // taxedRewardsBeforeStaking
+        // from block that includes the staking transaction:
+        // rewardsAfterStaking <- can include unknown rewards accrued by the validator at the end of the block
+        // taxedRewardsAfterStaking <- just to compare with the value calculated below
+        uint256 rewardsBeforeStaking = 3927570941165246990673;
+        uint256 taxedRewardsBeforeStaking = 3201207304801610627105;
+        uint256 taxedRewardsAfterStaking =
+            rewardsBeforeStaking + delegatedAmount
+            - (rewardsBeforeStaking + delegatedAmount - taxedRewardsBeforeStaking) / uint256(10);
+        Console.log("Expected taxed rewards after staking: %s.%s%s ZIL", taxedRewardsAfterStaking);
+        // We also need the following value from the block after which we (would or did) unstake:
+        // rewardsBeforeUnstaking
+        uint256 rewardsBeforeUnstaking = 12932207304801610627037;
         run(
             10_000_000 ether,
-            rewardsBefore,
-            10_000 ether, // delegatedAmount
-            rewardsAfter,
+            rewardsBeforeStaking,
+            taxedRewardsBeforeStaking,
+            delegatedAmount,
+            rewardsBeforeUnstaking,
             30, // blocksUntil claiming
             true // initialDeposit
         );
-        // staker's ZIL after claiming minus before claiming plus 18-digit claiming transaction fee
-        Console.log("%s.%s%s", 99994156053341800951925 - 99894533133440243560633 + 377395241114400000);
-    } 
-
-    function test_ReproduceDevnet() public {
-        uint256 rewardsBefore = 500790859951588622934;
-        uint256 rewardsAfter = (532306705022011158106 - rewardsBefore) * uint256(10) / 9;
-        rewardsBefore = rewardsBefore * uint256(10) / 9 - 100 ether;
-        run(
-            10_000_000 ether,
-            rewardsBefore,
-            100 ether, // delegatedAmount
-            rewardsAfter,
-            30, // blocksUntil claiming
-            true // initialDeposit
+        // Last but not least, we need
+        // the staker's ZIL balance in wei after claiming
+        // the staker's ZIL balance in wei before claiming
+        // the claiming transaction fee in wei
+        Console.log("Expected staker balance after claiming: %s.%s%s ZIL",
+            100_000 ether - delegatedAmount
+            + 99993.342518411621164599 ether - 89993.662605102785881591 ether + 0.3895428602592 ether
         );
-        // staker's ZIL after claiming minus before claiming plus 18-digit claiming transaction fee
-        Console.log("%s.%s%s", 99994156053341800951925 - 99894533133440243560633 + 377395241114400000);
     } 
 
-    function test_NoRewardsUnstakeAll() public {
+    function test_1a_LargeStakeLateNoRewardsUnstakeAll() public {
         uint256 depositAmount = 10_000_000 ether;
         uint256 totalDeposit = 5_200_000_000 ether;
-        run(
-            10_000_000 ether, // depositAmount
-            365 * 24 * 51_000 ether * depositAmount / totalDeposit, // set rewardsBefore staking
-            10_000 ether, // delegatedAmount
-            0, // add rewardsAfter staking
-            30, // wait blocksUntil claiming
-            true // initialDeposit
-        );
-    } 
-
-    function test_SmallStakeSmallRewardsUnstakeAll() public {
-        run(
-            10_000_000 ether, // depositAmount
-            690 ether, // set rewardsBefore staking
-            100 ether, // delegatedAmount
-            100 ether, // add rewardsAfter staking
-            30, // wait blocksUntil claiming
-            true // initialDeposit
-        );
-    } 
-
-    function test_SmallStakeMediumRewardsUnstakeAll() public {
-        run(
-            10_000_000 ether, // depositAmount
-            690 ether, // set rewardsBefore staking
-            100 ether, // delegatedAmount
-            800 ether, // add rewardsAfter staking
-            30, // wait blocksUntil claiming
-            true // initialDeposit
-        );
-    } 
-
-    function test_SmallStakeOneYearUnstakeAll() public {
-        // 7.7318% APY
-        uint256 depositAmount = 10_000_000 ether;
-        uint256 totalDeposit = 5_200_000_000 ether;
-        uint256 rewardsBefore = 690 ether;
-        uint256 rewardsAfter = 365 * 24 * 51_000 ether * depositAmount / totalDeposit;
-        Console.log("Rewards for 1 year: %s.%s%s", rewardsAfter);
+        uint256 delegatedAmount = 10_000 ether;
+        uint256 rewardsBeforeStaking = 365 * 24 * 51_000 ether * depositAmount / totalDeposit;
+        uint256 taxedRewardsBeforeStaking = 0;
+        uint256 taxedRewardsAfterStaking =
+            rewardsBeforeStaking - (rewardsBeforeStaking - taxedRewardsBeforeStaking) / uint256(10);
+        Console.log("taxedRewardsAfterStaking = %s.%s%s", taxedRewardsAfterStaking);
         run(
             depositAmount,
-            rewardsBefore,
-            100 ether, // delegatedAmount
-            rewardsAfter,
-            30, // blocksUntil claiming
-            true // initialDeposit
+            rewardsBeforeStaking,
+            taxedRewardsBeforeStaking,
+            delegatedAmount,
+            taxedRewardsAfterStaking, // rewardsBeforeUnstaking
+            30, // after unstaking wait blocksUntil claiming
+            true // initialDeposit using the node owner' funds, otherwise delegated by a staker
         );
     } 
 
-    function test_LargeStakeOneYearUnstakeAll() public {
-        // 7.6629% APY is lower than in SmallStakeOneYearUnstakeAll
-        // because the delegated amount is added to the rewards
-        // and the owner receives a commission on it 
+    function test_1a_LargeStakeEarlyNoRewardsUnstakeAll() public {
         uint256 depositAmount = 10_000_000 ether;
         uint256 totalDeposit = 5_200_000_000 ether;
-        uint256 rewardsBefore = 690 ether;
-        uint256 rewardsAfter = 365 * 24 * 51_000 ether * depositAmount / totalDeposit;
-        Console.log("Rewards for 1 year: %s.%s%s", rewardsAfter);
+        uint256 delegatedAmount = 10_000 ether;
+        uint256 rewardsBeforeStaking = 1 * 51_000 ether * depositAmount / totalDeposit;
+        uint256 taxedRewardsBeforeStaking = 0;
+        uint256 taxedRewardsAfterStaking =
+            rewardsBeforeStaking - (rewardsBeforeStaking - taxedRewardsBeforeStaking) / uint256(10);
+        Console.log("taxedRewardsAfterStaking = %s.%s%s", taxedRewardsAfterStaking);
         run(
             depositAmount,
-            rewardsBefore,
-            100_000 ether, // delegatedAmount
-            rewardsAfter,
-            30, // blocksUntil claiming
-            true // initialDeposit
+            rewardsBeforeStaking,
+            taxedRewardsBeforeStaking,
+            delegatedAmount,
+            taxedRewardsAfterStaking, // rewardsBeforeUnstaking
+            30, // after unstaking wait blocksUntil claiming
+            true // initialDeposit using the node owner' funds, otherwise delegated by a staker
         );
     } 
 
-    function test_SmallStakeLaggardOneYearUnstakeAll() public {
-        // 7.1773% APY is lower than in SmallStakeOneYearUnstakeAll
-        // because ??????????
+    function test_2a_LargeStakeLateSmallValidatorOneYearOfRewardsUnstakeAll() public {
+        // 7.1707% APR is plausible
         uint256 depositAmount = 10_000_000 ether;
         uint256 totalDeposit = 5_200_000_000 ether;
-        uint256 rewardsBefore = 365 * 24 * 51_000 ether * depositAmount / totalDeposit;
-        uint256 rewardsAfter = 365 * 24 * 51_000 ether * depositAmount / totalDeposit;
-        Console.log("Rewards for 1 year: %s.%s%s", rewardsAfter);
+        uint256 delegatedAmount = 10_000 ether;
+        uint256 rewardsBeforeStaking = 365 * 24 * 51_000 ether * depositAmount / totalDeposit;
+        uint256 taxedRewardsBeforeStaking = 0;
+        uint256 taxedRewardsAfterStaking =
+            rewardsBeforeStaking - (rewardsBeforeStaking - taxedRewardsBeforeStaking) / uint256(10);
+        Console.log("taxedRewardsAfterStaking = %s.%s%s", taxedRewardsAfterStaking);
         run(
             depositAmount,
-            rewardsBefore,
-            100 ether, // delegatedAmount
-            rewardsAfter,
-            30, // blocksUntil claiming
-            true // initialDeposit
+            rewardsBeforeStaking,
+            taxedRewardsBeforeStaking,
+            delegatedAmount,
+            taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
+            30, // after unstaking wait blocksUntil claiming
+            true // initialDeposit using the node owner' funds, otherwise delegated by a staker
         );
     } 
 
-    function test_SmallStakeMediumDepositOneYearUnstakeAll() public {
-        // 7.7323% APY is higher than in SmallStakeOneYearUnstakeAll
-        // because the delegated amount is not added to the deposit
-        // i.e. it doesn't earn rewards, but the missing rewards are
-        // more significant in case of a smaller deposit 
+    function test_3a_SmallStakeLateSmallValidatorOneYearOfRewardsUnstakeAll() public {
+        // 7.1773% APR is more than large stake earns
+        //TODO: why?
+        uint256 depositAmount = 10_000_000 ether;
+        uint256 totalDeposit = 5_200_000_000 ether;
+        uint256 delegatedAmount = 100 ether;
+        uint256 rewardsBeforeStaking = 365 * 24 * 51_000 ether * depositAmount / totalDeposit;
+        uint256 taxedRewardsBeforeStaking = 0;
+        uint256 taxedRewardsAfterStaking =
+            rewardsBeforeStaking - (rewardsBeforeStaking - taxedRewardsBeforeStaking) / uint256(10);
+        Console.log("taxedRewardsAfterStaking = %s.%s%s", taxedRewardsAfterStaking);
+        run(
+            depositAmount,
+            rewardsBeforeStaking,
+            taxedRewardsBeforeStaking,
+            delegatedAmount,
+            taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
+            30, // after unstaking wait blocksUntil claiming
+            true // initialDeposit using the node owner' funds, otherwise delegated by a staker
+        );
+    } 
+
+    function test_4a_LargeStakeLateLargeValidatorOneYearOfRewardsUnstakeAll() public {
+        // 7.1767% APR is less than small stake
+        //TODO: why?
+        // but more than small validator
+        //TODO: why?
         uint256 depositAmount = 100_000_000 ether;
         uint256 totalDeposit = 5_200_000_000 ether;
-        uint256 rewardsBefore = 690 ether;
-        uint256 rewardsAfter = 365 * 24 * 51_000 ether * depositAmount / totalDeposit;
-        Console.log("Rewards for 1 year: %s.%s%s", rewardsAfter);
+        uint256 delegatedAmount = 10_000 ether;
+        uint256 rewardsBeforeStaking = 365 * 24 * 51_000 ether * depositAmount / totalDeposit;
+        uint256 taxedRewardsBeforeStaking = 0;
+        uint256 taxedRewardsAfterStaking =
+            rewardsBeforeStaking - (rewardsBeforeStaking - taxedRewardsBeforeStaking) / uint256(10);
+        Console.log("taxedRewardsAfterStaking = %s.%s%s", taxedRewardsAfterStaking);
         run(
             depositAmount,
-            rewardsBefore,
-            100 ether, // delegatedAmount
-            rewardsAfter,
-            30, // blocksUntil claiming
-            true // initialDeposit
+            rewardsBeforeStaking,
+            taxedRewardsBeforeStaking,
+            delegatedAmount,
+            taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
+            30, // after unstaking wait blocksUntil claiming
+            true // initialDeposit using the node owner' funds, otherwise delegated by a staker
+        );
+    }
+
+    function test_5a_SmallStakeLateLargeValidatorOneYearOfRewardsUnstakeAll() public {
+        // 7.1774% APR is more than large stake, same as small validator
+        uint256 depositAmount = 100_000_000 ether;
+        uint256 totalDeposit = 5_200_000_000 ether;
+        uint256 delegatedAmount = 100 ether;
+        uint256 rewardsBeforeStaking = 365 * 24 * 51_000 ether * depositAmount / totalDeposit;
+        uint256 taxedRewardsBeforeStaking = 0;
+        uint256 taxedRewardsAfterStaking =
+            rewardsBeforeStaking - (rewardsBeforeStaking - taxedRewardsBeforeStaking) / uint256(10);
+        Console.log("taxedRewardsAfterStaking = %s.%s%s", taxedRewardsAfterStaking);
+        run(
+            depositAmount,
+            rewardsBeforeStaking,
+            taxedRewardsBeforeStaking,
+            delegatedAmount,
+            taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
+            30, // after unstaking wait blocksUntil claiming
+            true // initialDeposit using the node owner' funds, otherwise delegated by a staker
+        );
+    }
+
+    function test_2b_LargeStakeLateSmallValidatorOneYearOfRewardsUnstakeAll() public {
+        // 7.1707% APR is plausible
+        uint256 depositAmount = 10_000_000 ether;
+        uint256 totalDeposit = 5_200_000_000 ether;
+        uint256 delegatedAmount = 10_000 ether;
+        uint256 rewardsBeforeStaking = 365 * 24 * 51_000 ether * depositAmount / totalDeposit;
+        uint256 taxedRewardsBeforeStaking = 0;
+        uint256 taxedRewardsAfterStaking =
+            rewardsBeforeStaking - (rewardsBeforeStaking - taxedRewardsBeforeStaking) / uint256(10);
+        Console.log("taxedRewardsAfterStaking = %s.%s%s", taxedRewardsAfterStaking);
+        run(
+            depositAmount,
+            rewardsBeforeStaking,
+            taxedRewardsBeforeStaking,
+            delegatedAmount,
+            taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
+            30, // after unstaking wait blocksUntil claiming
+            true // initialDeposit using the node owner' funds, otherwise delegated by a staker
+        );
+    } 
+
+    function test_3b_SmallStakeLateSmallValidatorOneYearOfRewardsUnstakeAll() public {
+        // 7.1773% APR is more than large stake earns
+        //TODO: why?
+        uint256 depositAmount = 10_000_000 ether;
+        uint256 totalDeposit = 5_200_000_000 ether;
+        uint256 delegatedAmount = 100 ether;
+        uint256 rewardsBeforeStaking = 365 * 24 * 51_000 ether * depositAmount / totalDeposit;
+        uint256 taxedRewardsBeforeStaking = 0;
+        uint256 taxedRewardsAfterStaking =
+            rewardsBeforeStaking - (rewardsBeforeStaking - taxedRewardsBeforeStaking) / uint256(10);
+        Console.log("taxedRewardsAfterStaking = %s.%s%s", taxedRewardsAfterStaking);
+        run(
+            depositAmount,
+            rewardsBeforeStaking,
+            taxedRewardsBeforeStaking,
+            delegatedAmount,
+            taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
+            30, // after unstaking wait blocksUntil claiming
+            false // initialDeposit using the node owner' funds, otherwise delegated by a staker
+        );
+    } 
+
+    function test_4b_LargeStakeLateLargeValidatorOneYearOfRewardsUnstakeAll() public {
+        // 7.1767% APR is less than small stake
+        //TODO: why?
+        // but more than small validator
+        //TODO: why?
+        uint256 depositAmount = 100_000_000 ether;
+        uint256 totalDeposit = 5_200_000_000 ether;
+        uint256 delegatedAmount = 10_000 ether;
+        uint256 rewardsBeforeStaking = 365 * 24 * 51_000 ether * depositAmount / totalDeposit;
+        uint256 taxedRewardsBeforeStaking = 0;
+        uint256 taxedRewardsAfterStaking =
+            rewardsBeforeStaking - (rewardsBeforeStaking - taxedRewardsBeforeStaking) / uint256(10);
+        Console.log("taxedRewardsAfterStaking = %s.%s%s", taxedRewardsAfterStaking);
+        run(
+            depositAmount,
+            rewardsBeforeStaking,
+            taxedRewardsBeforeStaking,
+            delegatedAmount,
+            taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
+            30, // after unstaking wait blocksUntil claiming
+            false // initialDeposit using the node owner' funds, otherwise delegated by a staker
+        );
+    }
+
+    function test_5b_SmallStakeLateLargeValidatorOneYearOfRewardsUnstakeAll() public {
+        // 7.1774% APR is more than large stake, same as small validator
+        uint256 depositAmount = 100_000_000 ether;
+        uint256 totalDeposit = 5_200_000_000 ether;
+        uint256 delegatedAmount = 100 ether;
+        uint256 rewardsBeforeStaking = 365 * 24 * 51_000 ether * depositAmount / totalDeposit;
+        uint256 taxedRewardsBeforeStaking = 0;
+        uint256 taxedRewardsAfterStaking =
+            rewardsBeforeStaking - (rewardsBeforeStaking - taxedRewardsBeforeStaking) / uint256(10);
+        Console.log("taxedRewardsAfterStaking = %s.%s%s", taxedRewardsAfterStaking);
+        run(
+            depositAmount,
+            rewardsBeforeStaking,
+            taxedRewardsBeforeStaking,
+            delegatedAmount,
+            taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
+            30, // after unstaking wait blocksUntil claiming
+            false // initialDeposit using the node owner' funds, otherwise delegated by a staker
+        );
+    }
+
+    function test_2b_LargeStakeEarlySmallValidatorOneYearOfRewardsUnstakeAll() public {
+        // 7.1707% APR is plausible
+        uint256 depositAmount = 10_000_000 ether;
+        uint256 totalDeposit = 5_200_000_000 ether;
+        uint256 delegatedAmount = 10_000 ether;
+        uint256 rewardsBeforeStaking = 1 * 51_000 ether * depositAmount / totalDeposit;
+        uint256 taxedRewardsBeforeStaking = 0;
+        uint256 taxedRewardsAfterStaking =
+            rewardsBeforeStaking - (rewardsBeforeStaking - taxedRewardsBeforeStaking) / uint256(10);
+        Console.log("taxedRewardsAfterStaking = %s.%s%s", taxedRewardsAfterStaking);
+        run(
+            depositAmount,
+            rewardsBeforeStaking,
+            taxedRewardsBeforeStaking,
+            delegatedAmount,
+            taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
+            30, // after unstaking wait blocksUntil claiming
+            true // initialDeposit using the node owner' funds, otherwise delegated by a staker
+        );
+    }
+
+    function test_3b_SmallStakeEarlySmallValidatorOneYearOfRewardsUnstakeAll() public {
+        // 7.1773% APR is more than large stake earns
+        //TODO: why?
+        uint256 depositAmount = 10_000_000 ether;
+        uint256 totalDeposit = 5_200_000_000 ether;
+        uint256 delegatedAmount = 100 ether;
+        uint256 rewardsBeforeStaking = 1 * 51_000 ether * depositAmount / totalDeposit;
+        uint256 taxedRewardsBeforeStaking = 0;
+        uint256 taxedRewardsAfterStaking =
+            rewardsBeforeStaking - (rewardsBeforeStaking - taxedRewardsBeforeStaking) / uint256(10);
+        Console.log("taxedRewardsAfterStaking = %s.%s%s", taxedRewardsAfterStaking);
+        run(
+            depositAmount,
+            rewardsBeforeStaking,
+            taxedRewardsBeforeStaking,
+            delegatedAmount,
+            taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
+            30, // after unstaking wait blocksUntil claiming
+            false // initialDeposit using the node owner' funds, otherwise delegated by a staker
+        );
+    } 
+
+    function test_4b_LargeStakeEarlyLargeValidatorOneYearOfRewardsUnstakeAll() public {
+        // 7.1767% APR is less than small stake
+        //TODO: why?
+        // but more than small validator
+        //TODO: why?
+        uint256 depositAmount = 100_000_000 ether;
+        uint256 totalDeposit = 5_200_000_000 ether;
+        uint256 delegatedAmount = 10_000 ether;
+        uint256 rewardsBeforeStaking = 1 * 51_000 ether * depositAmount / totalDeposit;
+        uint256 taxedRewardsBeforeStaking = 0;
+        uint256 taxedRewardsAfterStaking =
+            rewardsBeforeStaking - (rewardsBeforeStaking - taxedRewardsBeforeStaking) / uint256(10);
+        Console.log("taxedRewardsAfterStaking = %s.%s%s", taxedRewardsAfterStaking);
+        run(
+            depositAmount,
+            rewardsBeforeStaking,
+            taxedRewardsBeforeStaking,
+            delegatedAmount,
+            taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
+            30, // after unstaking wait blocksUntil claiming
+            false // initialDeposit using the node owner' funds, otherwise delegated by a staker
+        );
+    }
+
+    function test_5b_SmallStakeEarlyLargeValidatorOneYearOfRewardsUnstakeAll() public {
+        // 7.1774% APR is more than large stake, same as small validator
+        uint256 depositAmount = 100_000_000 ether;
+        uint256 totalDeposit = 5_200_000_000 ether;
+        uint256 delegatedAmount = 100 ether;
+        uint256 rewardsBeforeStaking = 1 * 51_000 ether * depositAmount / totalDeposit;
+        uint256 taxedRewardsBeforeStaking = 0;
+        uint256 taxedRewardsAfterStaking =
+            rewardsBeforeStaking - (rewardsBeforeStaking - taxedRewardsBeforeStaking) / uint256(10);
+        Console.log("taxedRewardsAfterStaking = %s.%s%s", taxedRewardsAfterStaking);
+        run(
+            depositAmount,
+            rewardsBeforeStaking,
+            taxedRewardsBeforeStaking,
+            delegatedAmount,
+            taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
+            30, // after unstaking wait blocksUntil claiming
+            false // initialDeposit using the node owner' funds, otherwise delegated by a staker
         );
     } 
 
