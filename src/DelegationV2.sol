@@ -9,6 +9,8 @@ import "src/NonRebasingLST.sol";
 
 library WithdrawalQueue {
 
+    //TODO: add it to the variables and implement a getter and an onlyOwner setter
+    //      since a governance vote can change the unbonding period anytime
     uint256 public constant UNBONDING_PERIOD = 30; //approx. 30s, used only for testing
 
     struct Item {
@@ -160,9 +162,23 @@ contract DelegationV2 is Initializable, PausableUpgradeable, Ownable2StepUpgrade
         require(msg.value >= MIN_DELEGATION, "delegated amount too low");
         uint256 shares;
         Storage storage $ = _getStorage();
+        // deduct commission from the rewards only if already activated as a validator
+        // otherwise getRewards() returns 0 but taxedRewards would be greater than 0
         if ($.blsPubKey.length > 0) {
-            // topup the deposit before deducting the commission or calculating the shares
-            // otherwise the delegated amount will be treated as part of the rewards
+            // the delegated amount is temporarily part of the rewards as it's in the balance
+            // add to the taxed rewards to avoid commission and remove it again after taxing
+            $.taxedRewards += msg.value;
+            // before calculating the shares deduct the commission from the yet untaxed rewards
+            taxRewards();
+            $.taxedRewards -= msg.value;
+        }
+        if (NonRebasingLST($.lst).totalSupply() == 0)
+            shares = msg.value;
+        else
+            shares = NonRebasingLST($.lst).totalSupply() * msg.value / (getStake() + $.taxedRewards);
+        NonRebasingLST($.lst).mint(msg.sender, shares);
+        // increase the deposit only if already activated as a validator
+        if ($.blsPubKey.length > 0) {
             (bool success, bytes memory data) = DEPOSIT_CONTRACT.call{
                 value: msg.value
             }(
@@ -172,20 +188,14 @@ contract DelegationV2 is Initializable, PausableUpgradeable, Ownable2StepUpgrade
             );
             require(success, "deposit increase failed");
         }
-        taxRewards(); // before calculating the shares we must deduct the commission from the yet untaxed rewards
-        if (NonRebasingLST($.lst).totalSupply() == 0)
-            shares = msg.value;
-        else
-            shares = NonRebasingLST($.lst).totalSupply() * msg.value / (getStake() + $.taxedRewards);
-        NonRebasingLST($.lst).mint(msg.sender, shares);
         emit Staked(msg.sender, msg.value, shares);
     }
 
     function unstake(uint256 shares) public whenNotPaused {
         uint256 amount;
         Storage storage $ = _getStorage();
-        NonRebasingLST($.lst).burn(msg.sender, shares);
-        taxRewards(); // before calculating the amount we must deduct the commission from the yet untaxed rewards
+        // before calculating the amount deduct the commission from the yet untaxed rewards
+        taxRewards();
         if (NonRebasingLST($.lst).totalSupply() == 0)
             amount = shares;
         else
@@ -193,7 +203,7 @@ contract DelegationV2 is Initializable, PausableUpgradeable, Ownable2StepUpgrade
         $.withdrawals[msg.sender].queue(amount);
         $.totalWithdrawals += amount;
         if ($.blsPubKey.length > 0) {
-            // we shall maintain a balance that is always sufficient to cover the claims
+            // maintain a balance that is always sufficient to cover the claims
             if (address(this).balance < $.totalWithdrawals) {
                 (bool success, bytes memory data) = DEPOSIT_CONTRACT.call(
                     abi.encodeWithSignature("tempDecreaseDeposit(bytes,uint256)",
@@ -201,9 +211,10 @@ contract DelegationV2 is Initializable, PausableUpgradeable, Ownable2StepUpgrade
                         $.totalWithdrawals - address(this).balance
                     )
                 );
-                require(success, "deposit increase failed");
+                require(success, "deposit decrease failed");
             }
         }
+        NonRebasingLST($.lst).burn(msg.sender, shares);
         emit Unstaked(msg.sender, amount, shares);
     }
 
@@ -240,8 +251,9 @@ contract DelegationV2 is Initializable, PausableUpgradeable, Ownable2StepUpgrade
             total += $.withdrawals[msg.sender].dequeue().amount;
         /*if (total == 0)
             return;*/
-        taxRewards(); // before the balance changes we must deduct the commission from the yet untaxed rewards
-        //TODO: claim the withdrawals requested from the deposit contract
+        // before the balance changes deduct the commission from the yet untaxed rewards
+        taxRewards();
+        //TODO: claim all deposit withdrawals requested whose unbonding period is over
         (bool success, bytes memory data) = msg.sender.call{
             value: total
         }("");
@@ -251,17 +263,36 @@ contract DelegationV2 is Initializable, PausableUpgradeable, Ownable2StepUpgrade
         emit Claimed(msg.sender, total);
     }
 
-    //TODO: call restake every time someone wants to stake, unstake or claim?
-    function restake() public onlyOwner {
-        taxRewards(); // before the balance changes, we must deduct the commission from the yet untaxed rewards
-        //TODO: topup the deposit by address(this).balance - $.totalWithdrawals
-        //      i.e. the rewards accrued minus the amount needed for the pending withdrawals
-    } 
+    //TODO: make it onlyOwnerOrContract and call it every time someone stakes, unstakes or claims?
+    function restakeRewards() public onlyOwner {
+        Storage storage $ = _getStorage();
+        // before the balance changes deduct the commission from the yet untaxed rewards
+        taxRewards();
+        if ($.blsPubKey.length > 0) {
+            (bool success, bytes memory data) = DEPOSIT_CONTRACT.call{
+                value: address(this).balance - $.totalWithdrawals
+            }(
+                abi.encodeWithSignature("tempIncreaseDeposit(bytes)",
+                    $.blsPubKey
+                )
+            );
+            require(success, "deposit increase failed");
+        }
+    }
+
+    function collectCommission() public onlyOwner {
+        taxRewards();
+    }
 
     function getTaxedRewards() public view returns(uint256) {
         Storage storage $ = _getStorage();
         return $.taxedRewards;
     } 
+
+    function getTotalWithdrawals() public view returns(uint256) {
+        Storage storage $ = _getStorage();
+        return $.totalWithdrawals;
+    }
 
     function getRewards() public view returns(uint256) {
         Storage storage $ = _getStorage();

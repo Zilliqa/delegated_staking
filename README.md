@@ -63,7 +63,7 @@ cast call 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 "DENOMINATOR()(uint256)" --
 ```
 
 ## Validator Activation
-Now you are ready to use the contract to activate your node as a validator with a deposit of e.g. 10 million ZIL. Run
+If you node's account has enough ZIL for the minimum stake required, you can activate your node as a validator with a deposit of e.g. 10 million ZIL. Run
 ```bash
 cast send --legacy --value 10000000ether --rpc-url http://localhost:4201 --private-key $PRIVATE_KEY \
 0x7a0b7e6d24ede78260c9ddbd98e828b0e11a8ea2 "deposit(bytes,bytes,bytes)" \
@@ -71,11 +71,19 @@ cast send --legacy --value 10000000ether --rpc-url http://localhost:4201 --priva
 0x002408011220d5ed74b09dcbe84d3b32a56c01ab721cf82809848b6604535212a219d35c412f \
 0xb14832a866a49ddf8a3104f8ee379d29c136f29aeb8fccec9d7fb17180b99e8ed29bee2ada5ce390cb704bc6fd7f5ce814f914498376c4b8bc14841a57ae22279769ec8614e2673ba7f36edc5a4bf5733aa9d70af626279ee2b2cde939b4bd8a
 ```
-with the BLS public key, the peer id and the BLS signature of your node. Note that the peer id must be converted from base58 to hex.
-
-Make sure your node's account has the 10 million ZIL and your node is fully synced before you run the above command.
+with the BLS public key, the peer id and the BLS signature of your node. Note that the peer id must be converted from base58 to hex. Make sure your node is fully synced before you run the above command.
 
 Note that the reward address registered for your validator node will be the address of the delegation contract (the proxy contract to be more precise).
+
+Alternatively, you can proceed to the next section and delegate stake until the contract's balance reaches the 10 million ZIL minimum stake required for the activation, and then run
+```bash
+cast send --legacy --rpc-url http://localhost:4201 --private-key $PRIVATE_KEY \
+0x7a0b7e6d24ede78260c9ddbd98e828b0e11a8ea2 "deposit2(bytes,bytes,bytes)" \
+0x92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c \
+0x002408011220d5ed74b09dcbe84d3b32a56c01ab721cf82809848b6604535212a219d35c412f \
+0xb14832a866a49ddf8a3104f8ee379d29c136f29aeb8fccec9d7fb17180b99e8ed29bee2ada5ce390cb704bc6fd7f5ce814f914498376c4b8bc14841a57ae22279769ec8614e2673ba7f36edc5a4bf5733aa9d70af626279ee2b2cde939b4bd8a
+```
+to deposit all of it.
 
 ## Staking and Unstaking
 If the above transaction was successful and the node became a validator, it can accept delegations. In order to stake e.g. 200 ZIL, run 
