@@ -34,11 +34,11 @@ totalSupply=$(cast call $lst "totalSupply()(uint256)" --block $block_num --rpc-u
 stake=$(cast call $1 "getStake()(uint256)" --block $block_num --rpc-url http://localhost:4201 | sed 's/\[[^]]*\]//g')
 commissionNumerator=$(cast call $1 "getCommissionNumerator()(uint256)" --block $block_num --rpc-url http://localhost:4201 | sed 's/\[[^]]*\]//g')
 denominator=$(cast call $1 "DENOMINATOR()(uint256)" --block $block_num --rpc-url http://localhost:4201 | sed 's/\[[^]]*\]//g')
-price=$(bc -l <<< \($stake+$rewardsBeforeUnstaking-\($rewardsBeforeUnstaking-$taxedRewardsBeforeUnstaking\)*$commissionNumerator/$denominator\)/$totalSupply)
+price=$(bc -l <<< "scale=36; ($stake+$rewardsBeforeUnstaking-($rewardsBeforeUnstaking-$taxedRewardsBeforeUnstaking)*$commissionNumerator/$denominator)/$totalSupply")
 
 echo LST supply: $(cast to-unit $totalSupply ether) ZIL
 echo LST price: $price
-echo staker LST value: $(bc -l <<< $staker_lst*$price) ZIL
+echo staker LST value: $(bc -l <<< "scale=18; $staker_lst*$price") ZIL
 
 echo validator stake: $(cast to-unit $stake ether) ZIL
 echo pending withdrawals: $(cast call $1 "getTotalWithdrawals()(uint256)" --block $block_num --rpc-url http://localhost:4201 | sed 's/\[[^]]*\]//g') wei

@@ -50,10 +50,10 @@ totalSupply=$(cast call $lst "totalSupply()(uint256)" --block $block_num --rpc-u
 stake=$(cast call $1 "getStake()(uint256)" --block $block_num --rpc-url http://localhost:4201 | sed 's/\[[^]]*\]//g')
 commissionNumerator=$(cast call $1 "getCommissionNumerator()(uint256)" --block $block_num --rpc-url http://localhost:4201 | sed 's/\[[^]]*\]//g')
 denominator=$(cast call $1 "DENOMINATOR()(uint256)" --block $block_num --rpc-url http://localhost:4201 | sed 's/\[[^]]*\]//g')
-price=$(bc -l <<< \($stake+$rewardsBeforeUnstaking-\($rewardsBeforeUnstaking-$taxedRewardsBeforeUnstaking\)*$commissionNumerator/$denominator\)/$totalSupply)
+price=$(bc -l <<< "scale=36; ($stake+$rewardsBeforeUnstaking-($rewardsBeforeUnstaking-$taxedRewardsBeforeUnstaking)*$commissionNumerator/$denominator)/$totalSupply")
 
 echo LST price: $price
-echo unstaked LST value: $(bc -l <<< $shares*$price/10^18) ZIL
+echo unstaked LST value: $(bc -l <<< "scale=18; $shares*$price/10^18") ZIL
 
 if [[ "$tmp" != "" ]]; then echo event Unstaked\($staker, $d1, $d2\) emitted; fi
 

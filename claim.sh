@@ -36,6 +36,6 @@ echo taxedRewardsBeforeClaiming = $(cast call $1 "getTaxedRewards()(uint256)" --
 
 staker_wei_before=$(cast rpc eth_getBalance $staker $block --rpc-url http://localhost:4201 | tr -d '"' | cast to-dec --base-in 16)
 
-echo claimed amount - gas fee = $(bc -l <<< $staker_wei_after-$staker_wei_before) wei
+echo claimed amount - gas fee = $(bc -l <<< "scale=18; $staker_wei_after-$staker_wei_before") wei
 if [[ "$tmp" != "" ]]; then echo event Claimed\($staker, $d1\) emitted; fi
 echo $(date +"%T,%3N") $block_num
