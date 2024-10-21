@@ -95,12 +95,12 @@ with the private key of the delegator account. Make sure the account's balance c
 The output will look like this:
 ```
   Running version: 2
-  Current stake: 10000000000000000000000000 ZIL
-  Current rewards: 110314207650273223687 ZIL
+  Current stake: 10000000000000000000000000 wei
+  Current rewards: 110314207650273223687 wei
   LST address: 0x9e5c257D1c6dF74EaA54e58CdccaCb924669dc83
   Owner balance: 10000000000000000000000000 LST
-  Staker balance before: 99899145245801454561224 ZIL 0 LST
-  Staker balance after: 99699145245801454561224 ZIL 199993793908430833324 LST
+  Staker balance before: 99899145245801454561224 wei 0 LST
+  Staker balance after: 99699145245801454561224 wei 199993793908430833324 LST
 ```
 
 Note that the staker LST balance in the output will be different from the actual LST balance which you can query by running
@@ -120,12 +120,12 @@ with the private key of an account that holds some LST.
 The output will look like this:
 ```
   Running version: 2
-  Current stake: 10000000000000000000000000 ZIL
-  Current rewards: 331912568306010928520 ZIL
+  Current stake: 10000000000000000000000000 wei
+  Current rewards: 331912568306010928520 wei
   LST address: 0x9e5c257D1c6dF74EaA54e58CdccaCb924669dc83
   Owner balance: 10000000000000000000000000 LST
-  Staker balance before: 99698814298179759361224 ZIL 199993784619390291653 LST
-  Staker balance after: 99698814298179759361224 ZIL 99993784619390291653 LST
+  Staker balance before: 99698814298179759361224 wei 199993784619390291653 LST
+  Staker balance after: 99698814298179759361224 wei 99993784619390291653 LST
 ```
 
 Last but not least, to claim the amount that is available after the unbonding period, run
@@ -137,6 +137,6 @@ with the private key of an account that unstaked some LST.
 The output will look like this:
 ```
   Running version: 2
-  Staker balance before: 99698086421983460161224 ZIL
-  Staker balance after: 99798095485861371162343 ZIL
+  Staker balance before: 99698086421983460161224 wei
+  Staker balance after: 99798095485861371162343 wei
 ```

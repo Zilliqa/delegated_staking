@@ -771,19 +771,19 @@ contract DelegationTest is Test {
     to stake, unstake and claim on the network your local node is connected to.
 
     Before and after running the STAKING, UNSTAKING and CLAIMING scripts presented below,
-    always execute the following bash script to capture the values needed in the Foundry test below.
+    always execute the STATE script to capture the values needed in the Foundry test below.
 
     STATE:
-    chmod +x state.sh && ./state.sh <staker_address>
+    chmod +x state.sh && ./state.sh <delegation_contract_address> <staker_address>
 
     STAKING:
-    chmod +x stake.sh && ./stake.sh <staker_private_key> 10000000000000000000000
+    chmod +x stake.sh && ./stake.sh <delegation_contract_address> <staker_private_key> 10000000000000000000000
 
     UNSTAKING:
-    chmod +x unstake.sh && ./unstake.sh <staker_private_key>
+    chmod +x unstake.sh && ./unstake.sh <delegation_contract_address> <staker_private_key>
 
     CLAIMING:
-    chmod +x claim.sh && ./claim.sh <staker_private_key>
+    chmod +x claim.sh && ./claim.sh <delegation_contract_address> <staker_private_key>
 
     Before running the test, replace the address on the first line with <staker_address>
     */
@@ -798,7 +798,7 @@ contract DelegationTest is Test {
         uint256 taxedRewardsAfterStaking =
             rewardsBeforeStaking - (rewardsBeforeStaking - taxedRewardsBeforeStaking) / uint256(10);
         Console.log("Expected taxed rewards after staking: %s.%s%s ZIL", taxedRewardsAfterStaking);
-        // Insert the following value output by the UNSTAKE script
+        // Insert the following value output by the UNSTAKING script
         uint256 rewardsBeforeUnstaking = 233367080700403454378;
         run(
             10_000_000 ether,
@@ -812,16 +812,16 @@ contract DelegationTest is Test {
             true // initialDeposit
         );
         // Replace the values below in the same order with the values output by the STATE script
-        // run after the CLAIM script or logged by the CLAIM script itself
+        // run after the CLAIMING script or logged by the CLAIMING script itself
         // the staker's ZIL balance in wei according to the STATE script after claiming
         // the staker's ZIL balance in wei according to the STATE script before claiming
-        // the claiming transaction fee in wei output by the CLAIM script
+        // the claiming transaction fee in wei output by the CLAIMING script
         Console.log("Expected staker balance after claiming: %s.%s%s ZIL",
             100_000 ether - delegatedAmount
             + 100013.464887553198739807 ether - 90013.819919979031083499 ether + 0.3897714316896 ether
         );
         // Replace the values below in the same order with values output by the STATE script
-        // run before the STAKE and after the UNSTAKE scripts or logged by those script themselves
+        // run before the STAKING and after the UNSTAKE scripts or logged by those script themselves
         // the owner's ZIL balance in wei according to the STATE script after unstaking
         // the owner's ZIL balance in wei according to the STATE script before staking
         // the transaction fees in wei output by the STAKING and UNSTAKING scripts

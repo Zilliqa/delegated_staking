@@ -21,7 +21,7 @@ contract Stake is Script {
             delegation.version()
         );
 
-        console.log("Current stake: %s ZIL \r\n  Current rewards: %s ZIL",
+        console.log("Current stake: %s wei \r\n  Current rewards: %s wei",
             delegation.getStake(),
             delegation.getRewards()
         );
@@ -35,7 +35,7 @@ contract Stake is Script {
             lst.balanceOf(owner)
         );
 
-        console.log("Staker balance before: %s ZIL %s LST",
+        console.log("Staker balance before: %s wei %s LST",
             staker.balance,
             lst.balanceOf(staker)
         );
@@ -46,7 +46,7 @@ contract Stake is Script {
             value: amount
         }();
 
-        console.log("Staker balance after: %s ZIL %s LST",
+        console.log("Staker balance after: %s wei %s LST",
             staker.balance,
             lst.balanceOf(staker)
         );

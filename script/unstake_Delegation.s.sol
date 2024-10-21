@@ -21,7 +21,7 @@ contract Unstake is Script {
             delegation.version()
         );
 
-        console.log("Current stake: %s ZIL \r\n  Current rewards: %s ZIL",
+        console.log("Current stake: %s wei \r\n  Current rewards: %s wei",
             delegation.getStake(),
             delegation.getRewards()
         );
@@ -31,11 +31,11 @@ contract Unstake is Script {
             address(lst)
         );
 
-        console.log("Owner LST balance: %s LST",
+        console.log("Owner balance: %s LST",
             lst.balanceOf(owner)
         );
 
-        console.log("Staker balance before: %s ZIL %s LST",
+        console.log("Staker balance before: %s wei %s LST",
             staker.balance,
             lst.balanceOf(staker)
         );
@@ -50,7 +50,7 @@ contract Unstake is Script {
             amount
         );
 
-        console.log("Staker balance after: %s ZIL %s LST",
+        console.log("Staker balance after: %s wei %s LST",
             staker.balance,
             lst.balanceOf(staker)
         );

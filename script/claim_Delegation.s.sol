@@ -18,7 +18,7 @@ contract Claim is Script {
             delegation.version()
         );
 
-        console.log("Staker balance before: %s ZIL",
+        console.log("Staker balance before: %s wei",
             staker.balance
         );
 
@@ -26,7 +26,7 @@ contract Claim is Script {
 
         delegation.claim();
 
-        console.log("Staker balance after: %s ZIL",
+        console.log("Staker balance after: %s wei",
             staker.balance
         );
     }
