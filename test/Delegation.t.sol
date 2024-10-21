@@ -1,31 +1,14 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 pragma solidity ^0.8.26;
 
-import {Delegation} from  "src/Delegation.sol";
-import {DelegationV2} from  "src/DelegationV2.sol";
+import {Delegation} from "src/Delegation.sol";
+import {DelegationV2} from "src/DelegationV2.sol";
 import {NonRebasingLST} from "src/NonRebasingLST.sol";
-import {Deposit} from  "src/Deposit.sol";
+import {Deposit} from "src/Deposit.sol";
+import {Console} from "src/Console.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {Test, Vm} from "forge-std/Test.sol";
 import "forge-std/console.sol";
-
-library Console {
-    function log(string memory format, uint256 amount) external {
-        string memory zeros = "";
-        uint256 decimals = amount % 10**18;
-        while (decimals > 0 && decimals < 10**17) {
-            //console.log("%s %s", zeros, decimals);
-            zeros = string.concat(zeros, "0");
-            decimals *= 10;
-        }
-        console.log(
-            format,
-            amount / 10**18,
-            zeros,
-            amount % 10**18
-        );
-    } 
-} 
 
 contract DelegationTest is Test {
     address payable proxy;

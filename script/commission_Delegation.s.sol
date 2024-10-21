@@ -4,6 +4,7 @@ pragma solidity ^0.8.26;
 import {Script} from "forge-std/Script.sol";
 import {NonRebasingLST} from "src/NonRebasingLST.sol";
 import {DelegationV2} from "src/DelegationV2.sol";
+import {Console} from "src/Console.sol";
 import "forge-std/console.sol";
 
 contract Stake is Script {
@@ -24,20 +25,18 @@ contract Stake is Script {
             address(lst)
         );
 
-        console.log("Old commission rate: %s.%s%%",
-            uint256(delegation.getCommissionNumerator()) * 100 / uint256(delegation.DENOMINATOR()),
-            //TODO: check if the decimals are printed correctly e.g. 12.01% vs 12.1%
-            uint256(delegation.getCommissionNumerator()) % (uint256(delegation.DENOMINATOR()) / 100)
+        Console.log("Old commission rate: %s.%s%s%%",
+            delegation.getCommissionNumerator(),
+            2
         );
 
         vm.broadcast(deployerPrivateKey);
 
         delegation.setCommissionNumerator(commissionNumerator);
 
-        console.log("New commission rate: %s.%s%%",
-            uint256(delegation.getCommissionNumerator()) * 100 / uint256(delegation.DENOMINATOR()),
-            //TODO: check if the decimals are printed correctly e.g. 12.01% vs 12.1%
-            uint256(delegation.getCommissionNumerator()) % (uint256(delegation.DENOMINATOR()) / 100)
+        Console.log("New commission rate: %s.%s%s%%",
+            delegation.getCommissionNumerator(),
+            2
         );
     }
 }
