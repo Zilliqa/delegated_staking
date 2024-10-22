@@ -51,8 +51,9 @@ stake=$(cast call $1 "getStake()(uint256)" --block $block_num --rpc-url http://l
 commissionNumerator=$(cast call $1 "getCommissionNumerator()(uint256)" --block $block_num --rpc-url http://localhost:4201 | sed 's/\[[^]]*\]//g')
 denominator=$(cast call $1 "DENOMINATOR()(uint256)" --block $block_num --rpc-url http://localhost:4201 | sed 's/\[[^]]*\]//g')
 price=$(bc -l <<< "scale=36; ($stake+$rewardsBeforeUnstaking-($rewardsBeforeUnstaking-$taxedRewardsBeforeUnstaking)*$commissionNumerator/$denominator)/$totalSupply")
+price0=$(cast call $1 "getPrice()(uint256)" --block $block_num --rpc-url http://localhost:4201 | sed 's/\[[^]]*\]//g')
 
-echo LST price: $price
+echo LST price: $price \~ $(cast to-unit $price0 ether)
 echo unstaked LST value: $(bc -l <<< "scale=18; $shares*$price/10^18") ZIL
 
 if [[ "$tmp" != "" ]]; then echo event Unstaked\($staker, $d1, $d2\) emitted; fi

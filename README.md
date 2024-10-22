@@ -111,6 +111,11 @@ This is due to the fact that the above output was generated based on the local s
 
 You can copy the LST address from the above output and add it to your wallet to transfer your liquid staking tokens to another account if you want to.
 
+To query the current price of an LST, run
+```bash
+cast to-unit $(cast call 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 "getPrice()(uint256)" --block latest --rpc-url http://localhost:4201 | sed 's/\[[^]]*\]//g') ether
+```
+
 To unstake e.g. 100 LST, run
 ```bash
 forge script script/unstake_Delegation.s.sol --rpc-url http://localhost:4201 --broadcast --legacy --sig "run(address payable, uint256)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 100000000000000000000 --private-key 0x...
@@ -139,4 +144,9 @@ The output will look like this:
   Running version: 2
   Staker balance before: 99698086421983460161224 wei
   Staker balance after: 99798095485861371162343 wei
+```
+
+To query how much ZIL you can already claim, run
+```bash
+cast to-unit $(cast call 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 "getClaimable()(uint256)" --from 0xd819fFcE7A58b1E835c25617Db7b46a00888B013 --block latest --rpc-url http://localhost:4201 | sed 's/\[[^]]*\]//g') ether
 ```

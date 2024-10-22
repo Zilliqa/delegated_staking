@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 pragma solidity ^0.8.26;
 
 import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
@@ -10,7 +10,8 @@ import "src/NonRebasingLST.sol";
 library WithdrawalQueue {
 
     //TODO: add it to the variables and implement a getter and an onlyOwner setter
-    //      since a governance vote can change the unbonding period anytime
+    //      since a governance vote can change the unbonding period anytime or fetch
+    //      it from the deposit contract
     uint256 public constant UNBONDING_PERIOD = 30; //approx. 30s, used only for testing
 
     struct Item {
@@ -36,8 +37,12 @@ library WithdrawalQueue {
         fifo.first++;
     }
 
+    function ready(Fifo storage fifo, uint256 index) internal view returns(bool) {
+        return index < fifo.last && fifo.items[index].blockNumber <= block.number;
+    }
+
     function ready(Fifo storage fifo) internal view returns(bool) {
-        return fifo.first < fifo.last && fifo.items[fifo.first].blockNumber <= block.number;
+        return ready(fifo, fifo.first);
     }
 }
 
@@ -229,6 +234,17 @@ contract DelegationV2 is Initializable, PausableUpgradeable, Ownable2StepUpgrade
         $.commissionNumerator = _commissionNumerator;
     }
 
+    // return the amount of ZIL equivalent to 1 LST (share)
+    function getPrice() public view returns(uint256 amount) {
+        Storage storage $ = _getStorage();
+        uint256 rewards = getRewards();
+        uint256 commission = (rewards - $.taxedRewards) * $.commissionNumerator / DENOMINATOR;
+        if (NonRebasingLST($.lst).totalSupply() == 0)
+            amount = 1 ether;
+        else
+            amount = (getStake() + rewards - commission) * 1 ether / NonRebasingLST($.lst).totalSupply();
+    }
+
     function taxRewards() internal {
         Storage storage $ = _getStorage();
         uint256 rewards = getRewards();
@@ -242,6 +258,16 @@ contract DelegationV2 is Initializable, PausableUpgradeable, Ownable2StepUpgrade
         }("");
         require(success, "transfer of commission failed");
         emit CommissionPaid(owner(), rewards, commission);
+    }
+
+    function getClaimable() public view returns(uint256 total) {
+        Storage storage $ = _getStorage();
+        WithdrawalQueue.Fifo storage fifo = $.withdrawals[msg.sender];
+        uint256 index = fifo.first;
+        while (fifo.ready(index)) {
+            total += fifo.items[index].amount;
+            index++;
+        }
     }
 
     function claim() public whenNotPaused {

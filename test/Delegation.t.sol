@@ -84,19 +84,17 @@ contract DelegationTest is Test {
             address(lst)
         );
 
-        console.log("Old commission rate: %s.%s%%",
-            uint256(delegation.getCommissionNumerator()) * 100 / uint256(delegation.DENOMINATOR()),
-            //TODO: check if the decimals are printed correctly e.g. 12.01% vs 12.1%
-            uint256(delegation.getCommissionNumerator()) % (uint256(delegation.DENOMINATOR()) / 100)
+        Console.log("Old commission rate: %s.%s%s%%",
+            delegation.getCommissionNumerator(),
+            2
         );
         //*/
         uint256 commissionNumerator = 1_000;
         delegation.setCommissionNumerator(commissionNumerator);
         /*
-        console.log("New commission rate: %s.%s%%",
-            uint256(delegation.getCommissionNumerator()) * 100 / uint256(delegation.DENOMINATOR()),
-            //TODO: check if the decimals are printed correctly e.g. 12.01% vs 12.1%
-            uint256(delegation.getCommissionNumerator()) % (uint256(delegation.DENOMINATOR()) / 100)
+        Console.log("New commission rate: %s.%s%s%%",
+            delegation.getCommissionNumerator(),
+            2
         );
         //*/
 
@@ -173,12 +171,16 @@ contract DelegationTest is Test {
         vm.deal(staker, 100_000 ether);
         vm.startPrank(staker);
 
-        Console.log("Stake deposited before staking: %s.%s%s ZIL",
+        Console.log("Deposit before staking: %s.%s%s ZIL",
             delegation.getStake()
         );
 
         Console.log("Rewards before staking: %s.%s%s ZIL",
             delegation.getRewards()
+        );
+
+        Console.log("Taxed rewards before staking: %s.%s%s ZIL",
+            delegation.getTaxedRewards()
         );
 
         Console.log("Staker balance before staking: %s.%s%s ZIL",
@@ -197,6 +199,10 @@ contract DelegationTest is Test {
         uint256 ownerZILAfter;
         uint256 loggedAmount;
         uint256 loggedShares;
+        uint256 totalShares;
+        uint256 rewardsAfterStaking;
+        uint256 taxedRewardsAfterStaking;
+        uint256 rewardsDelta = rewardsBeforeStaking - taxedRewardsBeforeStaking;
         Vm.Log[] memory entries;
 
         for (uint8 j = 0; j < numberOfDelegations; j++) {
@@ -229,22 +235,28 @@ contract DelegationTest is Test {
             for (uint256 i = 0; i < entries.length; i++) {
                 if (entries[i].topics[0] == keccak256("Staked(address,uint256,uint256)")) {
                     (loggedAmount, loggedShares) = abi.decode(entries[i].data, (uint256, uint256));
-                    //console.log(loggedAmount, loggedShares);
+                    assertEq(loggedAmount, delegatedAmount, "staked amount mismatch");
                 }
             }
-            //console.log(delegatedAmount, (lst.totalSupply() - lst.balanceOf(staker)) * delegatedAmount / (delegation.getStake() + delegation.getTaxedRewards()));
-            //console.log(delegatedAmount, lst.balanceOf(staker));
+            totalShares += loggedShares;
 
             Console.log("Owner commission after staking: %s.%s%s ZIL",
                 ownerZILAfter - ownerZILBefore
             );
+            assertEq(rewardsDelta * delegation.getCommissionNumerator() / delegation.DENOMINATOR(), ownerZILAfter - ownerZILBefore, "commission mismatch after staking");
 
-            Console.log("Stake deposited after staking: %s.%s%s ZIL",
+            Console.log("Deposit after staking: %s.%s%s ZIL",
                 delegation.getStake()
             );
 
+            rewardsAfterStaking = delegation.getRewards();
             Console.log("Rewards after staking: %s.%s%s ZIL",
-                delegation.getRewards()
+                rewardsAfterStaking
+            );
+
+            taxedRewardsAfterStaking = delegation.getTaxedRewards();
+            Console.log("Taxed rewards after staking: %s.%s%s ZIL",
+                taxedRewardsAfterStaking
             );
 
             Console.log("Staker balance after staking: %s.%s%s ZIL",
@@ -260,17 +272,19 @@ contract DelegationTest is Test {
             );
 
             vm.deal(address(delegation), address(delegation).balance + rewardsAccruedAfterEach);
+            rewardsDelta = delegation.getRewards() - taxedRewardsAfterStaking;
         }
 
-        //vm.deal(address(delegation), address(delegation).balance + rewardsEarnedUntilUnstaking);
         vm.deal(address(delegation), rewardsBeforeUnstaking);
 
+        uint256 lstPrice = 10**18 * 1 ether * ((delegation.getStake() + delegation.getRewards() - (delegation.getRewards() - delegation.getTaxedRewards()) * delegation.getCommissionNumerator() / delegation.DENOMINATOR())) / lst.totalSupply();
         Console.log("LST price: %s.%s%s",
-            10**18 * (delegation.getStake() + delegation.getRewards()) / lst.totalSupply()
+            lstPrice
         );
+        assertEq(lstPrice / 10**18, delegation.getPrice(), "price mismatch");
 
         Console.log("LST value: %s.%s%s",
-            lst.balanceOf(staker) * (delegation.getStake() + delegation.getRewards()) / lst.totalSupply()
+            totalShares * lstPrice / 10**18 / 1 ether
         );
 
         vm.recordLogs();
@@ -291,8 +305,11 @@ contract DelegationTest is Test {
         uint256 stakerLSTBefore = lst.balanceOf(staker);
         ownerZILBefore = delegation.owner().balance;
 
+        uint256 shares = initialDeposit ? lst.balanceOf(staker) : lst.balanceOf(staker) - depositAmount;
+        assertEq(totalShares, shares, "staked shares balance mismatch");
+
         delegation.unstake(
-            initialDeposit ? lst.balanceOf(staker) : lst.balanceOf(staker) - depositAmount
+            shares
         );
 
         uint256 stakerLSTAfter = lst.balanceOf(staker);
@@ -303,26 +320,35 @@ contract DelegationTest is Test {
         for (uint256 i = 0; i < entries.length; i++) {
             if (entries[i].topics[0] == keccak256("Unstaked(address,uint256,uint256)")) {
                 (loggedAmount, loggedShares) = abi.decode(entries[i].data, (uint256, uint256));
-                //console.log(loggedAmount, loggedShares);
             } 
         }
-        //TODO: why is loggedAmount equal to the value below without adding back lst.totalSupply() + stakerLSTBefore although unstake() burns stakerLSTBefore before computing the amount?
-        //console.log((delegation.getStake() + delegation.getTaxedRewards()) * stakerLSTBefore / lst.totalSupply(), stakerLSTBefore - stakerLSTAfter);
+        assertEq(totalShares * lstPrice / 10**18 / 1 ether, loggedAmount, "unstaked amount mismatch");
+        assertEq(shares, loggedShares, "unstaked shares mismatch");
+        assertEq(shares, stakerLSTBefore - stakerLSTAfter, "shares balance mismatch");
         
         Console.log("Owner commission after unstaking: %s.%s%s ZIL", 
             ownerZILAfter - ownerZILBefore
         );
 
-        Console.log("Stake deposited after unstaking: %s.%s%s ZIL",
+        assertEq((rewardsBeforeUnstaking - taxedRewardsAfterStaking) * delegation.getCommissionNumerator() / delegation.DENOMINATOR(), ownerZILAfter - ownerZILBefore, "commission mismatch after unstaking");
+
+        Console.log("Deposit after unstaking: %s.%s%s ZIL",
             delegation.getStake()
         );
 
+        uint256 rewardsAfterUnstaking = delegation.getRewards();
         Console.log("Rewards after unstaking: %s.%s%s ZIL",
-            delegation.getRewards()
+            rewardsAfterUnstaking
         );
 
+        uint256 taxedRewardsAfterUnstaking = delegation.getTaxedRewards();
+        Console.log("Taxed rewards after unstaking: %s.%s%s ZIL",
+            taxedRewardsAfterUnstaking
+        );
+
+        uint256 stakerBalanceAfterUnstaking = staker.balance;
         Console.log("Staker balance after unstaking: %s.%s%s ZIL",
-            staker.balance
+            stakerBalanceAfterUnstaking
         );
 
         Console.log("Staker balance after unstaking: %s.%s%s LST",
@@ -338,6 +364,8 @@ contract DelegationTest is Test {
         vm.recordLogs();
 
         uint256 unstakedAmount = loggedAmount; // the amount we logged on unstaking
+        Console.log("Unstaked amount: %s.%s%s ZIL", unstakedAmount);
+
         vm.expectEmit(
             true,
             false,
@@ -363,17 +391,17 @@ contract DelegationTest is Test {
         for (uint256 i = 0; i < entries.length; i++) {
             if (entries[i].topics[0] == keccak256("Claimed(address,uint256)")) {
                 loggedAmount = abi.decode(entries[i].data, (uint256));
-                //console.log(loggedAmount);
             } 
-        } 
-        //console.log(stakerZILAfter - stakerZILBefore);
-        //console.log(unstakedAmount);
+        }
+        assertEq(loggedAmount, unstakedAmount, "unstaked vs claimed amount mismatch");
+        assertEq(loggedAmount, stakerZILAfter - stakerZILBefore, "claimed amount vs staker balance mismatch");
 
         Console.log("Owner commission after claiming: %s.%s%s ZIL", 
             ownerZILAfter - ownerZILBefore
         );
+        assertEq((rewardsAfterUnstaking - taxedRewardsAfterUnstaking) * delegation.getCommissionNumerator() / delegation.DENOMINATOR(), ownerZILAfter - ownerZILBefore, "commission mismatch after claiming");
 
-        Console.log("Stake deposited after claiming: %s.%s%s ZIL",
+        Console.log("Deposit after claiming: %s.%s%s ZIL",
             delegation.getStake()
         );
 
@@ -381,9 +409,14 @@ contract DelegationTest is Test {
             delegation.getRewards()
         );
 
+        Console.log("Taxed rewards after claiming: %s.%s%s ZIL",
+            delegation.getTaxedRewards()
+        );
+
         Console.log("Staker balance after claiming: %s.%s%s ZIL",
             staker.balance
         );
+        assertEq(staker.balance, stakerBalanceAfterUnstaking + unstakedAmount, "final staker balance mismatch");
 
         Console.log("Staker balance after claiming: %s.%s%s LST",
             lst.balanceOf(staker)
@@ -396,6 +429,7 @@ contract DelegationTest is Test {
     }
 
     function test_1a_LargeStake_Late_NoRewards_UnstakeAll() public {
+        staker = 0x092E5E57955437876dA9Df998C96e2BE19341670;
         uint256 depositAmount = 10_000_000 ether;
         uint256 totalDeposit = 5_200_000_000 ether;
         uint256 delegatedAmount = 10_000 ether;
@@ -413,11 +447,12 @@ contract DelegationTest is Test {
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking, // rewardsBeforeUnstaking
             30, // after unstaking wait blocksUntil claiming
-            true // initialDeposit using the node owner' funds, otherwise delegated by a staker
+            true // initialDeposit using funds held by the node, otherwise delegated by a staker
         );
     } 
 
     function test_1b_LargeStake_Early_NoRewards_UnstakeAll() public {
+        staker = 0x092E5E57955437876dA9Df998C96e2BE19341670;
         uint256 depositAmount = 10_000_000 ether;
         uint256 totalDeposit = 5_200_000_000 ether;
         uint256 delegatedAmount = 10_000 ether;
@@ -435,11 +470,12 @@ contract DelegationTest is Test {
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking, // rewardsBeforeUnstaking
             30, // after unstaking wait blocksUntil claiming
-            true // initialDeposit using the node owner' funds, otherwise delegated by a staker
+            true // initialDeposit using funds held by the node, otherwise delegated by a staker
         );
     } 
 
     function test_2a_LargeStake_Late_SmallValidator_OwnDeposit_OneYearOfRewards_UnstakeAll() public {
+        staker = 0x092E5E57955437876dA9Df998C96e2BE19341670;
         uint256 depositAmount = 10_000_000 ether;
         uint256 totalDeposit = 5_200_000_000 ether;
         uint256 delegatedAmount = 10_000 ether;
@@ -457,11 +493,12 @@ contract DelegationTest is Test {
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
             30, // after unstaking wait blocksUntil claiming
-            true // initialDeposit using the node owner' funds, otherwise delegated by a staker
+            true // initialDeposit using funds held by the node, otherwise delegated by a staker
         );
     } 
 
     function test_3a_SmallStake_Late_SmallValidator_OwnDeposit_OneYearOfRewards_UnstakeAll() public {
+        staker = 0x092E5E57955437876dA9Df998C96e2BE19341670;
         uint256 depositAmount = 10_000_000 ether;
         uint256 totalDeposit = 5_200_000_000 ether;
         uint256 delegatedAmount = 100 ether;
@@ -479,11 +516,12 @@ contract DelegationTest is Test {
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
             30, // after unstaking wait blocksUntil claiming
-            true // initialDeposit using the node owner' funds, otherwise delegated by a staker
+            true // initialDeposit using funds held by the node, otherwise delegated by a staker
         );
     } 
 
     function test_4a_LargeStake_Late_LargeValidator_OwnDeposit_OneYearOfRewards_UnstakeAll() public {
+        staker = 0x092E5E57955437876dA9Df998C96e2BE19341670;
         uint256 depositAmount = 100_000_000 ether;
         uint256 totalDeposit = 5_200_000_000 ether;
         uint256 delegatedAmount = 10_000 ether;
@@ -501,11 +539,12 @@ contract DelegationTest is Test {
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
             30, // after unstaking wait blocksUntil claiming
-            true // initialDeposit using the node owner' funds, otherwise delegated by a staker
+            true // initialDeposit using funds held by the node, otherwise delegated by a staker
         );
     }
 
     function test_5a_SmallStake_Late_LargeValidator_OwnDeposit_OneYearOfRewards_UnstakeAll() public {
+        staker = 0x092E5E57955437876dA9Df998C96e2BE19341670;
         uint256 depositAmount = 100_000_000 ether;
         uint256 totalDeposit = 5_200_000_000 ether;
         uint256 delegatedAmount = 100 ether;
@@ -523,11 +562,12 @@ contract DelegationTest is Test {
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
             30, // after unstaking wait blocksUntil claiming
-            true // initialDeposit using the node owner' funds, otherwise delegated by a staker
+            true // initialDeposit using funds held by the node, otherwise delegated by a staker
         );
     }
 
     function test_2b_LargeStake_Late_SmallValidator_DelegatedDeposit_OneYearOfRewards_UnstakeAll() public {
+        staker = 0x092E5E57955437876dA9Df998C96e2BE19341670;
         uint256 depositAmount = 10_000_000 ether;
         uint256 totalDeposit = 5_200_000_000 ether;
         uint256 delegatedAmount = 10_000 ether;
@@ -545,11 +585,12 @@ contract DelegationTest is Test {
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
             30, // after unstaking wait blocksUntil claiming
-            true // initialDeposit using the node owner' funds, otherwise delegated by a staker
+            true // initialDeposit using funds held by the node, otherwise delegated by a staker
         );
     } 
 
     function test_3b_SmallStake_Late_SmallValidator_DelegatedDeposit_OneYearOfRewards_UnstakeAll() public {
+        staker = 0x092E5E57955437876dA9Df998C96e2BE19341670;
         uint256 depositAmount = 10_000_000 ether;
         uint256 totalDeposit = 5_200_000_000 ether;
         uint256 delegatedAmount = 100 ether;
@@ -567,11 +608,12 @@ contract DelegationTest is Test {
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
             30, // after unstaking wait blocksUntil claiming
-            false // initialDeposit using the node owner' funds, otherwise delegated by a staker
+            false // initialDeposit using funds held by the node, otherwise delegated by a staker
         );
     } 
 
     function test_4b_LargeStake_Late_LargeValidator_DelegatedDeposit_OneYearOfRewards_UnstakeAll() public {
+        staker = 0x092E5E57955437876dA9Df998C96e2BE19341670;
         uint256 depositAmount = 100_000_000 ether;
         uint256 totalDeposit = 5_200_000_000 ether;
         uint256 delegatedAmount = 10_000 ether;
@@ -589,11 +631,12 @@ contract DelegationTest is Test {
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
             30, // after unstaking wait blocksUntil claiming
-            false // initialDeposit using the node owner' funds, otherwise delegated by a staker
+            false // initialDeposit using funds held by the node, otherwise delegated by a staker
         );
     }
 
     function test_5b_SmallStake_Late_LargeValidator_DelegatedDeposit_OneYearOfRewards_UnstakeAll() public {
+        staker = 0x092E5E57955437876dA9Df998C96e2BE19341670;
         uint256 depositAmount = 100_000_000 ether;
         uint256 totalDeposit = 5_200_000_000 ether;
         uint256 delegatedAmount = 100 ether;
@@ -611,11 +654,12 @@ contract DelegationTest is Test {
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
             30, // after unstaking wait blocksUntil claiming
-            false // initialDeposit using the node owner' funds, otherwise delegated by a staker
+            false // initialDeposit using funds held by the node, otherwise delegated by a staker
         );
     }
 
     function test_2c_LargeStake_Early_SmallValidator_OwnDeposit_OneYearOfRewards_UnstakeAll() public {
+        staker = 0x092E5E57955437876dA9Df998C96e2BE19341670;
         uint256 depositAmount = 10_000_000 ether;
         uint256 totalDeposit = 5_200_000_000 ether;
         uint256 delegatedAmount = 10_000 ether;
@@ -633,11 +677,12 @@ contract DelegationTest is Test {
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
             30, // after unstaking wait blocksUntil claiming
-            true // initialDeposit using the node owner' funds, otherwise delegated by a staker
+            true // initialDeposit using funds held by the node, otherwise delegated by a staker
         );
     }
 
     function test_3c_SmallStake_Early_SmallValidator_OwnDeposit_OneYearOfRewards_UnstakeAll() public {
+        staker = 0x092E5E57955437876dA9Df998C96e2BE19341670;
         uint256 depositAmount = 10_000_000 ether;
         uint256 totalDeposit = 5_200_000_000 ether;
         uint256 delegatedAmount = 100 ether;
@@ -655,11 +700,12 @@ contract DelegationTest is Test {
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
             30, // after unstaking wait blocksUntil claiming
-            false // initialDeposit using the node owner' funds, otherwise delegated by a staker
+            false // initialDeposit using funds held by the node, otherwise delegated by a staker
         );
     } 
 
     function test_4c_LargeStake_Early_LargeValidator_OwnDeposit_OneYearOfRewards_UnstakeAll() public {
+        staker = 0x092E5E57955437876dA9Df998C96e2BE19341670;
         uint256 depositAmount = 100_000_000 ether;
         uint256 totalDeposit = 5_200_000_000 ether;
         uint256 delegatedAmount = 10_000 ether;
@@ -677,11 +723,12 @@ contract DelegationTest is Test {
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
             30, // after unstaking wait blocksUntil claiming
-            false // initialDeposit using the node owner' funds, otherwise delegated by a staker
+            false // initialDeposit using funds held by the node, otherwise delegated by a staker
         );
     }
 
     function test_5c_SmallStake_Early_LargeValidator_OwnDeposit_OneYearOfRewards_UnstakeAll() public {
+        staker = 0x092E5E57955437876dA9Df998C96e2BE19341670;
         uint256 depositAmount = 100_000_000 ether;
         uint256 totalDeposit = 5_200_000_000 ether;
         uint256 delegatedAmount = 100 ether;
@@ -699,11 +746,12 @@ contract DelegationTest is Test {
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
             30, // after unstaking wait blocksUntil claiming
-            false // initialDeposit using the node owner' funds, otherwise delegated by a staker
+            false // initialDeposit using funds held by the node, otherwise delegated by a staker
         );
     } 
 
     function test_6a_ManyVsOneStake_UnstakeAll() public {
+        staker = 0x092E5E57955437876dA9Df998C96e2BE19341670;
         uint256 depositAmount = 10_000_000 ether;
         uint256 totalDeposit = 110_000_000 ether;
         uint256 delegatedAmount = 10_000 ether;
@@ -723,11 +771,12 @@ contract DelegationTest is Test {
             5 * 51_000 ether / uint256(3600) * depositAmount / totalDeposit, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 51_000 ether / uint256(60) * depositAmount / totalDeposit, // rewardsBeforeUnstaking
             30, // after unstaking wait blocksUntil claiming
-            true // initialDeposit using the node owner' funds, otherwise delegated by a staker
+            true // initialDeposit using funds held by the node, otherwise delegated by a staker
         );
     }
 
     function test_6b_OneVsManyStakes_UnstakeAll() public {
+        staker = 0x092E5E57955437876dA9Df998C96e2BE19341670;
         uint256 depositAmount = 10_000_000 ether;
         uint256 totalDeposit = 110_000_000 ether;
         uint256 delegatedAmount = 90_000 ether;
@@ -745,7 +794,7 @@ contract DelegationTest is Test {
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 51_000 ether / uint256(60) * depositAmount / totalDeposit, // rewardsBeforeUnstaking
             30, // after unstaking wait blocksUntil claiming
-            true // initialDeposit using the node owner' funds, otherwise delegated by a staker
+            true // initialDeposit using funds held by the node, otherwise delegated by a staker
         );
     }
 
