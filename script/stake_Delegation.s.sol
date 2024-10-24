@@ -3,21 +3,17 @@ pragma solidity ^0.8.26;
 
 import {Script} from "forge-std/Script.sol";
 import {NonRebasingLST} from "src/NonRebasingLST.sol";
-import {DelegationV3} from "src/DelegationV3.sol";
+import {DelegationV2} from "src/DelegationV2.sol";
 import "forge-std/console.sol";
 
 contract Stake is Script {
-    function run(address payable proxy) external {
+    function run(address payable proxy, uint256 amount) external {
 
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         address owner = vm.addr(deployerPrivateKey);
-        //console.log("Owner is %s", owner);
-
-        //address staker = 0xd819fFcE7A58b1E835c25617Db7b46a00888B013;
         address staker = msg.sender;
-        //address payable proxy = payable(0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2);
 
-        DelegationV3 delegation = DelegationV3(
+        DelegationV2 delegation = DelegationV2(
                 proxy
             );
 
@@ -25,7 +21,7 @@ contract Stake is Script {
             delegation.version()
         );
 
-        console.log("Current stake: %s \r\n  Current rewards: %s",
+        console.log("Current stake: %s wei \r\n  Current rewards: %s wei",
             delegation.getStake(),
             delegation.getRewards()
         );
@@ -35,22 +31,23 @@ contract Stake is Script {
             address(lst)
         );
 
-        console.log("Owner balance: %s",
+        console.log("Owner balance: %s LST",
             lst.balanceOf(owner)
         );
 
-        console.log("Staker balance: %s",
+        console.log("Staker balance before: %s wei %s LST",
+            staker.balance,
             lst.balanceOf(staker)
         );
 
-        //vm.broadcast(staker);
         vm.broadcast();
 
         delegation.stake{
-            value: 200 ether
+            value: amount
         }();
 
-        console.log("Staker balance: %s",
+        console.log("Staker balance after: %s wei %s LST",
+            staker.balance,
             lst.balanceOf(staker)
         );
     }

@@ -15,7 +15,6 @@ contract Deploy is Script {
         vm.startBroadcast(deployerPrivateKey);
 
         address implementation = address(
-            //new Delegation{salt: "zilliqa"}()
             new Delegation()
         );
 
@@ -25,7 +24,6 @@ contract Deploy is Script {
         );
 
         address payable proxy = payable(
-            //new ERC1967Proxy{salt: "zilliqa"}(implementation, initializerCall)
             new ERC1967Proxy(implementation, initializerCall)
         );
 
@@ -38,10 +36,6 @@ contract Deploy is Script {
         Delegation delegation = Delegation(
                 proxy
             );
-
-        delegation.stake();
-        delegation.unstake();
-        delegation.claim();
 
         console.log("Deployed version: %s",
             delegation.version()
