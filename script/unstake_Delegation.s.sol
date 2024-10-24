@@ -3,7 +3,7 @@ pragma solidity ^0.8.26;
 
 import {Script} from "forge-std/Script.sol";
 import {NonRebasingLST} from "src/NonRebasingLST.sol";
-import {DelegationV2} from "src/DelegationV2.sol";
+import {LiquidDelegationV2} from "src/LiquidDelegationV2.sol";
 import "forge-std/console.sol";
 
 contract Unstake is Script {
@@ -13,7 +13,7 @@ contract Unstake is Script {
         address owner = vm.addr(deployerPrivateKey);
         address staker = msg.sender;
 
-        DelegationV2 delegation = DelegationV2(
+        LiquidDelegationV2 delegation = LiquidDelegationV2(
                 proxy
             );
 

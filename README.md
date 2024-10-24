@@ -1,6 +1,6 @@
-# Liquid Staking
+# Delegated Staking
 
-This repo contains the contracts and scripts needed to activate a validator that users can stake ZIL with. When delegating stake, users receive a non-rebasing **liquid staking token** (LST) that anyone can send to the validator's delegation contract later on to withdraw the staked ZIL plus the corresponding share of the validator rewards.
+This repo contains the contracts and scripts needed to activate a validator that users can stake ZIL with. Currently, there are two variants of the contracts. When delegating stake to the liquid variant, users receive a non-rebasing **liquid staking token** (LST) that anyone can send to the validator's delegation contract later on to withdraw the staked ZIL plus the corresponding share of the validator rewards. When delegating stake to the non-liquid variant, the delegator can withdraw rewards.
 
 Install Foundry (https://book.getfoundry.sh/getting-started/installation) and the OpenZeppelin contracts before proceeding with the deployment:
 ```
@@ -9,11 +9,15 @@ forge install OpenZeppelin/openzeppelin-contracts --no-commit
 ```
 
 ## Contract Deployment
-The delegation contract is used by delegators to stake and unstake ZIL with the respective validator. It acts as the validator node's control address and interacts with the `Deposit` system contract. `Delegation` is the initial implementation of the delegation contract that creates a `NonRebasingLST` contract when it is initialized. `DelegationV2` implements staking, unstaking and other features.
+The delegation contract is used by delegators to stake and unstake ZIL with the respective validator. It acts as the validator node's control address and interacts with the `Deposit` system contract.
+
+`BaseDelegation` is an abstract contract that concrete implementations inherit from.
+
+`LiquidDelegation` is the initial implementation of the liquid staking variant of the delegation contract that creates a `NonRebasingLST` contract when it is initialized. `LiquidDelegationV2` implements all other features. `NonLiquidDelegation` is the initial implementation of the non-liquid staking variant of the delegation contract that allows delegators to withdraw rewards. The following sections describe the usage of the liquid staking variant; the non-liquid staking variant will be added later.
 
 The delegation contract shall be deployed and upgraded by the account with the private key that was used to run the validator node and was used to generate its BLS keypair and peer id. Make sure the `PRIVATE_KEY` environment variable is set accordingly.
 
-To deploy `Delegation` run
+To deploy `LiquidDelegation` run
 ```bash
 forge script script/deploy_Delegation.s.sol --rpc-url http://localhost:4201 --broadcast --legacy
 ```
@@ -28,7 +32,7 @@ You will see an output like this:
 
 You will need the proxy address from the above output in all commands below.
 
-To upgrade the contract to `DelegationV2`, run
+To upgrade the contract to `LiquidDelegationV2`, run
 ```bash
 forge script script/upgrade_Delegation.s.sol --rpc-url http://localhost:4201 --broadcast --legacy --sig "run(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2
 ```
@@ -46,21 +50,27 @@ The output will look like this:
 
 Now or at a later time you can set the commission on the rewards the validator earns to e.g. 10% as follows:
 ```bash
-forge script script/commission_Delegation.s.sol --rpc-url http://localhost:4201 --broadcast --legacy --sig "run(address payable, uint16)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 1000
+forge script script/commission_Delegation.s.sol --rpc-url http://localhost:4201 --broadcast --legacy --sig "run(address payable, uint16, bool)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 1000 false
 ```
 
 The output will contain the following information:
 ```
   Running version: 2
   LST address: 0x9e5c257D1c6dF74EaA54e58CdccaCb924669dc83
-  Old commission rate: 0.0%
+  Commission rate: 0.0%
   New commission rate: 10.0%
 ```
 
-Note that the commission rate is specified as an integer to be devided by the `DENOMINATOR` which can be retrieved from the delegation contract:
+Note that the commission rate is specified as an integer to be divided by the `DENOMINATOR` which can be retrieved from the delegation contract:
 ```bash
 cast call 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 "DENOMINATOR()(uint256)" --rpc-url http://localhost:4201  | sed 's/\[[^]]*\]//g'
 ```
+
+Once the validator is activated and starts earning rewards, commissions are transferred automatically to the validator node's account. To collect the outstanding commissions that haven't been transferred yet, run
+```bash
+forge script script/commission_Delegation.s.sol --rpc-url http://localhost:4201 --broadcast --legacy --sig "run(address payable, uint16, bool)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 10001 true
+```
+using any value for the second argument that is larger than the `DENOMINATOR` to leave the commission percentage unchanged and `true` for the third argument.
 
 ## Validator Activation
 If you node's account has enough ZIL for the minimum stake required, you can activate your node as a validator with a deposit of e.g. 10 million ZIL. Run

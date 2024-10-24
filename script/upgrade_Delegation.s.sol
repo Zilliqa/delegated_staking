@@ -2,8 +2,8 @@
 pragma solidity ^0.8.26;
 
 import {Script} from "forge-std/Script.sol";
-import {Delegation} from "src/Delegation.sol";
-import {DelegationV2} from "src/DelegationV2.sol";
+import {LiquidDelegation} from "src/LiquidDelegation.sol";
+import {LiquidDelegationV2} from "src/LiquidDelegationV2.sol";
 import "forge-std/console.sol";
 
 contract Upgrade is Script {
@@ -12,7 +12,7 @@ contract Upgrade is Script {
         address owner = vm.addr(deployerPrivateKey);
         console.log("Signer is %s", owner);
 
-        Delegation oldDelegation = Delegation(
+        LiquidDelegation oldDelegation = LiquidDelegation(
             proxy
         );
 
@@ -27,7 +27,7 @@ contract Upgrade is Script {
         vm.startBroadcast(deployerPrivateKey);
 
         address payable newImplementation = payable(
-            new DelegationV2()
+            new LiquidDelegationV2()
         );
 
         console.log("New implementation deployed: %s",
@@ -35,7 +35,7 @@ contract Upgrade is Script {
         );
 
         bytes memory reinitializerCall = abi.encodeWithSelector(
-            DelegationV2.reinitialize.selector
+            LiquidDelegationV2.reinitialize.selector
         );
 
         oldDelegation.upgradeToAndCall(
@@ -43,9 +43,9 @@ contract Upgrade is Script {
             reinitializerCall
         );
 
-        DelegationV2 newDelegation = DelegationV2(
-                proxy
-            );
+        LiquidDelegationV2 newDelegation = LiquidDelegationV2(
+            proxy
+        );
 
         console.log("Upgraded to version: %s",
             newDelegation.version()

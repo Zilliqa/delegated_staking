@@ -2,7 +2,7 @@
 pragma solidity ^0.8.26;
 
 import {Script} from "forge-std/Script.sol";
-import {Delegation} from "src/Delegation.sol";
+import {LiquidDelegation} from "src/LiquidDelegation.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import "forge-std/console.sol";
 
@@ -15,11 +15,11 @@ contract Deploy is Script {
         vm.startBroadcast(deployerPrivateKey);
 
         address implementation = address(
-            new Delegation()
+            new LiquidDelegation()
         );
 
         bytes memory initializerCall = abi.encodeWithSelector(
-            Delegation.initialize.selector,
+            LiquidDelegation.initialize.selector,
             owner
         );
 
@@ -33,7 +33,7 @@ contract Deploy is Script {
             implementation
         );
 
-        Delegation delegation = Delegation(
+        LiquidDelegation delegation = LiquidDelegation(
                 proxy
             );
 

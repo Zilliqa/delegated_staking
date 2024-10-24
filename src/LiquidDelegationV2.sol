@@ -47,12 +47,12 @@ library WithdrawalQueue {
 }
 
 // the contract is supposed to be deployed with the node's signer account
-contract DelegationV2 is Initializable, PausableUpgradeable, Ownable2StepUpgradeable, UUPSUpgradeable {
+contract LiquidDelegationV2 is Initializable, PausableUpgradeable, Ownable2StepUpgradeable, UUPSUpgradeable {
 
     using WithdrawalQueue for WithdrawalQueue.Fifo;
 
-    /// @custom:storage-location erc7201:zilliqa.storage.Delegation
-    struct Storage {
+    /// @custom:storage-location erc7201:zilliqa.storage.LiquidDelegation
+    struct LiquidDelegationStorage {
         address lst;
         bytes blsPubKey;
         bytes peerId;
@@ -62,12 +62,12 @@ contract DelegationV2 is Initializable, PausableUpgradeable, Ownable2StepUpgrade
         uint256 totalWithdrawals;
     }
 
-    // keccak256(abi.encode(uint256(keccak256("zilliqa.storage.Delegation")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant STORAGE_POSITION = 0x669e9cfa685336547bc6d91346afdd259f6cd8c0cb6d0b16603b5fa60cb48800;
+    // keccak256(abi.encode(uint256(keccak256("zilliqa.storage.LiquidDelegation")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant LiquidDelegationStorageLocation = 0xfa57cbed4b267d0bc9f2cbdae86b4d1d23ca818308f873af9c968a23afadfd00;
 
-    function _getStorage() private pure returns (Storage storage $) {
+    function _getLiquidDelegationStorage() private pure returns (LiquidDelegationStorage storage $) {
         assembly {
-            $.slot := STORAGE_POSITION
+            $.slot := LiquidDelegationStorageLocation
         }
     }
 
@@ -97,7 +97,7 @@ contract DelegationV2 is Initializable, PausableUpgradeable, Ownable2StepUpgrade
     // called when stake withdrawn from the deposit contract is claimed
     // but not called when rewards are assigned to the reward address
     receive() payable external {
-        Storage storage $ = _getStorage();
+        LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
         // do not deduct commission from the withdrawn stake
         $.taxedRewards += msg.value;
     }
@@ -108,7 +108,7 @@ contract DelegationV2 is Initializable, PausableUpgradeable, Ownable2StepUpgrade
         bytes calldata signature,
         uint256 depositAmount
     ) internal {
-        Storage storage $ = _getStorage();
+        LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
         require($.blsPubKey.length == 0, "deposit already performed");
         $.blsPubKey = blsPubKey;
         $.peerId = peerId;
@@ -158,7 +158,7 @@ contract DelegationV2 is Initializable, PausableUpgradeable, Ownable2StepUpgrade
             signature,
             msg.value
         );
-        Storage storage $ = _getStorage();
+        LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
         require(NonRebasingLST($.lst).totalSupply() == 0, "stake already delegated");
         NonRebasingLST($.lst).mint(owner(), msg.value);
     } 
@@ -166,7 +166,7 @@ contract DelegationV2 is Initializable, PausableUpgradeable, Ownable2StepUpgrade
     function stake() public payable whenNotPaused {
         require(msg.value >= MIN_DELEGATION, "delegated amount too low");
         uint256 shares;
-        Storage storage $ = _getStorage();
+        LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
         // deduct commission from the rewards only if already activated as a validator
         // otherwise getRewards() returns 0 but taxedRewards would be greater than 0
         if ($.blsPubKey.length > 0) {
@@ -198,7 +198,7 @@ contract DelegationV2 is Initializable, PausableUpgradeable, Ownable2StepUpgrade
 
     function unstake(uint256 shares) public whenNotPaused {
         uint256 amount;
-        Storage storage $ = _getStorage();
+        LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
         // before calculating the amount deduct the commission from the yet untaxed rewards
         taxRewards();
         if (NonRebasingLST($.lst).totalSupply() == 0)
@@ -224,19 +224,19 @@ contract DelegationV2 is Initializable, PausableUpgradeable, Ownable2StepUpgrade
     }
 
     function getCommissionNumerator() public view returns(uint256) {
-        Storage storage $ = _getStorage();
+        LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
         return $.commissionNumerator;
     }
 
     function setCommissionNumerator(uint256 _commissionNumerator) public onlyOwner {
         require(_commissionNumerator < DENOMINATOR, "invalid commission");
-        Storage storage $ = _getStorage();
+        LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
         $.commissionNumerator = _commissionNumerator;
     }
 
     // return the amount of ZIL equivalent to 1 LST (share)
     function getPrice() public view returns(uint256 amount) {
-        Storage storage $ = _getStorage();
+        LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
         uint256 rewards = getRewards();
         uint256 commission = (rewards - $.taxedRewards) * $.commissionNumerator / DENOMINATOR;
         if (NonRebasingLST($.lst).totalSupply() == 0)
@@ -246,7 +246,7 @@ contract DelegationV2 is Initializable, PausableUpgradeable, Ownable2StepUpgrade
     }
 
     function taxRewards() internal {
-        Storage storage $ = _getStorage();
+        LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
         uint256 rewards = getRewards();
         uint256 commission = (rewards - $.taxedRewards) * $.commissionNumerator / DENOMINATOR;
         $.taxedRewards = rewards - commission;
@@ -261,7 +261,7 @@ contract DelegationV2 is Initializable, PausableUpgradeable, Ownable2StepUpgrade
     }
 
     function getClaimable() public view returns(uint256 total) {
-        Storage storage $ = _getStorage();
+        LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
         WithdrawalQueue.Fifo storage fifo = $.withdrawals[msg.sender];
         uint256 index = fifo.first;
         while (fifo.ready(index)) {
@@ -271,7 +271,7 @@ contract DelegationV2 is Initializable, PausableUpgradeable, Ownable2StepUpgrade
     }
 
     function claim() public whenNotPaused {
-        Storage storage $ = _getStorage();
+        LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
         uint256 total;
         while ($.withdrawals[msg.sender].ready())
             total += $.withdrawals[msg.sender].dequeue().amount;
@@ -290,8 +290,8 @@ contract DelegationV2 is Initializable, PausableUpgradeable, Ownable2StepUpgrade
     }
 
     //TODO: make it onlyOwnerOrContract and call it every time someone stakes, unstakes or claims?
-    function restakeRewards() public onlyOwner {
-        Storage storage $ = _getStorage();
+    function stakeRewards() public onlyOwner {
+        LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
         // before the balance changes deduct the commission from the yet untaxed rewards
         taxRewards();
         if ($.blsPubKey.length > 0) {
@@ -311,17 +311,17 @@ contract DelegationV2 is Initializable, PausableUpgradeable, Ownable2StepUpgrade
     }
 
     function getTaxedRewards() public view returns(uint256) {
-        Storage storage $ = _getStorage();
+        LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
         return $.taxedRewards;
     } 
 
     function getTotalWithdrawals() public view returns(uint256) {
-        Storage storage $ = _getStorage();
+        LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
         return $.totalWithdrawals;
     }
 
     function getRewards() public view returns(uint256) {
-        Storage storage $ = _getStorage();
+        LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
         if ($.blsPubKey.length == 0)
             return 0;
         (bool success, bytes memory data) = DEPOSIT_CONTRACT.staticcall(
@@ -333,7 +333,7 @@ contract DelegationV2 is Initializable, PausableUpgradeable, Ownable2StepUpgrade
     }
 
     function getStake() public view returns(uint256) {
-        Storage storage $ = _getStorage();
+        LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
         if ($.blsPubKey.length == 0)
             return address(this).balance;
         (bool success, bytes memory data) = DEPOSIT_CONTRACT.staticcall(
@@ -344,7 +344,7 @@ contract DelegationV2 is Initializable, PausableUpgradeable, Ownable2StepUpgrade
     }
 
     function getLST() public view returns(address) {
-        Storage storage $ = _getStorage();
+        LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
         return $.lst;
     }
 

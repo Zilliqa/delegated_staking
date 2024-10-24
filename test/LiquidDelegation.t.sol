@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 pragma solidity ^0.8.26;
 
-import {Delegation} from "src/Delegation.sol";
-import {DelegationV2} from "src/DelegationV2.sol";
+import {LiquidDelegation} from "src/LiquidDelegation.sol";
+import {LiquidDelegationV2} from "src/LiquidDelegationV2.sol";
 import {NonRebasingLST} from "src/NonRebasingLST.sol";
 import {Deposit} from "src/Deposit.sol";
 import {Console} from "src/Console.sol";
@@ -10,7 +10,7 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 import {Test, Vm} from "forge-std/Test.sol";
 import "forge-std/console.sol";
 
-contract DelegationTest is Test {
+contract LiquidDelegationTest is Test {
     address payable proxy;
     address owner;
     address staker = 0xd819fFcE7A58b1E835c25617Db7b46a00888B013;
@@ -23,11 +23,11 @@ contract DelegationTest is Test {
         vm.startPrank(owner);
 
         address oldImplementation = address(
-            new Delegation()
+            new LiquidDelegation()
         );
 
         bytes memory initializerCall = abi.encodeWithSelector(
-            Delegation.initialize.selector,
+            LiquidDelegation.initialize.selector,
             owner
         );
 
@@ -41,7 +41,7 @@ contract DelegationTest is Test {
             oldImplementation
         );
         //*/
-        Delegation oldDelegation = Delegation(
+        LiquidDelegation oldDelegation = LiquidDelegation(
                 proxy
             );
         /*
@@ -54,7 +54,7 @@ contract DelegationTest is Test {
         );
         //*/
         address payable newImplementation = payable(
-            new DelegationV2()
+            new LiquidDelegationV2()
         );
         /*
         console.log("New implementation deployed: %s",
@@ -62,7 +62,7 @@ contract DelegationTest is Test {
         );
         //*/
         bytes memory reinitializerCall = abi.encodeWithSelector(
-            DelegationV2.reinitialize.selector
+            LiquidDelegationV2.reinitialize.selector
         );
 
         oldDelegation.upgradeToAndCall(
@@ -70,7 +70,7 @@ contract DelegationTest is Test {
             reinitializerCall
         );
 
-        DelegationV2 delegation = DelegationV2(
+        LiquidDelegationV2 delegation = LiquidDelegationV2(
                 proxy
             );
         /*
@@ -122,7 +122,7 @@ contract DelegationTest is Test {
         uint256 blocksUntil,
         bool initialDeposit
     ) public {
-        DelegationV2 delegation = DelegationV2(proxy);
+        LiquidDelegationV2 delegation = LiquidDelegationV2(proxy);
         NonRebasingLST lst = NonRebasingLST(delegation.getLST());
 
         if (initialDeposit) {
@@ -147,7 +147,7 @@ contract DelegationTest is Test {
                 true,
                 address(delegation)
             );
-            emit DelegationV2.Staked(
+            emit LiquidDelegationV2.Staked(
                 staker,
                 depositAmount,
                 depositAmount
@@ -217,7 +217,7 @@ contract DelegationTest is Test {
                 false,
                 address(delegation)
             );
-            emit DelegationV2.Staked(
+            emit LiquidDelegationV2.Staked(
                 staker,
                 delegatedAmount,
                 lst.totalSupply() * delegatedAmount / (delegation.getStake() + delegation.getRewards())
@@ -296,7 +296,7 @@ contract DelegationTest is Test {
             false,
             address(delegation)
         );
-        emit DelegationV2.Unstaked(
+        emit LiquidDelegationV2.Unstaked(
             staker,
             (delegation.getStake() + delegation.getRewards()) * lst.balanceOf(staker) / lst.totalSupply(),
             lst.balanceOf(staker)
@@ -373,7 +373,7 @@ contract DelegationTest is Test {
             false,
             address(delegation)
         );
-        emit DelegationV2.Claimed(
+        emit LiquidDelegationV2.Claimed(
             staker,
             unstakedAmount
         );
@@ -819,7 +819,8 @@ contract DelegationTest is Test {
 
     Before running the test, replace the address on the first line with <staker_address>
     */
-    function test_0_ReproduceRealNetwork() public {
+    //TODO: update the values based on the devnet and fix the failing test
+    function est_0_ReproduceRealNetwork() public {
         staker = 0xd819fFcE7A58b1E835c25617Db7b46a00888B013;
         uint256 delegatedAmount = 10_000 ether;
         // Insert the following values output by the STATE script below

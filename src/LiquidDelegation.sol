@@ -7,19 +7,19 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "src/NonRebasingLST.sol";
 
-contract Delegation is Initializable, PausableUpgradeable, Ownable2StepUpgradeable, UUPSUpgradeable {
+contract LiquidDelegation is Initializable, PausableUpgradeable, Ownable2StepUpgradeable, UUPSUpgradeable {
 
-    /// @custom:storage-location erc7201:zilliqa.storage.Delegation
-    struct Storage {
+    /// @custom:storage-location erc7201:zilliqa.storage.LiquidDelegation
+    struct LiquidDelegationStorage {
         address lst;
     }
 
-    // keccak256(abi.encode(uint256(keccak256("zilliqa.storage.Delegation")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant STORAGE_POSITION = 0x669e9cfa685336547bc6d91346afdd259f6cd8c0cb6d0b16603b5fa60cb48800;
+    // keccak256(abi.encode(uint256(keccak256("zilliqa.storage.LiquidDelegation")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant LiquidDelegationStorageLocation = 0xfa57cbed4b267d0bc9f2cbdae86b4d1d23ca818308f873af9c968a23afadfd00;
 
-    function _getStorage() private pure returns (Storage storage $) {
+    function _getLiquidDelegationStorage() private pure returns (LiquidDelegationStorage storage $) {
         assembly {
-            $.slot := STORAGE_POSITION
+            $.slot := LiquidDelegationStorageLocation
         }
     }
 
@@ -39,7 +39,7 @@ contract Delegation is Initializable, PausableUpgradeable, Ownable2StepUpgradeab
         __Ownable_init(initialOwner);
         __Ownable2Step_init();
         __UUPSUpgradeable_init();
-        Storage storage $ = _getStorage();
+        LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
         $.lst = address(new NonRebasingLST(address(this)));
     }
 
@@ -49,7 +49,7 @@ contract Delegation is Initializable, PausableUpgradeable, Ownable2StepUpgradeab
     } 
 
     function getLST() public view returns(address) {
-        Storage storage $ = _getStorage();
+        LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
         return $.lst;
     }
 
