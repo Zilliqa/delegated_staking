@@ -1,13 +1,10 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 pragma solidity ^0.8.26;
 
-import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import "src/BaseDelegation.sol";
 import "src/NonRebasingLST.sol";
 
-contract LiquidDelegation is Initializable, PausableUpgradeable, Ownable2StepUpgradeable, UUPSUpgradeable {
+contract LiquidDelegation is BaseDelegation {
 
     /// @custom:storage-location erc7201:zilliqa.storage.LiquidDelegation
     struct LiquidDelegationStorage {
@@ -23,18 +20,15 @@ contract LiquidDelegation is Initializable, PausableUpgradeable, Ownable2StepUpg
         }
     }
 
-    address public constant DEPOSIT_CONTRACT = 0x000000000000000000005a494C4445504F534954;
-
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
 
-    function version() public view returns(uint64) {
-        return _getInitializedVersion();
-    } 
-
+    // TODO: check - call the _init() functions of the base contracts
+    //       here or in __BaseDelegation_init()?
     function initialize(address initialOwner) initializer public {
+        __BaseDelegation_init();
         __Pausable_init();
         __Ownable_init(initialOwner);
         __Ownable2Step_init();
