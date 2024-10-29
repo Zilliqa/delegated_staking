@@ -166,7 +166,7 @@ contract LiquidDelegationTest is Test {
             );
         } 
 
-        vm.store(address(delegation), 0x669e9cfa685336547bc6d91346afdd259f6cd8c0cb6d0b16603b5fa60cb48804, bytes32(taxedRewardsBeforeStaking));
+        vm.store(address(delegation), 0xfa57cbed4b267d0bc9f2cbdae86b4d1d23ca818308f873af9c968a23afadfd01, bytes32(taxedRewardsBeforeStaking));
         vm.deal(address(delegation), rewardsBeforeStaking);
         vm.deal(staker, 100_000 ether);
         vm.startPrank(staker);
