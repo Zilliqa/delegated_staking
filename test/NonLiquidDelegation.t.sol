@@ -2,6 +2,7 @@
 pragma solidity ^0.8.26;
 
 import {NonLiquidDelegation} from "src/NonLiquidDelegation.sol";
+import {WithdrawalQueue} from "src/BaseDelegation.sol";
 import {Deposit} from "src/Deposit.sol";
 import {Console} from "src/Console.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
@@ -136,7 +137,6 @@ contract NonLiquidDelegationTest is Test {
             vm.deal(staker[0], staker[0].balance + depositAmount);
             vm.startPrank(staker[0]);
 
-            /*TODO: uncomment the following section once events are implemented
             vm.expectEmit(
                 true,
                 false,
@@ -146,9 +146,8 @@ contract NonLiquidDelegationTest is Test {
             );
             emit NonLiquidDelegation.Staked(
                 staker[0],
-                depositAmount,
                 depositAmount
-            );*/
+            );
 
             delegation.stake{
                 value: depositAmount
@@ -164,17 +163,16 @@ contract NonLiquidDelegationTest is Test {
         } 
     }
 
-    function findStaker(address a) internal returns(uint256) {
+    function findStaker(address a) internal view returns(uint256) {
         for (uint256 i = 0; i < staker.length; i++)
             if (staker[i] == a)
                 return i;
-        return 0;
+        revert("staker not found");
     }  
 
-    function snapshot(string memory s, uint256 i, uint256 x) internal {
+    function snapshot(string memory s, uint256 i, uint256 x) internal view {
         console.log("-----------------------------------------------");
         console.log(s, i, x);
-        //assertEq(msg.sender, staker[i-1], "prank mismatch");
         uint256[] memory shares = new uint256[](staker.length);
         NonLiquidDelegation.Staking[] memory stakings = delegation.getStakingHistory();
         for (i = 0; i < stakings.length; i++)
@@ -183,20 +181,30 @@ contract NonLiquidDelegationTest is Test {
             uint256 stakerIndex = findStaker(stakings[i].staker);
             shares[stakerIndex] = stakings[i].amount;
             s = string.concat("index: ", Strings.toString(i));
-            s = string.concat(s, "   staker ");
+            s = string.concat(s, "\tstaker ");
             assertEq(stakings[i].staker, staker[stakerIndex], "found staker mismatch");
             s = string.concat(s, Strings.toString(stakerIndex + 1));
             s = string.concat(s, ": ");
             s = string.concat(s, Strings.toHexString(stakings[i].staker));
             s = string.concat(s, "   amount: ");
             s = string.concat(s, Strings.toString(stakings[i].amount / 1 ether));
-            s = string.concat(s, "   total: ");
+            s = string.concat(s, "\ttotal: ");
             s = string.concat(s, Strings.toString(stakings[i].total / 1 ether));
-            s = string.concat(s, "   rewards: ");
+            if (stakings[i].total < 100_000_000 ether)
+                s = string.concat(s, "\t");
+            s = string.concat(s, "\trewards: ");
             s = string.concat(s, Strings.toString(stakings[i].rewards / 1 ether));
-            s = string.concat(s, "   shares: ");
+            s = string.concat(s, "\tshares: ");
             for (uint256 j = 0; j < shares.length; j++)
-                s = string.concat(s, string.concat(Console.toString(10**6 * shares[j] / stakings[i].total, 4), "%  "));
+                if (stakings[i].total != 0) {
+                    string memory s0 = string.concat(Console.toString(10**6 * shares[j] / stakings[i].total, 4), "%");
+                    if (bytes(s0).length <= 7)
+                        s0 = string.concat(s0, "\t\t");
+                    else
+                        s0 = string.concat(s0, "\t");
+                    s = string.concat(s, s0);
+                } else
+                    s = string.concat(s, "0.0%\t\t");
             console.log(s);
         } 
         (uint256[] memory stakingIndices, uint256 firstStakingIndex, uint256 allWithdrawnRewards, uint256 lastWithdrawnRewardIndex) = delegation.getStakingData();
@@ -204,256 +212,349 @@ contract NonLiquidDelegationTest is Test {
         console.log("firstStakingIndex: %s   lastWithdrawnRewardIndex: %s   allWithdrawnRewards: %s", firstStakingIndex, lastWithdrawnRewardIndex, allWithdrawnRewards);
     } 
 
-    function test_withdrawAllRewards() public {
-        uint256 i;
-        uint256 x;
+    //TODO: add assertions
+    function run (
+        bytes memory _stakerIndicesBeforeWithdrawals,
+        // each element in the interval (-100, 100)
+        // if element negative, unstake -depositAmount * element / 10
+        // otherwise stake depositAmount * element / 10
+        bytes memory _relativeAmountsBeforeWithdrawals,
+        bytes memory _stakerIndicesAfterWithdrawals,
+        bytes memory _relativeAmountsAfterWithdrawals,
+        // 123_456_789 means always withdraw all rewards
+        uint256 withdrawalInSteps,
+        uint256 depositAmount,
+        uint256 rewardsBeforeStaking,
+        uint256 rewardsAccruedAfterEach,
+        bool initialDeposit
+    ) public {
+        uint256 steps = withdrawalInSteps;
+        uint256[] memory stakerIndicesBeforeWithdrawals = abi.decode(_stakerIndicesBeforeWithdrawals, (uint256[]));
+        int256[] memory relativeAmountsBeforeWithdrawals = abi.decode(_relativeAmountsBeforeWithdrawals, (int256[]));
+        require(stakerIndicesBeforeWithdrawals.length == relativeAmountsBeforeWithdrawals.length, "array length mismatch");
+        uint256[] memory stakerIndicesAfterWithdrawals = abi.decode(_stakerIndicesAfterWithdrawals, (uint256[]));
+        int256[] memory relativeAmountsAfterWithdrawals = abi.decode(_relativeAmountsAfterWithdrawals, (int256[]));
+        require(stakerIndicesAfterWithdrawals.length == relativeAmountsAfterWithdrawals.length, "array length mismatch");
 
-        //TODO: also test staking and unstaking before depositing
-        deposit(10_000_000 ether, true);
+        if (initialDeposit)
+            // otherwise snapshot() doesn't find the staker and reverts
+            staker[0] = owner;
+        deposit(depositAmount, initialDeposit);
 
-        for (i = 0; i < 4; i++) { 
-            vm.deal(staker[i], 100 ether);
+        for (uint256 i = 0; i < staker.length; i++) {
+            vm.deal(staker[i], 10 * depositAmount);
             console.log("staker %s: %s", i+1, staker[i]);
         } 
 
         delegation = NonLiquidDelegation(proxy);
 
-        // rewards accrued since the deposit
-        vm.deal(address(delegation), 50_000 ether);
-        i = 1; x = 50;
-        vm.startPrank(staker[i-1]);
-        delegation.stake{value: x * 1 ether}();
-        //snapshot("staker %s staked %s", i, x);
+        // rewards accrued so far
+        vm.deal(address(delegation), rewardsBeforeStaking - rewardsAccruedAfterEach);
 
-        vm.deal(address(delegation), address(delegation).balance + 10_000 ether);
-        i = 2; x = 50;
-        vm.stopPrank();
-        vm.startPrank(staker[i-1]);
-        delegation.stake{value: x * 1 ether}();
-        //snapshot("staker %s staked %s", i, x);
+        for (uint256 i = 0; i < stakerIndicesBeforeWithdrawals.length; i++) {
+            vm.deal(address(delegation), address(delegation).balance + rewardsAccruedAfterEach);
+            int256 x = relativeAmountsBeforeWithdrawals[i] * int256(depositAmount) / 10;
+            vm.startPrank(staker[stakerIndicesBeforeWithdrawals[i]-1]);
+            if (x >= 0) {
+                delegation.stake{value: uint256(x)}();
+                //snapshot("staker %s staked %s", stakerIndices[i], uint256(x));
+            }  else {
+                 delegation.unstake(uint256(-x));
+                //snapshot("staker %s unstaked %s", stakerIndices[i], uint256(-x));
+            }
+            vm.stopPrank();
+        }
 
-        vm.deal(address(delegation), address(delegation).balance + 10_000 ether);
-        i = 3; x = 25;
-        vm.stopPrank();
-        vm.startPrank(staker[i-1]);
-        delegation.stake{value: x * 1 ether}();
-        //snapshot("staker %s staked %s", i, x);
+        //no rewards if we withdraw in the same block as the last staking
+        //vm.deal(address(delegation), address(delegation).balance + rewardsAccruedAfterEach);
 
-        vm.deal(address(delegation), address(delegation).balance + 10_000 ether);
-        i = 1; x = 35;
-        vm.stopPrank();
-        vm.startPrank(staker[i-1]);
-        delegation.stake{value: x * 1 ether}();
-        //snapshot("staker %s staked %s", i, x);
+        for (uint256 i = 1; i <= 2; i++) {
+            vm.startPrank(staker[i-1]);
+            if (steps == 123_456_789)
+                snapshot("staker %s withdrawing all, remaining rewards:", i, 0);
+            else
+                snapshot("staker %s withdrawing 1+%s times", i, steps);
+            Console.log("rewards accrued until last staking: %s.%s%s", delegation.getTotalRewards());
+            //Console.log("staker balance: %s.%s%s", staker[i-1].balance);
+            Console.log("staker rewards: %s.%s%s", delegation.rewards());
+            if (steps == 123_456_789)
+                Console.log("staker withdrew: %s.%s%s", delegation.withdrawAllRewards());
+            else
+                Console.log("staker withdrew: %s.%s%s", delegation.withdrawRewards(delegation.rewards(steps), steps));
+            //Console.log("staker balance: %s.%s%s", staker[i-1].balance);
+            vm.stopPrank();
+        }
 
-        vm.deal(address(delegation), address(delegation).balance + 10_000 ether);
-        i = 2; x = 35;
-        vm.stopPrank();
-        vm.startPrank(staker[i-1]);
-        delegation.unstake(x * 1 ether);
-        //snapshot("staker %s unstaked %s", i, x);
-
-        //*
-        i = 1;
-        vm.stopPrank();
-        vm.startPrank(staker[i-1]);
-        snapshot("staker %s withdrawing all, remaining rewards:", i, 0);
-        //Console.log("staker balance: %s.%s%s", staker[i-1].balance);
-        Console.log("staker rewards: %s.%s%s", delegation.rewards());
-        Console.log("staker withdrew: %s.%s%s", delegation.withdrawAllRewards());
-        //Console.log("staker balance: %s.%s%s", staker[i-1].balance);
-
-        i = 2;
-        vm.stopPrank();
-        vm.startPrank(staker[i-1]);
-        snapshot("staker %s withdrawing all, remaining rewards:", i, 0);
-        //Console.log("staker balance: %s.%s%s", staker[i-1].balance);
-        Console.log("staker rewards: %s.%s%s", delegation.rewards());
-        Console.log("staker withdrew: %s.%s%s", delegation.withdrawAllRewards());
-        //Console.log("staker balance: %s.%s%s", staker[i-1].balance);
-        //*/
-
-        vm.deal(address(delegation), address(delegation).balance + 10_000 ether);
-        i = 4; x = 40;
-        vm.stopPrank();
-        vm.startPrank(staker[i-1]);
-        delegation.stake{value: x * 1 ether}();
-        //snapshot("staker %s staked %s", i, x);
+        for (uint256 i = 0; i < stakerIndicesAfterWithdrawals.length; i++) {
+            vm.deal(address(delegation), address(delegation).balance + rewardsAccruedAfterEach);
+            int256 x = relativeAmountsAfterWithdrawals[i] * int256(depositAmount) / 10;
+            vm.startPrank(staker[stakerIndicesAfterWithdrawals[i]-1]);
+            if (x >= 0) {
+                delegation.stake{value: uint256(x)}();
+                //snapshot("staker %s staked %s", stakerIndices[i], uint256(x));
+            }  else {
+                 delegation.unstake(uint256(-x));
+                //snapshot("staker %s unstaked %s", stakerIndices[i], uint256(-x));
+            }
+            vm.stopPrank();
+        }
 
         //further rewards accrued since the last staking
-        vm.deal(address(delegation), address(delegation).balance + 10_000 ether);
+        vm.deal(address(delegation), address(delegation).balance + rewardsAccruedAfterEach);
 
-        //*
-        i = 1;
-        vm.stopPrank();
-        vm.startPrank(staker[i-1]);
-        snapshot("staker %s withdrawing all, remaining rewards:", i, 0);
-        //Console.log("staker balance: %s.%s%s", staker[i-1].balance);
-        Console.log("staker rewards: %s.%s%s", delegation.rewards());
-        Console.log("staker withdrew: %s.%s%s", delegation.withdrawAllRewards());
-        //Console.log("staker balance: %s.%s%s", staker[i-1].balance);
-
-        i = 2;
-        vm.stopPrank();
-        vm.startPrank(staker[i-1]);
-        snapshot("staker %s withdrawing all, remaining rewards:", i, 0);
-        //Console.log("staker balance: %s.%s%s", staker[i-1].balance);
-        Console.log("staker rewards: %s.%s%s", delegation.rewards());
-        Console.log("staker withdrew: %s.%s%s", delegation.withdrawAllRewards());
-        //Console.log("staker balance: %s.%s%s", staker[i-1].balance);
-
-        i = 3;
-        vm.stopPrank();
-        vm.startPrank(staker[i-1]);
-        snapshot("staker %s withdrawing all, remaining rewards:", i, 0);
-        //Console.log("staker balance: %s.%s%s", staker[i-1].balance);
-        Console.log("staker rewards: %s.%s%s", delegation.rewards());
-        Console.log("staker withdrew: %s.%s%s", delegation.withdrawAllRewards());
-        //Console.log("staker balance: %s.%s%s", staker[i-1].balance);
-
-        i = 4;
-        vm.stopPrank();
-        vm.startPrank(staker[i-1]);
-        snapshot("staker %s withdrawing all, remaining rewards:", i, 0);
-        //Console.log("staker balance: %s.%s%s", staker[i-1].balance);
-        Console.log("staker rewards: %s.%s%s", delegation.rewards());
-        Console.log("staker withdrew: %s.%s%s", delegation.withdrawAllRewards());
-        //Console.log("staker balance: %s.%s%s", staker[i-1].balance);
-        //*/
-        vm.stopPrank();
-    } 
-
-    function test_withdrawSomeRewards() public {
-        uint256 i;
-        uint256 x;
-        uint256 steps = 8;
-
-        //TODO: also test staking and unstaking before depositing
-        deposit(10_000_000 ether, true);
-
-        for (i = 0; i < 4; i++) { 
-            vm.deal(staker[i], 100 ether);
-            console.log("staker %s: %s", i+1, staker[i]);
-        } 
-
-        delegation = NonLiquidDelegation(proxy);
-
-        // rewards accrued since the deposit
-        vm.deal(address(delegation), 50_000 ether);
-        i = 1; x = 50;
-        vm.startPrank(staker[i-1]);
-        delegation.stake{value: x * 1 ether}();
-        //snapshot("staker %s staked %s", i, x);
-
-        vm.deal(address(delegation), address(delegation).balance + 10_000 ether);
-        i = 2; x = 50;
-        vm.stopPrank();
-        vm.startPrank(staker[i-1]);
-        delegation.stake{value: x * 1 ether}();
-        //snapshot("staker %s staked %s", i, x);
-
-        vm.deal(address(delegation), address(delegation).balance + 10_000 ether);
-        i = 3; x = 25;
-        vm.stopPrank();
-        vm.startPrank(staker[i-1]);
-        delegation.stake{value: x * 1 ether}();
-        //snapshot("staker %s staked %s", i, x);
-
-        vm.deal(address(delegation), address(delegation).balance + 10_000 ether);
-        i = 1; x = 35;
-        vm.stopPrank();
-        vm.startPrank(staker[i-1]);
-        delegation.stake{value: x * 1 ether}();
-        //snapshot("staker %s staked %s", i, x);
-
-        vm.deal(address(delegation), address(delegation).balance + 10_000 ether);
-        i = 2; x = 35;
-        vm.stopPrank();
-        vm.startPrank(staker[i-1]);
-        delegation.unstake(x * 1 ether);
-        //snapshot("staker %s unstaked %s", i, x);
-
-        //*
-        i = 1;
-        vm.stopPrank();
-        vm.startPrank(staker[i-1]);
-        snapshot("staker %s withdrawing 1+%s times", i, steps);
-        //Console.log("staker balance: %s.%s%s", staker[i-1].balance);
-        Console.log("staker rewards: %s.%s%s", delegation.rewards());
-        Console.log("staker withdrew: %s.%s%s", delegation.withdrawRewards(0, steps));
-        //Console.log("staker balance: %s.%s%s", staker[i-1].balance);
-
-        i = 2;
-        vm.stopPrank();
-        vm.startPrank(staker[i-1]);
-        snapshot("staker %s withdrawing 1+%s times", i, steps);
-        //Console.log("staker balance: %s.%s%s", staker[i-1].balance);
-        Console.log("staker rewards: %s.%s%s", delegation.rewards());
-        Console.log("staker withdrew: %s.%s%s", delegation.withdrawRewards(0, steps));
-        //Console.log("staker balance: %s.%s%s", staker[i-1].balance);
-        //*/
-
-        vm.deal(address(delegation), address(delegation).balance + 10_000 ether);
-        i = 4; x = 40;
-        vm.stopPrank();
-        vm.startPrank(staker[i-1]);
-        delegation.stake{value: x * 1 ether}();
-        //snapshot("staker %s staked %s", i, x);
-
-        //further rewards accrued since the last staking
-        vm.deal(address(delegation), address(delegation).balance + 10_000 ether);
-
-        //*
-        i = 1;
-        vm.stopPrank();
-        vm.startPrank(staker[i-1]);
-        snapshot("staker %s withdrawing 1+%s times", i, steps);
-        //Console.log("staker balance: %s.%s%s", staker[i-1].balance);
-        Console.log("staker rewards: %s.%s%s", delegation.rewards());
-        Console.log("staker withdrew: %s.%s%s", delegation.withdrawRewards(0, steps));
-        //Console.log("staker balance: %s.%s%s", staker[i-1].balance);
-
-        i = 2;
-        vm.stopPrank();
-        vm.startPrank(staker[i-1]);
-        snapshot("staker %s withdrawing 1+%s times", i, steps);
-        //Console.log("staker balance: %s.%s%s", staker[i-1].balance);
-        Console.log("staker rewards: %s.%s%s", delegation.rewards());
-        Console.log("staker withdrew: %s.%s%s", delegation.withdrawRewards(0, steps));
-        //Console.log("staker balance: %s.%s%s", staker[i-1].balance);
-
-        i = 3;
-        vm.stopPrank();
-        vm.startPrank(staker[i-1]);
-        snapshot("staker %s withdrawing 1+%s times", i, steps);
-        //Console.log("staker balance: %s.%s%s", staker[i-1].balance);
-        Console.log("staker rewards: %s.%s%s", delegation.rewards());
-        Console.log("staker withdrew: %s.%s%s", delegation.withdrawRewards(0, steps));
-        //Console.log("staker balance: %s.%s%s", staker[i-1].balance);
-
-        i = 4;
-        vm.stopPrank();
-        vm.startPrank(staker[i-1]);
-        snapshot("staker %s withdrawing 1+%s times", i, steps);
-        //Console.log("staker balance: %s.%s%s", staker[i-1].balance);
-        Console.log("staker rewards: %s.%s%s", delegation.rewards());
-        Console.log("staker withdrew: %s.%s%s", delegation.withdrawRewards(0, steps));
-        //Console.log("staker balance: %s.%s%s", staker[i-1].balance);
-        //*/
-        vm.stopPrank();
+        for (uint256 i = 1; i <= staker.length; i++) {
+            vm.startPrank(staker[i-1]);
+            if (steps == 123_456_789)
+                snapshot("staker %s withdrawing all, remaining rewards:", i, 0);
+            else
+                snapshot("staker %s withdrawing 1+%s times", i, steps);
+            Console.log("rewards accrued until last staking: %s.%s%s", delegation.getTotalRewards());
+            //Console.log("staker balance: %s.%s%s", staker[i-1].balance);
+            Console.log("staker rewards: %s.%s%s", delegation.rewards());
+            if (steps == 123_456_789)
+                Console.log("staker withdrew: %s.%s%s", delegation.withdrawAllRewards());
+            else
+                Console.log("staker withdrew: %s.%s%s", delegation.withdrawRewards(delegation.rewards(steps), steps));
+            //Console.log("staker balance: %s.%s%s", staker[i-1].balance);
+            vm.stopPrank();
+        }
     }
 
-//index user/indices 1 (0,3) 2 (1,4) 3 (2)   4 (5)   total   1%      2%      3%      4%      rewards
-//==================================================================================================
-//    0 stake        50                              50      100                             0
-//    1 stake        50      50                      100     50      50                      10_000
-//    2 stake        50      50      25              125     40      40      20              10_000
-//    3 stake        50+35   50      25              160     53.125  31.25   15.625          10_000
-//    4 unstake      85      50-35   25              125     68      12      20              10_000
-//      withdraw all 24312
-//      withdraw all         12125
-//    5 stake        85      15      25      40      165     51.5152 9.0909  15.1515 24.2424 10_000
-//      withdraw all 6800    1200    5562    0
-//                   -------------------------------
-//      sum          31112   13325   5562    0       49999
+    function test_withdrawAllRewards_OwnDeposit() public {
+        run(
+            abi.encode([uint256(0x20), 5, 1, 2, 3, 1, 2]), //bytes -> uint256[] memory stakerIndicesBeforeWithdrawals,
+            abi.encode([int256(0x20), 5, 50, 50, 25, 35, -35]), //bytes -> int256[] memory relativeAmountsBeforeWithdrawals,
+            abi.encode([uint256(0x20), 1, 4]), //bytes -> uint256[] memory stakerIndicesAfterWithdrawals,
+            abi.encode([int256(0x20), 1, 40]), //bytes -> int256[] memory relativeAmountsAfterWithdrawals,
+            123_456_789, //uint256 withdrawalInSteps,
+            10_000_000 ether, //uint256 depositAmount,
+            50_000 ether, //uint256 rewardsBeforeStaking,
+            10_000 ether, //uint256 rewardsAccruedAfterEach,
+            true //bool initialDeposit
+        );
+    }
+
+    function test_withdraw1Plus0Rewards_OwnDeposit () public {
+        run(
+            abi.encode([uint256(0x20), 5, 1, 2, 3, 1, 2]), //bytes -> uint256[] memory stakerIndicesBeforeWithdrawals,
+            abi.encode([int256(0x20), 5, 50, 50, 25, 35, -35]), //bytes -> int256[] memory relativeAmountsBeforeWithdrawals,
+            abi.encode([uint256(0x20), 1, 4]), //bytes -> uint256[] memory stakerIndicesAfterWithdrawals,
+            abi.encode([int256(0x20), 1, 40]), //bytes -> int256[] memory relativeAmountsAfterWithdrawals,
+            0, //uint256 withdrawalInSteps,
+            10_000_000 ether, //uint256 depositAmount,
+            50_000 ether, //uint256 rewardsBeforeStaking,
+            10_000 ether, //uint256 rewardsAccruedAfterEach,
+            true //bool initialDeposit
+        );
+    }
+
+    function test_withdraw1Plus1Rewards_OwnDeposit () public {
+        run(
+            abi.encode([uint256(0x20), 5, 1, 2, 3, 1, 2]), //bytes -> uint256[] memory stakerIndicesBeforeWithdrawals,
+            abi.encode([int256(0x20), 5, 50, 50, 25, 35, -35]), //bytes -> int256[] memory relativeAmountsBeforeWithdrawals,
+            abi.encode([uint256(0x20), 1, 4]), //bytes -> uint256[] memory stakerIndicesAfterWithdrawals,
+            abi.encode([int256(0x20), 1, 40]), //bytes -> int256[] memory relativeAmountsAfterWithdrawals,
+            1, //uint256 withdrawalInSteps,
+            10_000_000 ether, //uint256 depositAmount,
+            50_000 ether, //uint256 rewardsBeforeStaking,
+            10_000 ether, //uint256 rewardsAccruedAfterEach,
+            true //bool initialDeposit
+        );
+    }
+
+    function test_withdraw1Plus2Rewards_OwnDeposit () public {
+        run(
+            abi.encode([uint256(0x20), 5, 1, 2, 3, 1, 2]), //bytes -> uint256[] memory stakerIndicesBeforeWithdrawals,
+            abi.encode([int256(0x20), 5, 50, 50, 25, 35, -35]), //bytes -> int256[] memory relativeAmountsBeforeWithdrawals,
+            abi.encode([uint256(0x20), 1, 4]), //bytes -> uint256[] memory stakerIndicesAfterWithdrawals,
+            abi.encode([int256(0x20), 1, 40]), //bytes -> int256[] memory relativeAmountsAfterWithdrawals,
+            2, //uint256 withdrawalInSteps,
+            10_000_000 ether, //uint256 depositAmount,
+            50_000 ether, //uint256 rewardsBeforeStaking,
+            10_000 ether, //uint256 rewardsAccruedAfterEach,
+            true //bool initialDeposit
+        );
+    }
+
+    function test_withdraw1Plus3Rewards_OwnDeposit () public {
+        run(
+            abi.encode([uint256(0x20), 5, 1, 2, 3, 1, 2]), //bytes -> uint256[] memory stakerIndicesBeforeWithdrawals,
+            abi.encode([int256(0x20), 5, 50, 50, 25, 35, -35]), //bytes -> int256[] memory relativeAmountsBeforeWithdrawals,
+            abi.encode([uint256(0x20), 1, 4]), //bytes -> uint256[] memory stakerIndicesAfterWithdrawals,
+            abi.encode([int256(0x20), 1, 40]), //bytes -> int256[] memory relativeAmountsAfterWithdrawals,
+            3, //uint256 withdrawalInSteps,
+            10_000_000 ether, //uint256 depositAmount,
+            50_000 ether, //uint256 rewardsBeforeStaking,
+            10_000 ether, //uint256 rewardsAccruedAfterEach,
+            true //bool initialDeposit
+        );
+    }
+
+    function test_withdrawAllRewards_DelegatedDeposit() public {
+        run(
+            abi.encode([uint256(0x20), 5, 1, 2, 3, 1, 2]), //bytes -> uint256[] memory stakerIndicesBeforeWithdrawals,
+            abi.encode([int256(0x20), 5, 50, 50, 25, 35, -35]), //bytes -> int256[] memory relativeAmountsBeforeWithdrawals,
+            abi.encode([uint256(0x20), 1, 4]), //bytes -> uint256[] memory stakerIndicesAfterWithdrawals,
+            abi.encode([int256(0x20), 1, 40]), //bytes -> int256[] memory relativeAmountsAfterWithdrawals,
+            123_456_789, //uint256 withdrawalInSteps,
+            10_000_000 ether, //uint256 depositAmount,
+            50_000 ether, //uint256 rewardsBeforeStaking,
+            10_000 ether, //uint256 rewardsAccruedAfterEach,
+            false //bool initialDeposit
+        );
+    }
+
+    function test_withdraw1Plus0Rewards_DelegatedDeposit () public {
+        run(
+            abi.encode([uint256(0x20), 5, 1, 2, 3, 1, 2]), //bytes -> uint256[] memory stakerIndicesBeforeWithdrawals,
+            abi.encode([int256(0x20), 5, 50, 50, 25, 35, -35]), //bytes -> int256[] memory relativeAmountsBeforeWithdrawals,
+            abi.encode([uint256(0x20), 1, 4]), //bytes -> uint256[] memory stakerIndicesAfterWithdrawals,
+            abi.encode([int256(0x20), 1, 40]), //bytes -> int256[] memory relativeAmountsAfterWithdrawals,
+            0, //uint256 withdrawalInSteps,
+            10_000_000 ether, //uint256 depositAmount,
+            50_000 ether, //uint256 rewardsBeforeStaking,
+            10_000 ether, //uint256 rewardsAccruedAfterEach,
+            false //bool initialDeposit
+        );
+    }
+
+    function test_withdraw1Plus1Rewards_DelegatedDeposit () public {
+        run(
+            abi.encode([uint256(0x20), 5, 1, 2, 3, 1, 2]), //bytes -> uint256[] memory stakerIndicesBeforeWithdrawals,
+            abi.encode([int256(0x20), 5, 50, 50, 25, 35, -35]), //bytes -> int256[] memory relativeAmountsBeforeWithdrawals,
+            abi.encode([uint256(0x20), 1, 4]), //bytes -> uint256[] memory stakerIndicesAfterWithdrawals,
+            abi.encode([int256(0x20), 1, 40]), //bytes -> int256[] memory relativeAmountsAfterWithdrawals,
+            1, //uint256 withdrawalInSteps,
+            10_000_000 ether, //uint256 depositAmount,
+            50_000 ether, //uint256 rewardsBeforeStaking,
+            10_000 ether, //uint256 rewardsAccruedAfterEach,
+            false //bool initialDeposit
+        );
+    }
+
+    function test_withdraw1Plus2Rewards_DelegatedDeposit () public {
+        run(
+            abi.encode([uint256(0x20), 5, 1, 2, 3, 1, 2]), //bytes -> uint256[] memory stakerIndicesBeforeWithdrawals,
+            abi.encode([int256(0x20), 5, 50, 50, 25, 35, -35]), //bytes -> int256[] memory relativeAmountsBeforeWithdrawals,
+            abi.encode([uint256(0x20), 1, 4]), //bytes -> uint256[] memory stakerIndicesAfterWithdrawals,
+            abi.encode([int256(0x20), 1, 40]), //bytes -> int256[] memory relativeAmountsAfterWithdrawals,
+            2, //uint256 withdrawalInSteps,
+            10_000_000 ether, //uint256 depositAmount,
+            50_000 ether, //uint256 rewardsBeforeStaking,
+            10_000 ether, //uint256 rewardsAccruedAfterEach,
+            false //bool initialDeposit
+        );
+    }
+
+    function test_withdraw1Plus3Rewards_DelegatedDeposit () public {
+        run(
+            abi.encode([uint256(0x20), 5, 1, 2, 3, 1, 2]), //bytes -> uint256[] memory stakerIndicesBeforeWithdrawals,
+            abi.encode([int256(0x20), 5, 50, 50, 25, 35, -35]), //bytes -> int256[] memory relativeAmountsBeforeWithdrawals,
+            abi.encode([uint256(0x20), 1, 4]), //bytes -> uint256[] memory stakerIndicesAfterWithdrawals,
+            abi.encode([int256(0x20), 1, 40]), //bytes -> int256[] memory relativeAmountsAfterWithdrawals,
+            3, //uint256 withdrawalInSteps,
+            10_000_000 ether, //uint256 depositAmount,
+            50_000 ether, //uint256 rewardsBeforeStaking,
+            10_000 ether, //uint256 rewardsAccruedAfterEach,
+            false //bool initialDeposit
+        );
+    }
+
+    // run with
+    // forge test -vv --via-ir --gas-report --gas-limit 10000000000 --block-gas-limit 10000000000 --match-test AfterMany
+    function test_withdrawAfterManyStakings() public {
+        uint256 i;
+        uint256 x;
+        uint256 steps = 11_504;
+
+        deposit(10_000_000 ether, true);
+
+        for (i = 0; i < 4; i++) {
+            vm.deal(staker[i], 100_000 ether);
+            console.log("staker %s: %s", i+1, staker[i]);
+        }
+
+        delegation = NonLiquidDelegation(proxy);
+
+        // rewards accrued so far
+        vm.deal(address(delegation), 50_000 ether);
+        x = 50;
+        for (uint256 j = 0; j < steps / 8; j++) {
+            for (i = 1; i <= 4; i++) {
+                vm.startPrank(staker[i-1]);
+                vm.recordLogs();
+                vm.expectEmit(
+                    true,
+                    false,
+                    false,
+                    false,
+                    address(delegation)
+                );
+                emit NonLiquidDelegation.Staked(
+                    staker[i-1],
+                    x * 1 ether
+                );
+                delegation.stake{value: x * 1 ether}();
+                //snapshot("staker %s staked %s", i, x);
+                vm.stopPrank();
+                vm.deal(address(delegation), address(delegation).balance + 10_000 ether);
+            }
+            for (i = 1; i <= 4; i++) {
+                vm.startPrank(staker[i-1]);
+                vm.recordLogs();
+                vm.expectEmit(
+                    true,
+                    false,
+                    false,
+                    false,
+                    address(delegation)
+                );
+                emit NonLiquidDelegation.Unstaked(
+                    staker[i-1],
+                    x * 1 ether
+                );
+                delegation.unstake(x * 1 ether);
+                //snapshot("staker %s unstaked %s", i, x);
+                vm.stopPrank();
+                vm.deal(address(delegation), address(delegation).balance + 10_000 ether);
+            }
+        }
+
+        i = 1;
+        vm.startPrank(staker[i-1]);
+        //snapshot("staker %s withdrawing 1+%s times", i, steps);
+        //Console.log("staker balance: %s.%s%s", staker[i-1].balance);
+        uint256 rewards = delegation.rewards();
+        Console.log("staker rewards: %s.%s%s", rewards);
+        //rewards = delegation.withdrawRewards(rewards, steps);
+        rewards = delegation.withdrawAllRewards();
+        /*
+        rewards = delegation.withdrawRewards(1000000, 2000);
+        rewards += delegation.withdrawRewards(1000000, 2000);
+        rewards += delegation.withdrawRewards(1000000, 2000);
+        rewards += delegation.withdrawRewards(1000000, 2000);
+        //*/
+        Console.log("staker withdrew: %s.%s%s", rewards);
+        //Console.log("staker balance: %s.%s%s", staker[i-1].balance);
+        vm.stopPrank();
+
+        vm.roll(block.number + WithdrawalQueue.UNBONDING_PERIOD);
+
+        i = 1;
+        vm.startPrank(staker[i-1]);
+        vm.recordLogs();
+        vm.expectEmit(
+            true,
+            false,
+            false,
+            false,
+            address(delegation)
+        );
+        emit NonLiquidDelegation.Claimed(
+            staker[i-1],
+            steps / 8 * x * 1 ether
+        );
+        delegation.claim();
+        vm.stopPrank();
+    }
 } 

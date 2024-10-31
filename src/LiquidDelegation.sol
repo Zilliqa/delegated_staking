@@ -37,8 +37,6 @@ contract LiquidDelegation is BaseDelegation {
         $.lst = address(new NonRebasingLST(address(this)));
     }
 
-    function _authorizeUpgrade(address newImplementation) internal onlyOwner override {}
-
     receive() payable external {
     } 
 

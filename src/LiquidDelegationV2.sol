@@ -30,12 +30,10 @@ contract LiquidDelegationV2 is BaseDelegation {
     function reinitialize() reinitializer(version() + 1) public {
     }
 
-    function _authorizeUpgrade(address newImplementation) internal onlyOwner override {}
-
     event Staked(address indexed delegator, uint256 amount, uint256 shares);
     event Unstaked(address indexed delegator, uint256 amount, uint256 shares);
     event Claimed(address indexed delegator, uint256 amount);
-    event CommissionPaid(address indexed owner, uint256 rewardsBefore, uint256 committion);
+    event CommissionPaid(address indexed owner, uint256 rewardsBefore, uint256 commission);
 
     // called when stake withdrawn from the deposit contract is claimed
     // but not called when rewards are assigned to the reward address

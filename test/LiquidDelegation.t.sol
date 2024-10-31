@@ -4,6 +4,7 @@ pragma solidity ^0.8.26;
 import {LiquidDelegation} from "src/LiquidDelegation.sol";
 import {LiquidDelegationV2} from "src/LiquidDelegationV2.sol";
 import {NonRebasingLST} from "src/NonRebasingLST.sol";
+import {WithdrawalQueue} from "src/BaseDelegation.sol";
 import {Deposit} from "src/Deposit.sol";
 import {Console} from "src/Console.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
@@ -446,7 +447,7 @@ contract LiquidDelegationTest is Test {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking, // rewardsBeforeUnstaking
-            30, // after unstaking wait blocksUntil claiming
+            WithdrawalQueue.UNBONDING_PERIOD, // after unstaking wait blocksUntil claiming
             true // initialDeposit using funds held by the node, otherwise delegated by a staker
         );
     } 
@@ -469,7 +470,7 @@ contract LiquidDelegationTest is Test {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking, // rewardsBeforeUnstaking
-            30, // after unstaking wait blocksUntil claiming
+            WithdrawalQueue.UNBONDING_PERIOD, // after unstaking wait blocksUntil claiming
             true // initialDeposit using funds held by the node, otherwise delegated by a staker
         );
     } 
@@ -492,7 +493,7 @@ contract LiquidDelegationTest is Test {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            30, // after unstaking wait blocksUntil claiming
+            WithdrawalQueue.UNBONDING_PERIOD, // after unstaking wait blocksUntil claiming
             true // initialDeposit using funds held by the node, otherwise delegated by a staker
         );
     } 
@@ -515,7 +516,7 @@ contract LiquidDelegationTest is Test {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            30, // after unstaking wait blocksUntil claiming
+            WithdrawalQueue.UNBONDING_PERIOD, // after unstaking wait blocksUntil claiming
             true // initialDeposit using funds held by the node, otherwise delegated by a staker
         );
     } 
@@ -538,7 +539,7 @@ contract LiquidDelegationTest is Test {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            30, // after unstaking wait blocksUntil claiming
+            WithdrawalQueue.UNBONDING_PERIOD, // after unstaking wait blocksUntil claiming
             true // initialDeposit using funds held by the node, otherwise delegated by a staker
         );
     }
@@ -561,7 +562,7 @@ contract LiquidDelegationTest is Test {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            30, // after unstaking wait blocksUntil claiming
+            WithdrawalQueue.UNBONDING_PERIOD, // after unstaking wait blocksUntil claiming
             true // initialDeposit using funds held by the node, otherwise delegated by a staker
         );
     }
@@ -584,7 +585,7 @@ contract LiquidDelegationTest is Test {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            30, // after unstaking wait blocksUntil claiming
+            WithdrawalQueue.UNBONDING_PERIOD, // after unstaking wait blocksUntil claiming
             true // initialDeposit using funds held by the node, otherwise delegated by a staker
         );
     } 
@@ -607,7 +608,7 @@ contract LiquidDelegationTest is Test {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            30, // after unstaking wait blocksUntil claiming
+            WithdrawalQueue.UNBONDING_PERIOD, // after unstaking wait blocksUntil claiming
             false // initialDeposit using funds held by the node, otherwise delegated by a staker
         );
     } 
@@ -630,7 +631,7 @@ contract LiquidDelegationTest is Test {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            30, // after unstaking wait blocksUntil claiming
+            WithdrawalQueue.UNBONDING_PERIOD, // after unstaking wait blocksUntil claiming
             false // initialDeposit using funds held by the node, otherwise delegated by a staker
         );
     }
@@ -653,7 +654,7 @@ contract LiquidDelegationTest is Test {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            30, // after unstaking wait blocksUntil claiming
+            WithdrawalQueue.UNBONDING_PERIOD, // after unstaking wait blocksUntil claiming
             false // initialDeposit using funds held by the node, otherwise delegated by a staker
         );
     }
@@ -676,7 +677,7 @@ contract LiquidDelegationTest is Test {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            30, // after unstaking wait blocksUntil claiming
+            WithdrawalQueue.UNBONDING_PERIOD, // after unstaking wait blocksUntil claiming
             true // initialDeposit using funds held by the node, otherwise delegated by a staker
         );
     }
@@ -699,7 +700,7 @@ contract LiquidDelegationTest is Test {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            30, // after unstaking wait blocksUntil claiming
+            WithdrawalQueue.UNBONDING_PERIOD, // after unstaking wait blocksUntil claiming
             false // initialDeposit using funds held by the node, otherwise delegated by a staker
         );
     } 
@@ -722,7 +723,7 @@ contract LiquidDelegationTest is Test {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            30, // after unstaking wait blocksUntil claiming
+            WithdrawalQueue.UNBONDING_PERIOD, // after unstaking wait blocksUntil claiming
             false // initialDeposit using funds held by the node, otherwise delegated by a staker
         );
     }
@@ -745,7 +746,7 @@ contract LiquidDelegationTest is Test {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            30, // after unstaking wait blocksUntil claiming
+            WithdrawalQueue.UNBONDING_PERIOD, // after unstaking wait blocksUntil claiming
             false // initialDeposit using funds held by the node, otherwise delegated by a staker
         );
     } 
@@ -770,7 +771,7 @@ contract LiquidDelegationTest is Test {
             // (numberOfDelegations - 1) * rewardsAccruedAfterEach <= rewardsBeforeUnstaking
             5 * 51_000 ether / uint256(3600) * depositAmount / totalDeposit, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 51_000 ether / uint256(60) * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            30, // after unstaking wait blocksUntil claiming
+            WithdrawalQueue.UNBONDING_PERIOD, // after unstaking wait blocksUntil claiming
             true // initialDeposit using funds held by the node, otherwise delegated by a staker
         );
     }
@@ -793,7 +794,7 @@ contract LiquidDelegationTest is Test {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 51_000 ether / uint256(60) * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            30, // after unstaking wait blocksUntil claiming
+            WithdrawalQueue.UNBONDING_PERIOD, // after unstaking wait blocksUntil claiming
             true // initialDeposit using funds held by the node, otherwise delegated by a staker
         );
     }
@@ -841,7 +842,7 @@ contract LiquidDelegationTest is Test {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             rewardsBeforeUnstaking,
-            30, // blocksUntil claiming
+            WithdrawalQueue.UNBONDING_PERIOD, // blocksUntil claiming
             true // initialDeposit
         );
         // Replace the values below in the same order with the values output by the STATE script

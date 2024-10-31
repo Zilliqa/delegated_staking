@@ -108,7 +108,6 @@ abstract contract BaseDelegation is Initializable, PausableUpgradeable, Ownable2
         //__UUPSUpgradeable_init_unchained();
     }
 
-    //TODO: check
     function _authorizeUpgrade(address newImplementation) internal onlyOwner virtual override {}
 
     function _deposit(
