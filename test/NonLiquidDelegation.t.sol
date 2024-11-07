@@ -2,8 +2,10 @@
 pragma solidity ^0.8.26;
 
 import {NonLiquidDelegation} from "src/NonLiquidDelegation.sol";
+import {NonLiquidDelegationV2} from "src/NonLiquidDelegationV2.sol";
 import {WithdrawalQueue} from "src/BaseDelegation.sol";
-import {Deposit} from "src/Deposit.sol";
+import {Delegation} from "src/Delegation.sol";
+import {Deposit, InitialStaker} from "src/Deposit.sol";
 import {Console} from "src/Console.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
@@ -13,7 +15,7 @@ import "forge-std/console.sol";
 contract NonLiquidDelegationTest is Test {
     address payable proxy;
     address owner;
-    NonLiquidDelegation delegation;
+    NonLiquidDelegationV2 delegation;
     address[4] staker = [
         0xd819fFcE7A58b1E835c25617Db7b46a00888B013,
         0x092E5E57955437876dA9Df998C96e2BE19341670,
@@ -47,10 +49,10 @@ contract NonLiquidDelegationTest is Test {
             oldImplementation
         );
         //*/
-        //NonLiquidDelegation oldDelegation = NonLiquidDelegation(
-        delegation = NonLiquidDelegation(
-                proxy
-            );
+
+        NonLiquidDelegation oldDelegation = NonLiquidDelegation(
+            proxy
+        );
         /*
         console.log("Deployed version: %s",
             oldDelegation.version()
@@ -60,17 +62,17 @@ contract NonLiquidDelegationTest is Test {
             oldDelegation.owner()
         );
         //*/
-        /*
+
         address payable newImplementation = payable(
             new NonLiquidDelegationV2()
         );
-        //*/
+
         /*
         console.log("New implementation deployed: %s",
             newImplementation
         );
         //*/
-        /*
+
         bytes memory reinitializerCall = abi.encodeWithSelector(
             NonLiquidDelegationV2.reinitialize.selector
         );
@@ -80,10 +82,10 @@ contract NonLiquidDelegationTest is Test {
             reinitializerCall
         );
 
-        NonLiquidDelegationV2 delegation = NonLiquidDelegationV2(
-                proxy
-            );
-        //*/
+        delegation = NonLiquidDelegationV2(
+            proxy
+        );
+
         /*
         console.log("Upgraded to version: %s",
             delegation.version()
@@ -104,16 +106,20 @@ contract NonLiquidDelegationTest is Test {
         );
         //*/
 
+        InitialStaker[] memory initialStakers = new InitialStaker[](0);
         //vm.deployCodeTo("Deposit.sol", delegation.DEPOSIT_CONTRACT());
         vm.etch(
             delegation.DEPOSIT_CONTRACT(), //0x000000000000000000005a494C4445504F534954,
-            address(new Deposit(10_000_000 ether, 256)).code
+            address(new Deposit(10_000_000 ether, 256, 10, initialStakers)).code
         );
-        vm.store(delegation.DEPOSIT_CONTRACT(), bytes32(uint256(3)), bytes32(uint256(10_000_000 ether)));
-        vm.store(delegation.DEPOSIT_CONTRACT(), bytes32(uint256(4)), bytes32(uint256(256)));
+        vm.store(delegation.DEPOSIT_CONTRACT(), bytes32(uint256(11)), bytes32(uint256(block.number / 10)));
+        vm.store(delegation.DEPOSIT_CONTRACT(), bytes32(uint256(12)), bytes32(uint256(10_000_000 ether)));
+        vm.store(delegation.DEPOSIT_CONTRACT(), bytes32(uint256(13)), bytes32(uint256(256)));
+        vm.store(delegation.DEPOSIT_CONTRACT(), bytes32(uint256(14)), bytes32(uint256(10)));
         /*
-        console.log("Deposit._minimimStake() =", Deposit(delegation.DEPOSIT_CONTRACT())._minimumStake());
-        console.log("Deposit._maximumStakers() =", Deposit(delegation.DEPOSIT_CONTRACT())._maximumStakers());
+        console.log("Deposit.minimimStake() =", Deposit(delegation.DEPOSIT_CONTRACT()).minimumStake());
+        console.log("Deposit.maximumStakers() =", Deposit(delegation.DEPOSIT_CONTRACT()).maximumStakers());
+        console.log("Deposit.blocksPerEpoch() =", Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch());
         //*/
         vm.stopPrank();
     }
@@ -144,9 +150,10 @@ contract NonLiquidDelegationTest is Test {
                 true,
                 address(delegation)
             );
-            emit NonLiquidDelegation.Staked(
+            emit Delegation.Staked(
                 staker[0],
-                depositAmount
+                depositAmount,
+                ""
             );
 
             delegation.stake{
@@ -160,7 +167,9 @@ contract NonLiquidDelegationTest is Test {
                 bytes(hex"002408011220d5ed74b09dcbe84d3b32a56c01ab721cf82809848b6604535212a219d35c412f"),
                 bytes(hex"b14832a866a49ddf8a3104f8ee379d29c136f29aeb8fccec9d7fb17180b99e8ed29bee2ada5ce390cb704bc6fd7f5ce814f914498376c4b8bc14841a57ae22279769ec8614e2673ba7f36edc5a4bf5733aa9d70af626279ee2b2cde939b4bd8a")
             );
-        } 
+        }
+        // wait 2 epochs for the change to the deposit to take affect
+        vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
     }
 
     function findStaker(address a) internal view returns(uint256) {
@@ -174,7 +183,7 @@ contract NonLiquidDelegationTest is Test {
         console.log("-----------------------------------------------");
         console.log(s, i, x);
         uint256[] memory shares = new uint256[](staker.length);
-        NonLiquidDelegation.Staking[] memory stakings = delegation.getStakingHistory();
+        NonLiquidDelegationV2.Staking[] memory stakings = delegation.getStakingHistory();
         for (i = 0; i < stakings.length; i++)
         //i = stakings.length - 1;
         {
@@ -246,7 +255,7 @@ contract NonLiquidDelegationTest is Test {
             console.log("staker %s: %s", i+1, staker[i]);
         } 
 
-        delegation = NonLiquidDelegation(proxy);
+        delegation = NonLiquidDelegationV2(proxy);
 
         // rewards accrued so far
         vm.deal(address(delegation), rewardsBeforeStaking - rewardsAccruedAfterEach);
@@ -263,6 +272,8 @@ contract NonLiquidDelegationTest is Test {
                 //snapshot("staker %s unstaked %s", stakerIndices[i], uint256(-x));
             }
             vm.stopPrank();
+            // wait 2 epochs for the change to the deposit to take affect
+            vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
         }
 
         //no rewards if we withdraw in the same block as the last staking
@@ -275,12 +286,15 @@ contract NonLiquidDelegationTest is Test {
             else
                 snapshot("staker %s withdrawing 1+%s times", i, steps);
             Console.log("rewards accrued until last staking: %s.%s%s", delegation.getTotalRewards());
+            Console.log("delegation contract balance: %s.%s%s", address(delegation).balance);
             //Console.log("staker balance: %s.%s%s", staker[i-1].balance);
             Console.log("staker rewards: %s.%s%s", delegation.rewards());
             if (steps == 123_456_789)
                 Console.log("staker withdrew: %s.%s%s", delegation.withdrawAllRewards());
             else
                 Console.log("staker withdrew: %s.%s%s", delegation.withdrawRewards(delegation.rewards(steps), steps));
+            Console.log("rewards accrued until last staking: %s.%s%s", delegation.getTotalRewards());
+            Console.log("delegation contract balance: %s.%s%s", address(delegation).balance);
             //Console.log("staker balance: %s.%s%s", staker[i-1].balance);
             vm.stopPrank();
         }
@@ -297,6 +311,8 @@ contract NonLiquidDelegationTest is Test {
                 //snapshot("staker %s unstaked %s", stakerIndices[i], uint256(-x));
             }
             vm.stopPrank();
+            // wait 2 epochs for the change to the deposit to take affect
+            vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
         }
 
         //further rewards accrued since the last staking
@@ -309,12 +325,16 @@ contract NonLiquidDelegationTest is Test {
             else
                 snapshot("staker %s withdrawing 1+%s times", i, steps);
             Console.log("rewards accrued until last staking: %s.%s%s", delegation.getTotalRewards());
+            Console.log("delegation contract balance: %s.%s%s", address(delegation).balance);
             //Console.log("staker balance: %s.%s%s", staker[i-1].balance);
             Console.log("staker rewards: %s.%s%s", delegation.rewards());
             if (steps == 123_456_789)
                 Console.log("staker withdrew: %s.%s%s", delegation.withdrawAllRewards());
             else
+                //TODO: add a test that withdraws a fixed amount < delegation.rewards(step)
                 Console.log("staker withdrew: %s.%s%s", delegation.withdrawRewards(delegation.rewards(steps), steps));
+            Console.log("rewards accrued until last staking: %s.%s%s", delegation.getTotalRewards());
+            Console.log("delegation contract balance: %s.%s%s", address(delegation).balance);
             //Console.log("staker balance: %s.%s%s", staker[i-1].balance);
             vm.stopPrank();
         }
@@ -465,16 +485,19 @@ contract NonLiquidDelegationTest is Test {
     function test_withdrawAfterManyStakings() public {
         uint256 i;
         uint256 x;
-        uint256 steps = 11_504;
+        uint256 steps = 11_000;
 
         deposit(10_000_000 ether, true);
+
+        // wait 2 epochs for the change to the deposit to take affect
+        vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
 
         for (i = 0; i < 4; i++) {
             vm.deal(staker[i], 100_000 ether);
             console.log("staker %s: %s", i+1, staker[i]);
         }
 
-        delegation = NonLiquidDelegation(proxy);
+        delegation = NonLiquidDelegationV2(proxy);
 
         // rewards accrued so far
         vm.deal(address(delegation), 50_000 ether);
@@ -490,11 +513,14 @@ contract NonLiquidDelegationTest is Test {
                     false,
                     address(delegation)
                 );
-                emit NonLiquidDelegation.Staked(
+                emit Delegation.Staked(
                     staker[i-1],
-                    x * 1 ether
+                    x * 1 ether,
+                    ""
                 );
                 delegation.stake{value: x * 1 ether}();
+                // wait 2 epochs for the change to the deposit to take affect
+                vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
                 //snapshot("staker %s staked %s", i, x);
                 vm.stopPrank();
                 vm.deal(address(delegation), address(delegation).balance + 10_000 ether);
@@ -509,11 +535,14 @@ contract NonLiquidDelegationTest is Test {
                     false,
                     address(delegation)
                 );
-                emit NonLiquidDelegation.Unstaked(
+                emit Delegation.Unstaked(
                     staker[i-1],
-                    x * 1 ether
+                    x * 1 ether,
+                    ""
                 );
                 delegation.unstake(x * 1 ether);
+                // wait 2 epochs for the change to the deposit to take affect
+                vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
                 //snapshot("staker %s unstaked %s", i, x);
                 vm.stopPrank();
                 vm.deal(address(delegation), address(delegation).balance + 10_000 ether);
@@ -524,10 +553,11 @@ contract NonLiquidDelegationTest is Test {
         vm.startPrank(staker[i-1]);
         //snapshot("staker %s withdrawing 1+%s times", i, steps);
         //Console.log("staker balance: %s.%s%s", staker[i-1].balance);
+        //uint256 rewards = delegation.rewards(steps);
         uint256 rewards = delegation.rewards();
         Console.log("staker rewards: %s.%s%s", rewards);
-        //rewards = delegation.withdrawRewards(rewards, steps);
-        rewards = delegation.withdrawAllRewards();
+        rewards = delegation.withdrawRewards(rewards, steps);
+        //rewards = delegation.withdrawAllRewards();
         /*
         rewards = delegation.withdrawRewards(1000000, 2000);
         rewards += delegation.withdrawRewards(1000000, 2000);
@@ -539,6 +569,9 @@ contract NonLiquidDelegationTest is Test {
         vm.stopPrank();
 
         vm.roll(block.number + WithdrawalQueue.UNBONDING_PERIOD);
+        //TODO: remove the next line once https://github.com/Zilliqa/zq2/issues/1761 is fixed
+        vm.warp(block.timestamp + WithdrawalQueue.UNBONDING_PERIOD);
+
 
         i = 1;
         vm.startPrank(staker[i-1]);
@@ -550,11 +583,12 @@ contract NonLiquidDelegationTest is Test {
             false,
             address(delegation)
         );
-        emit NonLiquidDelegation.Claimed(
+        emit Delegation.Claimed(
             staker[i-1],
-            steps / 8 * x * 1 ether
+            steps / 8 * x * 1 ether,
+            ""
         );
         delegation.claim();
         vm.stopPrank();
     }
-} 
+}

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.26;
 
 import {Script} from "forge-std/Script.sol";
-import {LiquidDelegationV2} from "src/LiquidDelegationV2.sol";
+import {BaseDelegation} from "src/BaseDelegation.sol";
 import "forge-std/console.sol";
 
 contract Claim is Script {
@@ -10,7 +10,7 @@ contract Claim is Script {
 
         address staker = msg.sender;
 
-        LiquidDelegationV2 delegation = LiquidDelegationV2(
+        BaseDelegation delegation = BaseDelegation(
                 proxy
             );
 

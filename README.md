@@ -13,14 +13,20 @@ The delegation contract is used by delegators to stake and unstake ZIL with the 
 
 `BaseDelegation` is an abstract contract that concrete implementations inherit from.
 
-`LiquidDelegation` is the initial implementation of the liquid staking variant of the delegation contract that creates a `NonRebasingLST` contract when it is initialized. `LiquidDelegationV2` implements all other features. `NonLiquidDelegation` is the initial implementation of the non-liquid staking variant of the delegation contract that allows delegators to withdraw rewards. The following sections describe the usage of the liquid staking variant; the non-liquid staking variant will be added later.
+`LiquidDelegation` is the initial implementation of the liquid staking variant of the delegation contract that creates a `NonRebasingLST` contract when it is initialized. `LiquidDelegationV2` implements all other features. `NonLiquidDelegation` is the initial implementation of the non-liquid staking variant of the delegation contract that allows delegators to withdraw rewards.
 
 The delegation contract shall be deployed and upgraded by the account with the private key that was used to run the validator node and was used to generate its BLS keypair and peer id. Make sure the `PRIVATE_KEY` environment variable is set accordingly.
 
 To deploy `LiquidDelegation` run
 ```bash
-forge script script/deploy_Delegation.s.sol --rpc-url http://localhost:4201 --broadcast --legacy
+forge script script/deploy_Delegation.s.sol --rpc-url http://localhost:4201 --broadcast --legacy --sig "run(string)" LiquidDelegation
 ```
+
+To deploy ``NonLiquidDelegation` run
+```bash
+forge script script/deploy_Delegation.s.sol --rpc-url http://localhost:4201 --broadcast --legacy --sig "run(string)" NonLiquidDelegation
+```
+
 You will see an output like this:
 ```
   Signer is 0x15fc323DFE5D5DCfbeEdc25CEcbf57f676634d77
@@ -56,7 +62,6 @@ forge script script/commission_Delegation.s.sol --rpc-url http://localhost:4201 
 The output will contain the following information:
 ```
   Running version: 2
-  LST address: 0x9e5c257D1c6dF74EaA54e58CdccaCb924669dc83
   Commission rate: 0.0%
   New commission rate: 10.0%
 ```
@@ -66,7 +71,7 @@ Note that the commission rate is specified as an integer to be divided by the `D
 cast call 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 "DENOMINATOR()(uint256)" --rpc-url http://localhost:4201  | sed 's/\[[^]]*\]//g'
 ```
 
-Once the validator is activated and starts earning rewards, commissions are transferred automatically to the validator node's account. To collect the outstanding commissions that haven't been transferred yet, run
+Once the validator is activated and starts earning rewards, commissions are transferred automatically to the validator node's account. Commissions of a non-liquid staking validator are deducted when delegators withdraw rewards. In case of the liquid staking variant, commissions are deducted each time delegators stake, unstake or claim what they unstaked, or when the node requests the outstanding commissions that haven't been transferred yet. To collect them, run
 ```bash
 forge script script/commission_Delegation.s.sol --rpc-url http://localhost:4201 --broadcast --legacy --sig "run(address payable, uint16, bool)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 10001 true
 ```
@@ -95,14 +100,16 @@ cast send --legacy --rpc-url http://localhost:4201 --private-key $PRIVATE_KEY \
 ```
 to deposit all of it.
 
+Note that the deposit will not take effect and the node will not start earning rewards until the epoch after next.
+
 ## Staking and Unstaking
-If the above transaction was successful and the node became a validator, it can accept delegations. In order to stake e.g. 200 ZIL, run 
+If the delegation contract has been deployed and upgraded to the latest version, the validator can accept delegations. In order to stake e.g. 200 ZIL, run
 ```bash
 forge script script/stake_Delegation.s.sol --rpc-url http://localhost:4201 --broadcast --legacy --sig "run(address payable, uint256)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 200000000000000000000 --private-key 0x...
 ```
 with the private key of the delegator account. Make sure the account's balance can cover the transaction fees plus the 200 ZIL to be delegated.
 
-The output will look like this:
+The output will look like this for liquid staking:
 ```
   Running version: 2
   Current stake: 10000000000000000000000000 wei
@@ -112,12 +119,19 @@ The output will look like this:
   Staker balance before: 99899145245801454561224 wei 0 LST
   Staker balance after: 99699145245801454561224 wei 199993793908430833324 LST
 ```
+and like this for the non-liquid variant:
+```
+  Running version: 2
+  Current stake: 10000000000000000000000000 wei
+  Current rewards: 110314207650273223687 wei
+  Staker balance before: 99899145245801454561224 wei
+  Staker balance after: 99699145245801454561224 wei
+```
 
-Note that the staker LST balance in the output will be different from the actual LST balance which you can query by running
+Due to the fact that the above output was generated based on the local script execution before the transaction got submitted to the network, the ZIL balance does not reflect the gas fees of the staking transaction and the LST balance is also different from the actual LST balance which you can query by running
 ```bash
 cast call 0x9e5c257D1c6dF74EaA54e58CdccaCb924669dc83 "balanceOf(address)(uint256)" 0xd819fFcE7A58b1E835c25617Db7b46a00888B013 --rpc-url http://localhost:4201  | sed 's/\[[^]]*\]//g'
 ```
-This is due to the fact that the above output was generated based on the local script execution before the transaction got submitted to the network.
 
 You can copy the LST address from the above output and add it to your wallet to transfer your liquid staking tokens to another account if you want to.
 
@@ -132,7 +146,7 @@ forge script script/unstake_Delegation.s.sol --rpc-url http://localhost:4201 --b
 ```
 with the private key of an account that holds some LST.
 
-The output will look like this:
+The output will look like this for liquid staking:
 ```
   Running version: 2
   Current stake: 10000000000000000000000000 wei
@@ -142,8 +156,16 @@ The output will look like this:
   Staker balance before: 99698814298179759361224 wei 199993784619390291653 LST
   Staker balance after: 99698814298179759361224 wei 99993784619390291653 LST
 ```
+and like this for the non-liquid variant:
+```
+  Running version: 2
+  Current stake: 10000000000000000000000000 wei
+  Current rewards: 331912568306010928520 wei
+  Staker balance before: 99698814298179759361224 wei
+  Staker balance after: 99698814298179759361224 wei
+```
 
-Last but not least, to claim the amount that is available after the unbonding period, run
+The ZIL balance hasn't increased because the unstaked amount can not be transferred immediately. To claim the amount that is available after the unbonding period, run
 ```bash
 forge script script/claim_Delegation.s.sol --rpc-url http://localhost:4201 --broadcast --legacy --sig "run(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 --private-key 0x...
 ```

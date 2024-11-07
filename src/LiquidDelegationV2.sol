@@ -2,10 +2,11 @@
 pragma solidity ^0.8.26;
 
 import "src/BaseDelegation.sol";
+import "src/LiquidDelegation.sol";
 import "src/NonRebasingLST.sol";
 
 // the contract is supposed to be deployed with the node's signer account
-contract LiquidDelegationV2 is BaseDelegation {
+contract LiquidDelegationV2 is BaseDelegation, ILiquidDelegation {
 
     /// @custom:storage-location erc7201:zilliqa.storage.LiquidDelegation
     struct LiquidDelegationStorage {
@@ -30,9 +31,6 @@ contract LiquidDelegationV2 is BaseDelegation {
     function reinitialize() reinitializer(version() + 1) public {
     }
 
-    event Staked(address indexed delegator, uint256 amount, uint256 shares);
-    event Unstaked(address indexed delegator, uint256 amount, uint256 shares);
-    event Claimed(address indexed delegator, uint256 amount);
     event CommissionPaid(address indexed owner, uint256 rewardsBefore, uint256 commission);
 
     // called when stake withdrawn from the deposit contract is claimed
@@ -91,13 +89,19 @@ contract LiquidDelegationV2 is BaseDelegation {
             taxRewards();
             $.taxedRewards -= msg.value;
         }
-        if (NonRebasingLST($.lst).totalSupply() == 0)
+        uint256 depositedStake = getStake();
+        if (
+            // if the validator hasn't deposited or
+            NonRebasingLST($.lst).totalSupply() == 0 ||
+            // the deposit hasn't become effective yet
+            depositedStake + $.taxedRewards == 0
+        )
             shares = msg.value;
         else
-            shares = NonRebasingLST($.lst).totalSupply() * msg.value / (getStake() + $.taxedRewards);
+            shares = NonRebasingLST($.lst).totalSupply() * msg.value / (depositedStake + $.taxedRewards);
         NonRebasingLST($.lst).mint(msg.sender, shares);
         _increaseDeposit(msg.value);
-        emit Staked(msg.sender, msg.value, shares);
+        emit Staked(msg.sender, msg.value, abi.encode(shares));
     }
 
     function unstake(uint256 shares) public whenNotPaused {
@@ -114,7 +118,7 @@ contract LiquidDelegationV2 is BaseDelegation {
         if (address(this).balance < getTotalWithdrawals())
             _decreaseDeposit(getTotalWithdrawals() - address(this).balance);
         NonRebasingLST($.lst).burn(msg.sender, shares);
-        emit Unstaked(msg.sender, amount, shares);
+        emit Unstaked(msg.sender, amount, abi.encode(shares));
     }
 
     // return the amount of ZIL equivalent to 1 LST (share)
@@ -150,13 +154,14 @@ contract LiquidDelegationV2 is BaseDelegation {
             return;*/
         // before the balance changes deduct the commission from the yet untaxed rewards
         taxRewards();
-        //TODO: claim all deposit withdrawals requested whose unbonding period is over
+        // withdraw the unstaked deposit once the unbonding period is over
+        _withdrawDeposit();
         (bool success, ) = msg.sender.call{
             value: total
         }("");
         require(success, "transfer of funds failed");
         $.taxedRewards -= total;
-        emit Claimed(msg.sender, total);
+        emit Claimed(msg.sender, total, "");
     }
 
     //TODO: make it onlyOwnerOrContract and call it every time someone stakes, unstakes or claims?
@@ -167,7 +172,7 @@ contract LiquidDelegationV2 is BaseDelegation {
             _increaseDeposit(address(this).balance - getTotalWithdrawals());
     }
 
-    function collectCommission() public onlyOwner {
+    function collectCommission() public override onlyOwner {
         taxRewards();
     }
 
@@ -179,6 +184,10 @@ contract LiquidDelegationV2 is BaseDelegation {
     function getLST() public view returns(address) {
         LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
         return $.lst;
+    }
+
+    function supportsInterface(bytes4 interfaceId) public view override returns (bool) {
+       return interfaceId == type(ILiquidDelegation).interfaceId || super.supportsInterface(interfaceId);
     }
 
 }

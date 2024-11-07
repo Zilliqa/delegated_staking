@@ -4,7 +4,11 @@ pragma solidity ^0.8.26;
 import "src/BaseDelegation.sol";
 import "src/NonRebasingLST.sol";
 
-contract LiquidDelegation is BaseDelegation {
+interface ILiquidDelegation {
+    function getPrice() external view returns(uint256);
+}
+
+contract LiquidDelegation is BaseDelegation, ILiquidDelegation {
 
     /// @custom:storage-location erc7201:zilliqa.storage.LiquidDelegation
     struct LiquidDelegationStorage {
@@ -33,16 +37,42 @@ contract LiquidDelegation is BaseDelegation {
         __Ownable_init(initialOwner);
         __Ownable2Step_init();
         __UUPSUpgradeable_init();
+        __ERC165_init();
         LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
         $.lst = address(new NonRebasingLST(address(this)));
     }
 
+    //TODO: remove?
     receive() payable external {
-    } 
+    }
 
     function getLST() public view returns(address) {
         LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
         return $.lst;
+    }
+
+    function stake() external payable {
+        revert("not implemented");
+    }
+
+    function unstake(uint256) external {
+        revert("not implemented");
+    }
+
+    function claim() external {
+        revert("not implemented");
+    }
+
+    function collectCommission() public override {
+        revert("not implemented");
+    }
+
+    function getPrice() public view returns(uint256) {
+        revert("not implemented");
+    }
+
+    function supportsInterface(bytes4 interfaceId) public view override returns (bool) {
+       return interfaceId == type(ILiquidDelegation).interfaceId || super.supportsInterface(interfaceId);
     }
 
 }

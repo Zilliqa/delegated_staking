@@ -2,17 +2,23 @@
 pragma solidity ^0.8.26;
 
 import {Script} from "forge-std/Script.sol";
-import {LiquidDelegation} from "src/LiquidDelegation.sol";
+import {BaseDelegation} from "src/BaseDelegation.sol";
+import {ILiquidDelegation} from "src/LiquidDelegation.sol";
+import {INonLiquidDelegation} from "src/NonLiquidDelegation.sol";
 import {LiquidDelegationV2} from "src/LiquidDelegationV2.sol";
+import {NonLiquidDelegationV2} from "src/NonLiquidDelegationV2.sol";
+import {ERC165Checker} from "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 import "forge-std/console.sol";
 
 contract Upgrade is Script {
+    using ERC165Checker for address;
+
     function run(address payable proxy) external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         address owner = vm.addr(deployerPrivateKey);
         console.log("Signer is %s", owner);
 
-        LiquidDelegation oldDelegation = LiquidDelegation(
+        BaseDelegation oldDelegation = BaseDelegation(
             proxy
         );
 
@@ -26,16 +32,21 @@ contract Upgrade is Script {
 
         vm.startBroadcast(deployerPrivateKey);
 
-        address payable newImplementation = payable(
-            new LiquidDelegationV2()
-        );
+        address payable newImplementation;
+
+        if (address(oldDelegation).supportsInterface(type(ILiquidDelegation).interfaceId))
+            newImplementation = payable(new LiquidDelegationV2());
+        else if (address(oldDelegation).supportsInterface(type(INonLiquidDelegation).interfaceId))
+            newImplementation = payable(new NonLiquidDelegationV2());
+        else
+            return;
 
         console.log("New implementation deployed: %s",
             newImplementation
         );
 
-        bytes memory reinitializerCall = abi.encodeWithSelector(
-            LiquidDelegationV2.reinitialize.selector
+        bytes memory reinitializerCall = abi.encodeWithSignature(
+            "reinitialize()"
         );
 
         oldDelegation.upgradeToAndCall(
@@ -43,7 +54,7 @@ contract Upgrade is Script {
             reinitializerCall
         );
 
-        LiquidDelegationV2 newDelegation = LiquidDelegationV2(
+        BaseDelegation newDelegation = BaseDelegation(
             proxy
         );
 

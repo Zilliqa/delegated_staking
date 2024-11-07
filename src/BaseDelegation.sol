@@ -5,14 +5,14 @@ import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import "src/NonRebasingLST.sol";
+import "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165Upgradeable.sol";
+import "src/Delegation.sol";
 
 library WithdrawalQueue {
 
-    //TODO: add it to the variables and implement a getter and an onlyOwner setter
-    //      since a governance vote can change the unbonding period anytime or fetch
-    //      it from the deposit contract
-    uint256 public constant UNBONDING_PERIOD = 30; //approx. 30s, used only for testing
+    //TODO: value set for testing purposes, make it equal to 2 * 7 * 24 * 60 * 60
+    // if governance changes the unbonding period, update the value and upgrade the contract
+    uint256 public constant UNBONDING_PERIOD = 30;
 
     struct Item {
         uint256 blockNumber;
@@ -46,7 +46,7 @@ library WithdrawalQueue {
     }
 }
 
-abstract contract BaseDelegation is Initializable, PausableUpgradeable, Ownable2StepUpgradeable, UUPSUpgradeable {
+abstract contract BaseDelegation is Delegation, Initializable, PausableUpgradeable, Ownable2StepUpgradeable, UUPSUpgradeable, ERC165Upgradeable {
 
     using WithdrawalQueue for WithdrawalQueue.Fifo;
 
@@ -123,46 +123,47 @@ abstract contract BaseDelegation is Initializable, PausableUpgradeable, Ownable2
         (bool success, ) = DEPOSIT_CONTRACT.call{
             value: depositAmount
         }(
-            //abi.encodeWithSignature("deposit(bytes,bytes,bytes,address,address)",
-            //TODO: replace next line with the previous one once the signer address is implemented
             abi.encodeWithSignature("deposit(bytes,bytes,bytes,address)",
                 blsPubKey,
                 peerId,
                 signature,
                 address(this)
-                //TODO: enable next line once the signer address is implemented
-                //owner()
             )
         );
         require(success, "deposit failed");
     }
 
     function _increaseDeposit(uint256 amount) internal {
-        BaseDelegationStorage storage $ = _getBaseDelegationStorage();
-        // increase the deposit only if already activated as a validator
+        // topup the deposit only if already activated as a validator
         if (_isActivated()) {
             (bool success, ) = DEPOSIT_CONTRACT.call{
                 value: amount
             }(
-                abi.encodeWithSignature("tempIncreaseDeposit(bytes)",
-                    $.blsPubKey
-                )
+                abi.encodeWithSignature("depositTopup()")
             );
             require(success, "deposit increase failed");
         }
     }
 
     function _decreaseDeposit(uint256 amount) internal {
-        BaseDelegationStorage storage $ = _getBaseDelegationStorage();
-        // decrease the deposit only if already activated as a validator
+        // unstake the deposit only if already activated as a validator
         if (_isActivated()) {
             (bool success, ) = DEPOSIT_CONTRACT.call(
-                abi.encodeWithSignature("tempDecreaseDeposit(bytes,uint256)",
-                    $.blsPubKey,
+                abi.encodeWithSignature("unstake(uint256)",
                     amount
                 )
             );
             require(success, "deposit decrease failed");
+        }
+    }
+
+    function _withdrawDeposit() internal {
+        // withdraw the unstaked deposit only if already activated as a validator
+        if (_isActivated()) {
+            (bool success, ) = DEPOSIT_CONTRACT.call(
+                abi.encodeWithSignature("withdraw()")
+            );
+            require(success, "deposit withdrawal failed");
         }
     }
 
@@ -181,6 +182,8 @@ abstract contract BaseDelegation is Initializable, PausableUpgradeable, Ownable2
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
         $.commissionNumerator = _commissionNumerator;
     }
+
+    function collectCommission() public virtual;
 
     function getClaimable() public view returns(uint256 total) {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
@@ -231,6 +234,10 @@ abstract contract BaseDelegation is Initializable, PausableUpgradeable, Ownable2
         );
         require(success, "could not retrieve staked amount");
         return abi.decode(data, (uint256));
+    }
+
+    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
+       return interfaceId == type(BaseDelegation).interfaceId || super.supportsInterface(interfaceId);
     }
 
 }
