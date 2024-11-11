@@ -4,7 +4,11 @@ pragma solidity ^0.8.26;
 import "src/BaseDelegation.sol";
 import "src/NonRebasingLST.sol";
 
+// do not change this interface, it will break the detection of
+// the staking variant of an already deployed delegation contract
 interface ILiquidDelegation {
+    function interfaceId() external pure returns (bytes4);
+    function getLST() external view returns (address);
     function getPrice() external view returns(uint256);
 }
 
@@ -29,21 +33,10 @@ contract LiquidDelegation is BaseDelegation, ILiquidDelegation {
         _disableInitializers();
     }
 
-    // TODO: check - call the _init() functions of the base contracts
-    //       here or in __BaseDelegation_init()?
     function initialize(address initialOwner) initializer public {
-        __BaseDelegation_init();
-        __Pausable_init();
-        __Ownable_init(initialOwner);
-        __Ownable2Step_init();
-        __UUPSUpgradeable_init();
-        __ERC165_init();
+        __BaseDelegation_init(initialOwner);
         LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
         $.lst = address(new NonRebasingLST(address(this)));
-    }
-
-    //TODO: remove?
-    receive() payable external {
     }
 
     function getLST() public view returns(address) {
@@ -51,15 +44,15 @@ contract LiquidDelegation is BaseDelegation, ILiquidDelegation {
         return $.lst;
     }
 
-    function stake() external payable {
+    function stake() external override payable {
         revert("not implemented");
     }
 
-    function unstake(uint256) external {
+    function unstake(uint256) external override {
         revert("not implemented");
     }
 
-    function claim() external {
+    function claim() external override {
         revert("not implemented");
     }
 
@@ -75,4 +68,7 @@ contract LiquidDelegation is BaseDelegation, ILiquidDelegation {
        return interfaceId == type(ILiquidDelegation).interfaceId || super.supportsInterface(interfaceId);
     }
 
+    function interfaceId() public pure returns (bytes4) {
+       return type(ILiquidDelegation).interfaceId;
+    }
 }

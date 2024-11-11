@@ -28,6 +28,12 @@ contract LiquidDelegationV2 is BaseDelegation, ILiquidDelegation {
         _disableInitializers();
     }
 
+    // automatically incrementing the version number allows for
+    // upgrading the contract without manually specifying the next
+    // version number in the source file - use with caution since
+    // it won't be possible to identify the actual version of the
+    // source file without a hardcoded version number, but storing
+    // the file versions in separate folders would help
     function reinitialize() reinitializer(version() + 1) public {
     }
 
@@ -75,7 +81,7 @@ contract LiquidDelegationV2 is BaseDelegation, ILiquidDelegation {
         NonRebasingLST($.lst).mint(owner(), msg.value);
     } 
 
-    function stake() public payable whenNotPaused {
+    function stake() public override payable whenNotPaused {
         require(msg.value >= MIN_DELEGATION, "delegated amount too low");
         uint256 shares;
         LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
@@ -95,16 +101,28 @@ contract LiquidDelegationV2 is BaseDelegation, ILiquidDelegation {
             NonRebasingLST($.lst).totalSupply() == 0 ||
             // the deposit hasn't become effective yet
             depositedStake + $.taxedRewards == 0
+            //TODO: The delay between staking and the deposit topup taking effect
+            //      is a more general issue and does not only concern the initial
+            //      deposit. It falsifies the price which does not take the stake
+            //      into account that has just been delegated and does yet not appear
+            //      in the depositedStake. It may help to add msg.value to depositedStake
+            //      and taxedRewards here to get the correct price and amount of LST to be
+            //      minted, but getPrice() will not take the pending stakings and unstakings
+            //      into account. unless the deposit contract includes them in the value returned
+            //      by getStake(). The solution proposed is to implement a getPendingStake()
+            //      function is the deposit contract which returns the total of the initial
+            //      deposit, all topups and unstaked amounts into account regardless of in
+            //      which epoch they become effective.
         )
             shares = msg.value;
         else
             shares = NonRebasingLST($.lst).totalSupply() * msg.value / (depositedStake + $.taxedRewards);
-        NonRebasingLST($.lst).mint(msg.sender, shares);
+        NonRebasingLST($.lst).mint(_msgSender(), shares);
         _increaseDeposit(msg.value);
-        emit Staked(msg.sender, msg.value, abi.encode(shares));
+        emit Staked(_msgSender(), msg.value, abi.encode(shares));
     }
 
-    function unstake(uint256 shares) public whenNotPaused {
+    function unstake(uint256 shares) public override whenNotPaused {
         uint256 amount;
         LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
         // before calculating the amount deduct the commission from the yet untaxed rewards
@@ -117,8 +135,8 @@ contract LiquidDelegationV2 is BaseDelegation, ILiquidDelegation {
         // maintain a balance that is always sufficient to cover the claims
         if (address(this).balance < getTotalWithdrawals())
             _decreaseDeposit(getTotalWithdrawals() - address(this).balance);
-        NonRebasingLST($.lst).burn(msg.sender, shares);
-        emit Unstaked(msg.sender, amount, abi.encode(shares));
+        NonRebasingLST($.lst).burn(_msgSender(), shares);
+        emit Unstaked(_msgSender(), amount, abi.encode(shares));
     }
 
     // return the amount of ZIL equivalent to 1 LST (share)
@@ -147,7 +165,7 @@ contract LiquidDelegationV2 is BaseDelegation, ILiquidDelegation {
         emit CommissionPaid(owner(), rewards, commission);
     }
 
-    function claim() public whenNotPaused {
+    function claim() public override whenNotPaused {
         LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
         uint256 total = _dequeueWithdrawals();
         /*if (total == 0)
@@ -156,12 +174,12 @@ contract LiquidDelegationV2 is BaseDelegation, ILiquidDelegation {
         taxRewards();
         // withdraw the unstaked deposit once the unbonding period is over
         _withdrawDeposit();
-        (bool success, ) = msg.sender.call{
+        (bool success, ) = _msgSender().call{
             value: total
         }("");
         require(success, "transfer of funds failed");
         $.taxedRewards -= total;
-        emit Claimed(msg.sender, total, "");
+        emit Claimed(_msgSender(), total, "");
     }
 
     //TODO: make it onlyOwnerOrContract and call it every time someone stakes, unstakes or claims?
@@ -188,6 +206,10 @@ contract LiquidDelegationV2 is BaseDelegation, ILiquidDelegation {
 
     function supportsInterface(bytes4 interfaceId) public view override returns (bool) {
        return interfaceId == type(ILiquidDelegation).interfaceId || super.supportsInterface(interfaceId);
+    }
+
+    function interfaceId() public pure returns (bytes4) {
+       return type(ILiquidDelegation).interfaceId;
     }
 
 }

@@ -7,7 +7,6 @@ import "forge-std/console.sol";
 
 contract Claim is Script {
     function run(address payable proxy) external {
-
         address staker = msg.sender;
 
         BaseDelegation delegation = BaseDelegation(

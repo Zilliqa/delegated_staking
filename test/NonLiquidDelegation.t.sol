@@ -216,7 +216,7 @@ contract NonLiquidDelegationTest is Test {
                     s = string.concat(s, "0.0%\t\t");
             console.log(s);
         } 
-        (uint256[] memory stakingIndices, uint256 firstStakingIndex, uint256 allWithdrawnRewards, uint256 lastWithdrawnRewardIndex) = delegation.getStakingData();
+        (uint64[] memory stakingIndices, uint64 firstStakingIndex, uint256 allWithdrawnRewards, uint64 lastWithdrawnRewardIndex) = delegation.getStakingData();
         Console.log("stakingIndices: %s", stakingIndices);
         console.log("firstStakingIndex: %s   lastWithdrawnRewardIndex: %s   allWithdrawnRewards: %s", firstStakingIndex, lastWithdrawnRewardIndex, allWithdrawnRewards);
     } 
@@ -231,13 +231,13 @@ contract NonLiquidDelegationTest is Test {
         bytes memory _stakerIndicesAfterWithdrawals,
         bytes memory _relativeAmountsAfterWithdrawals,
         // 123_456_789 means always withdraw all rewards
-        uint256 withdrawalInSteps,
+        uint64 withdrawalInSteps,
         uint256 depositAmount,
         uint256 rewardsBeforeStaking,
         uint256 rewardsAccruedAfterEach,
         bool initialDeposit
     ) public {
-        uint256 steps = withdrawalInSteps;
+        uint64 steps = withdrawalInSteps;
         uint256[] memory stakerIndicesBeforeWithdrawals = abi.decode(_stakerIndicesBeforeWithdrawals, (uint256[]));
         int256[] memory relativeAmountsBeforeWithdrawals = abi.decode(_relativeAmountsBeforeWithdrawals, (int256[]));
         require(stakerIndicesBeforeWithdrawals.length == relativeAmountsBeforeWithdrawals.length, "array length mismatch");
@@ -485,7 +485,7 @@ contract NonLiquidDelegationTest is Test {
     function test_withdrawAfterManyStakings() public {
         uint256 i;
         uint256 x;
-        uint256 steps = 11_000;
+        uint64 steps = 11_000;
 
         deposit(10_000_000 ether, true);
 
@@ -591,4 +591,5 @@ contract NonLiquidDelegationTest is Test {
         delegation.claim();
         vm.stopPrank();
     }
+
 }

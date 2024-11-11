@@ -4,11 +4,13 @@ pragma solidity ^0.8.26;
 import {Script} from "forge-std/Script.sol";
 import {BaseDelegation} from "src/BaseDelegation.sol";
 import {Console} from "src/Console.sol";
+import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import "forge-std/console.sol";
 
-contract Stake is Script {
-    function run(address payable proxy, uint16 commissionNumerator, bool collectCommission) external {
+contract Commission is Script {
+    using Strings for string;
 
+    function run(address payable proxy, string calldata commissionNumerator, bool collectCommission) external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
 
         BaseDelegation delegation = BaseDelegation(
@@ -24,10 +26,10 @@ contract Stake is Script {
             2
         );
 
-        if (commissionNumerator <= delegation.DENOMINATOR()) {
+        if (!commissionNumerator.equal("same")) {
             vm.broadcast(deployerPrivateKey);
 
-            delegation.setCommissionNumerator(commissionNumerator);
+            delegation.setCommissionNumerator(uint16(vm.parseUint(commissionNumerator)));
 
             Console.log("New commission rate: %s.%s%s%%",
                 delegation.getCommissionNumerator(),

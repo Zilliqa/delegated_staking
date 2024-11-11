@@ -52,7 +52,7 @@ library Console {
         return log(format, amount, 18);
     }
 
-    function log(string memory format, uint256[] memory array) pure internal {
+    function log(string memory format, uint64[] memory array) pure internal {
         string memory s;
         for (uint256 i = 0; i < array.length; i++) {
             s = string.concat(s, Strings.toString(array[i]));

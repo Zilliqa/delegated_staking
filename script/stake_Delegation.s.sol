@@ -13,9 +13,6 @@ contract Stake is Script {
     using ERC165Checker for address;
 
     function run(address payable proxy, uint256 amount) external {
-
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-        address owner = vm.addr(deployerPrivateKey);
         address staker = msg.sender;
 
         BaseDelegation delegation = BaseDelegation(
@@ -35,10 +32,6 @@ contract Stake is Script {
             NonRebasingLST lst = NonRebasingLST(LiquidDelegationV2(payable(address(delegation))).getLST());
             console.log("LST address: %s",
                 address(lst)
-            );
-
-            console.log("Owner balance: %s LST",
-                lst.balanceOf(owner)
             );
 
             console.log("Staker balance before: %s wei %s LST",

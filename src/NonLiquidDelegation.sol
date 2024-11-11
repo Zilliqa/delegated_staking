@@ -3,7 +3,11 @@ pragma solidity ^0.8.26;
 
 import "src/BaseDelegation.sol";
 
+// do not change this interface, it will break the detection of
+// the staking variant of an already deployed delegation contract
 interface INonLiquidDelegation {
+    function interfaceId() external pure returns (bytes4);
+    function getDelegatedStake() external view returns(uint256);
     function rewards() external view returns(uint256);
 }
 
@@ -31,30 +35,19 @@ contract NonLiquidDelegation is BaseDelegation, INonLiquidDelegation {
         _disableInitializers();
     }
 
-    // TODO: check - call the _init() functions of the base contracts
-    //       here or in __BaseDelegation_init()?
     function initialize(address initialOwner) initializer public {
-        __BaseDelegation_init();
-        __Pausable_init();
-        __Ownable_init(initialOwner);
-        __Ownable2Step_init();
-        __UUPSUpgradeable_init();
-        __ERC165_init();
+        __BaseDelegation_init(initialOwner);
     }
 
-    //TODO: remove?
-    receive() payable external {
-    }
-
-    function stake() external payable {
+    function stake() external payable override {
         revert("not implemented");
     }
 
-    function unstake(uint256) external {
+    function unstake(uint256) external override {
         revert("not implemented");
     }
 
-    function claim() external {
+    function claim() external override {
         revert("not implemented");
     }
 
@@ -66,8 +59,36 @@ contract NonLiquidDelegation is BaseDelegation, INonLiquidDelegation {
         revert("not implemented");
     }
 
+    function rewards(uint64) public view returns(uint256) {
+        revert("not implemented");
+    }
+
+    function getDelegatedStake() public view returns(uint256) {
+        revert("not implemented");
+    }
+
+    function withdrawRewards(uint256, uint64) public returns(uint256) {
+        revert("not implemented");
+    }
+
+    function withdrawRewards(uint256) public returns(uint256) {
+        revert("not implemented");
+    }
+
+    function withdrawAllRewards(uint64) public returns(uint256) {
+        revert("not implemented");
+    }
+
+    function withdrawAllRewards() public returns(uint256) {
+        revert("not implemented");
+    }
+
     function supportsInterface(bytes4 interfaceId) public view override returns (bool) {
        return interfaceId == type(INonLiquidDelegation).interfaceId || super.supportsInterface(interfaceId);
+    }
+
+    function interfaceId() public pure returns (bytes4) {
+       return type(INonLiquidDelegation).interfaceId;
     }
 
 }

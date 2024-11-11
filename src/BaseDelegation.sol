@@ -46,7 +46,7 @@ library WithdrawalQueue {
     }
 }
 
-abstract contract BaseDelegation is Delegation, Initializable, PausableUpgradeable, Ownable2StepUpgradeable, UUPSUpgradeable, ERC165Upgradeable {
+abstract contract BaseDelegation is Delegation, PausableUpgradeable, Ownable2StepUpgradeable, UUPSUpgradeable, ERC165Upgradeable {
 
     using WithdrawalQueue for WithdrawalQueue.Fifo;
 
@@ -72,40 +72,20 @@ abstract contract BaseDelegation is Delegation, Initializable, PausableUpgradeab
     address public constant DEPOSIT_CONTRACT = 0x000000000000000000005a494C4445504F534954;
     uint256 public constant DENOMINATOR = 10_000;
 
-    //TODO: check - does it make sense in an abstract contract?
-    /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor() {
-        _disableInitializers();
-    }
-
     function version() public view returns(uint64) {
         return _getInitializedVersion();
     } 
 
-    /*TODO: check - will it ever be called since the contract is abstract?
-    function initialize(address initialOwner) initializer public {
-        __Pausable_init();
-        __Ownable_init(initialOwner);
-        __Ownable2Step_init();
-        __UUPSUpgradeable_init();
-    }*/
-
-    //TODO: check - call the _init() functions of all base contracts
-    //      or leave it to the initializer of the inheriting contracts=
-    function __BaseDelegation_init() internal onlyInitializing {
-        //__Pausable_init();
-        //__Ownable_init(initialOwner);
-        //__Ownable2Step_init();
-        //__UUPSUpgradeable_init();
+    function __BaseDelegation_init(address initialOwner) internal onlyInitializing {
+        __Pausable_init_unchained();
+        __Ownable2Step_init_unchained();
+        __Ownable_init_unchained(initialOwner);
+        __UUPSUpgradeable_init_unchained();
+        __ERC165_init_unchained();
         __BaseDelegation_init_unchained();
     }
 
-    //TODO: check - call the _init_unchained() functions of all base contracts?
     function __BaseDelegation_init_unchained() internal onlyInitializing {
-        //__Pausable_init_unchained();
-        //__Ownable_init_unchained(initialOwner);
-        //__Ownable2Step_init_unchained();
-        //__UUPSUpgradeable_init_unchained();
     }
 
     function _authorizeUpgrade(address newImplementation) internal onlyOwner virtual override {}
@@ -115,7 +95,7 @@ abstract contract BaseDelegation is Delegation, Initializable, PausableUpgradeab
         bytes calldata peerId,
         bytes calldata signature,
         uint256 depositAmount
-    ) internal {
+    ) internal virtual {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
         require($.blsPubKey.length == 0, "deposit already performed");
         $.blsPubKey = blsPubKey;
@@ -133,7 +113,7 @@ abstract contract BaseDelegation is Delegation, Initializable, PausableUpgradeab
         require(success, "deposit failed");
     }
 
-    function _increaseDeposit(uint256 amount) internal {
+    function _increaseDeposit(uint256 amount) internal virtual {
         // topup the deposit only if already activated as a validator
         if (_isActivated()) {
             (bool success, ) = DEPOSIT_CONTRACT.call{
@@ -145,7 +125,7 @@ abstract contract BaseDelegation is Delegation, Initializable, PausableUpgradeab
         }
     }
 
-    function _decreaseDeposit(uint256 amount) internal {
+    function _decreaseDeposit(uint256 amount) internal virtual {
         // unstake the deposit only if already activated as a validator
         if (_isActivated()) {
             (bool success, ) = DEPOSIT_CONTRACT.call(
@@ -157,7 +137,7 @@ abstract contract BaseDelegation is Delegation, Initializable, PausableUpgradeab
         }
     }
 
-    function _withdrawDeposit() internal {
+    function _withdrawDeposit() internal virtual {
         // withdraw the unstaked deposit only if already activated as a validator
         if (_isActivated()) {
             (bool success, ) = DEPOSIT_CONTRACT.call(
@@ -167,27 +147,33 @@ abstract contract BaseDelegation is Delegation, Initializable, PausableUpgradeab
         }
     }
 
-    function _isActivated() internal view returns(bool) {
+    function _isActivated() internal virtual view returns(bool) {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
         return $.blsPubKey.length > 0;
     }
 
-    function getCommissionNumerator() public view returns(uint256) {
+    function getCommissionNumerator() public virtual view returns(uint256) {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
         return $.commissionNumerator;
     }
 
-    function setCommissionNumerator(uint256 _commissionNumerator) public onlyOwner {
+    function setCommissionNumerator(uint256 _commissionNumerator) public virtual onlyOwner {
         require(_commissionNumerator < DENOMINATOR, "invalid commission");
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
         $.commissionNumerator = _commissionNumerator;
     }
 
+    function stake() external virtual payable;
+
+    function unstake(uint256) external virtual;
+
+    function claim() external virtual;
+
     function collectCommission() public virtual;
 
-    function getClaimable() public view returns(uint256 total) {
+    function getClaimable() public virtual view returns(uint256 total) {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
-        WithdrawalQueue.Fifo storage fifo = $.withdrawals[msg.sender];
+        WithdrawalQueue.Fifo storage fifo = $.withdrawals[_msgSender()];
         uint256 index = fifo.first;
         while (fifo.ready(index)) {
             total += fifo.items[index].amount;
@@ -195,25 +181,25 @@ abstract contract BaseDelegation is Delegation, Initializable, PausableUpgradeab
         }
     }
 
-    function _dequeueWithdrawals() internal returns (uint256 total) {
+    function _dequeueWithdrawals() internal virtual returns (uint256 total) {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
-        while ($.withdrawals[msg.sender].ready())
-            total += $.withdrawals[msg.sender].dequeue().amount;
+        while ($.withdrawals[_msgSender()].ready())
+            total += $.withdrawals[_msgSender()].dequeue().amount;
         $.totalWithdrawals -= total;
     }
 
-    function _enqueueWithdrawal(uint256 amount) internal {
+    function _enqueueWithdrawal(uint256 amount) internal virtual {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
-        $.withdrawals[msg.sender].queue(amount);
+        $.withdrawals[_msgSender()].queue(amount);
         $.totalWithdrawals += amount;
     }
 
-    function getTotalWithdrawals() public view returns(uint256) {
+    function getTotalWithdrawals() public virtual view returns(uint256) {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
         return $.totalWithdrawals;
     }
 
-    function getRewards() public view returns(uint256) {
+    function getRewards() public virtual view returns(uint256) {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
         if (!_isActivated())
             return 0;
@@ -225,7 +211,7 @@ abstract contract BaseDelegation is Delegation, Initializable, PausableUpgradeab
         return rewardAddress.balance;
     }
 
-    function getStake() public view returns(uint256) {
+    function getStake() public virtual view returns(uint256) {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
         if (!_isActivated())
             return address(this).balance;
@@ -234,10 +220,6 @@ abstract contract BaseDelegation is Delegation, Initializable, PausableUpgradeab
         );
         require(success, "could not retrieve staked amount");
         return abi.decode(data, (uint256));
-    }
-
-    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
-       return interfaceId == type(BaseDelegation).interfaceId || super.supportsInterface(interfaceId);
     }
 
 }

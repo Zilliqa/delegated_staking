@@ -36,9 +36,13 @@ You will see an output like this:
   Owner is 0x15fc323DFE5D5DCfbeEdc25CEcbf57f676634d77
 ```
 
-You will need the proxy address from the above output in all commands below.
+You will need the proxy address from the above output in all commands below. If you have the address of a proxy contract but don't know which variant of staking it supports, run
+```bash
+forge script script/variant_Delegation.s.sol --rpc-url http://localhost:4201 --sig "run(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2
+```
+The output will be `ILiquidStaking`, `INonLiquidStaking` or none of them if the address is not a valid delegation contract.
 
-To upgrade the contract to `LiquidDelegationV2`, run
+To upgrade the contract to `LiquidDelegationV2` or `NonLiquidDelegationV2` depending on the staking model it implements, run
 ```bash
 forge script script/upgrade_Delegation.s.sol --rpc-url http://localhost:4201 --broadcast --legacy --sig "run(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2
 ```
@@ -73,9 +77,9 @@ cast call 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 "DENOMINATOR()(uint256)" --
 
 Once the validator is activated and starts earning rewards, commissions are transferred automatically to the validator node's account. Commissions of a non-liquid staking validator are deducted when delegators withdraw rewards. In case of the liquid staking variant, commissions are deducted each time delegators stake, unstake or claim what they unstaked, or when the node requests the outstanding commissions that haven't been transferred yet. To collect them, run
 ```bash
-forge script script/commission_Delegation.s.sol --rpc-url http://localhost:4201 --broadcast --legacy --sig "run(address payable, uint16, bool)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 10001 true
+forge script script/commission_Delegation.s.sol --rpc-url http://localhost:4201 --broadcast --legacy --sig "run(address payable, string, bool)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 10001 true
 ```
-using any value for the second argument that is larger than the `DENOMINATOR` to leave the commission percentage unchanged and `true` for the third argument.
+using `same` for the second argument to leave the commission percentage unchanged and `true` for the third argument. Replacing the second argument with `same` and the third argument with `false` only displays the current commission rate.
 
 ## Validator Activation
 If you node's account has enough ZIL for the minimum stake required, you can activate your node as a validator with a deposit of e.g. 10 million ZIL. Run
@@ -115,7 +119,6 @@ The output will look like this for liquid staking:
   Current stake: 10000000000000000000000000 wei
   Current rewards: 110314207650273223687 wei
   LST address: 0x9e5c257D1c6dF74EaA54e58CdccaCb924669dc83
-  Owner balance: 10000000000000000000000000 LST
   Staker balance before: 99899145245801454561224 wei 0 LST
   Staker balance after: 99699145245801454561224 wei 199993793908430833324 LST
 ```
@@ -152,7 +155,6 @@ The output will look like this for liquid staking:
   Current stake: 10000000000000000000000000 wei
   Current rewards: 331912568306010928520 wei
   LST address: 0x9e5c257D1c6dF74EaA54e58CdccaCb924669dc83
-  Owner balance: 10000000000000000000000000 LST
   Staker balance before: 99698814298179759361224 wei 199993784619390291653 LST
   Staker balance after: 99698814298179759361224 wei 99993784619390291653 LST
 ```
@@ -182,3 +184,21 @@ To query how much ZIL you can already claim, run
 ```bash
 cast to-unit $(cast call 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 "getClaimable()(uint256)" --from 0xd819fFcE7A58b1E835c25617Db7b46a00888B013 --block latest --rpc-url http://localhost:4201 | sed 's/\[[^]]*\]//g') ether
 ```
+
+## Withdrawing Rewards
+In the non-liquid variant of staking delegators can withdraw their share of the rewards earned by the validator. To query the amount of rewards available, run
+```bash
+cast to-unit $(cast call 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 "rewards()(uint256)" --from 0xd819fFcE7A58b1E835c25617Db7b46a00888B013 --block latest --rpc-url http://localhost:4201 | sed 's/\[[^]]*\]//g') ether
+```
+
+In case you haven't withdrawn rewards for a long time during which many delegators staked or unstaked, the gas used by the above function might hit the block limit. In this case you can withdraw rewards from the period between the (un)staking until which you withdrew rewards last time and the `n`th subsequent (un)staking. Choose a number `0 <= n <= 11000` e.g. `100` and run
+```bash
+cast to-unit $(cast call 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 "rewards(uint64)(uint256)" 100 --from 0xd819fFcE7A58b1E835c25617Db7b46a00888B013 --block latest --rpc-url http://localhost:4201 | sed 's/\[[^]]*\]//g') ether
+```
+Note that `n` actually denotes the number of additional (un)stakings so that at least one is always reflected in the result, even if you specified `n = 0`.
+
+Last but not least, to withdraw 1 ZIL of rewards using `n = 100`, run
+```bash
+forge script script/rewards_Delegation.s.sol --rpc-url http://localhost:4201 --broadcast --legacy --sig "run(address payable, string, string)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 1000000000000000000 100 --private-key 0x...
+```
+with the private key of an staked account. To withdrawn as much as possible with the given value of `n` set the amount to `all`. To withdraw the chosen amount without setting `n` replace `n` with `all`. To withdraw all rewards replace both the amount and `n` with `all`.
