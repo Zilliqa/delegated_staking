@@ -1,17 +1,21 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 pragma solidity ^0.8.26;
 
-import {Delegation} from "src/Delegation.sol";
-import {DelegationV2} from "src/DelegationV2.sol";
+import {LiquidDelegation} from "src/LiquidDelegation.sol";
+import {LiquidDelegationV2} from "src/LiquidDelegationV2.sol";
 import {NonRebasingLST} from "src/NonRebasingLST.sol";
-import {Deposit} from "src/Deposit.sol";
+import {WithdrawalQueue} from "src/BaseDelegation.sol";
+import {Delegation} from "src/Delegation.sol";
+import {Deposit, InitialStaker} from "src/Deposit.sol";
 import {Console} from "src/Console.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {Test, Vm} from "forge-std/Test.sol";
 import "forge-std/console.sol";
 
-contract DelegationTest is Test {
+contract LiquidDelegationTest is Test {
     address payable proxy;
+    LiquidDelegationV2 delegation;
+    NonRebasingLST lst;
     address owner;
     address staker = 0xd819fFcE7A58b1E835c25617Db7b46a00888B013;
 
@@ -23,11 +27,11 @@ contract DelegationTest is Test {
         vm.startPrank(owner);
 
         address oldImplementation = address(
-            new Delegation()
+            new LiquidDelegation()
         );
 
         bytes memory initializerCall = abi.encodeWithSelector(
-            Delegation.initialize.selector,
+            LiquidDelegation.initialize.selector,
             owner
         );
 
@@ -41,7 +45,7 @@ contract DelegationTest is Test {
             oldImplementation
         );
         //*/
-        Delegation oldDelegation = Delegation(
+        LiquidDelegation oldDelegation = LiquidDelegation(
                 proxy
             );
         /*
@@ -54,7 +58,7 @@ contract DelegationTest is Test {
         );
         //*/
         address payable newImplementation = payable(
-            new DelegationV2()
+            new LiquidDelegationV2()
         );
         /*
         console.log("New implementation deployed: %s",
@@ -62,7 +66,7 @@ contract DelegationTest is Test {
         );
         //*/
         bytes memory reinitializerCall = abi.encodeWithSelector(
-            DelegationV2.reinitialize.selector
+            LiquidDelegationV2.reinitialize.selector
         );
 
         oldDelegation.upgradeToAndCall(
@@ -70,7 +74,7 @@ contract DelegationTest is Test {
             reinitializerCall
         );
 
-        DelegationV2 delegation = DelegationV2(
+        delegation = LiquidDelegationV2(
                 proxy
             );
         /*
@@ -78,7 +82,7 @@ contract DelegationTest is Test {
             delegation.version()
         );
         //*/
-        NonRebasingLST lst = NonRebasingLST(delegation.getLST());
+        lst = NonRebasingLST(delegation.getLST());
         /*
         console.log("LST address: %s",
             address(lst)
@@ -98,16 +102,20 @@ contract DelegationTest is Test {
         );
         //*/
 
+        InitialStaker[] memory initialStakers = new InitialStaker[](0);
         //vm.deployCodeTo("Deposit.sol", delegation.DEPOSIT_CONTRACT());
         vm.etch(
             delegation.DEPOSIT_CONTRACT(), //0x000000000000000000005a494C4445504F534954,
-            address(new Deposit(10_000_000 ether, 256)).code
+            address(new Deposit(10_000_000 ether, 256, 10, initialStakers)).code
         );
-        vm.store(delegation.DEPOSIT_CONTRACT(), bytes32(uint256(3)), bytes32(uint256(10_000_000 ether)));
-        vm.store(delegation.DEPOSIT_CONTRACT(), bytes32(uint256(4)), bytes32(uint256(256)));
+        vm.store(delegation.DEPOSIT_CONTRACT(), bytes32(uint256(11)), bytes32(uint256(block.number / 10)));
+        vm.store(delegation.DEPOSIT_CONTRACT(), bytes32(uint256(12)), bytes32(uint256(10_000_000 ether)));
+        vm.store(delegation.DEPOSIT_CONTRACT(), bytes32(uint256(13)), bytes32(uint256(256)));
+        vm.store(delegation.DEPOSIT_CONTRACT(), bytes32(uint256(14)), bytes32(uint256(10)));
         /*
-        console.log("Deposit._minimimStake() =", Deposit(delegation.DEPOSIT_CONTRACT())._minimumStake());
-        console.log("Deposit._maximumStakers() =", Deposit(delegation.DEPOSIT_CONTRACT())._maximumStakers());
+        console.log("Deposit.minimimStake() =", Deposit(delegation.DEPOSIT_CONTRACT()).minimumStake());
+        console.log("Deposit.maximumStakers() =", Deposit(delegation.DEPOSIT_CONTRACT()).maximumStakers());
+        console.log("Deposit.blocksPerEpoch() =", Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch());
         //*/
     }
 
@@ -122,8 +130,8 @@ contract DelegationTest is Test {
         uint256 blocksUntil,
         bool initialDeposit
     ) public {
-        DelegationV2 delegation = DelegationV2(proxy);
-        NonRebasingLST lst = NonRebasingLST(delegation.getLST());
+        delegation = LiquidDelegationV2(proxy);
+        lst = NonRebasingLST(delegation.getLST());
 
         if (initialDeposit) {
             vm.deal(owner, owner.balance + depositAmount);
@@ -147,10 +155,10 @@ contract DelegationTest is Test {
                 true,
                 address(delegation)
             );
-            emit DelegationV2.Staked(
+            emit Delegation.Staked(
                 staker,
                 depositAmount,
-                depositAmount
+                abi.encode(depositAmount)
             );
 
             delegation.stake{
@@ -164,9 +172,11 @@ contract DelegationTest is Test {
                 bytes(hex"002408011220d5ed74b09dcbe84d3b32a56c01ab721cf82809848b6604535212a219d35c412f"),
                 bytes(hex"b14832a866a49ddf8a3104f8ee379d29c136f29aeb8fccec9d7fb17180b99e8ed29bee2ada5ce390cb704bc6fd7f5ce814f914498376c4b8bc14841a57ae22279769ec8614e2673ba7f36edc5a4bf5733aa9d70af626279ee2b2cde939b4bd8a")
             );
-        } 
+        }
+        // wait 2 epochs for the change to the deposit to take affect
+        vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
 
-        vm.store(address(delegation), 0x669e9cfa685336547bc6d91346afdd259f6cd8c0cb6d0b16603b5fa60cb48804, bytes32(taxedRewardsBeforeStaking));
+        vm.store(address(delegation), 0xfa57cbed4b267d0bc9f2cbdae86b4d1d23ca818308f873af9c968a23afadfd01, bytes32(taxedRewardsBeforeStaking));
         vm.deal(address(delegation), rewardsBeforeStaking);
         vm.deal(staker, 100_000 ether);
         vm.startPrank(staker);
@@ -217,10 +227,10 @@ contract DelegationTest is Test {
                 false,
                 address(delegation)
             );
-            emit DelegationV2.Staked(
+            emit Delegation.Staked(
                 staker,
                 delegatedAmount,
-                lst.totalSupply() * delegatedAmount / (delegation.getStake() + delegation.getRewards())
+                abi.encode(lst.totalSupply() * delegatedAmount / (delegation.getStake() + delegation.getRewards()))
             );
 
             ownerZILBefore = delegation.owner().balance;
@@ -229,12 +239,17 @@ contract DelegationTest is Test {
                 value: delegatedAmount
             }();
 
+            // wait 2 epochs for the change to the deposit to take affect
+            vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
+
             ownerZILAfter = delegation.owner().balance;
 
             entries = vm.getRecordedLogs();
             for (uint256 i = 0; i < entries.length; i++) {
-                if (entries[i].topics[0] == keccak256("Staked(address,uint256,uint256)")) {
-                    (loggedAmount, loggedShares) = abi.decode(entries[i].data, (uint256, uint256));
+                if (entries[i].topics[0] == keccak256("Staked(address,uint256,bytes)")) {
+                    bytes memory x;
+                    (loggedAmount, x) = abi.decode(entries[i].data, (uint256, bytes));
+                    loggedShares = abi.decode(x, (uint256));
                     assertEq(loggedAmount, delegatedAmount, "staked amount mismatch");
                 }
             }
@@ -296,10 +311,10 @@ contract DelegationTest is Test {
             false,
             address(delegation)
         );
-        emit DelegationV2.Unstaked(
+        emit Delegation.Unstaked(
             staker,
             (delegation.getStake() + delegation.getRewards()) * lst.balanceOf(staker) / lst.totalSupply(),
-            lst.balanceOf(staker)
+            abi.encode(lst.balanceOf(staker))
         );
 
         uint256 stakerLSTBefore = lst.balanceOf(staker);
@@ -312,14 +327,19 @@ contract DelegationTest is Test {
             shares
         );
 
+        // wait 2 epochs for the change to the deposit to take affect
+        vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
+
         uint256 stakerLSTAfter = lst.balanceOf(staker);
         ownerZILAfter = delegation.owner().balance;
 
         entries = vm.getRecordedLogs();
         
         for (uint256 i = 0; i < entries.length; i++) {
-            if (entries[i].topics[0] == keccak256("Unstaked(address,uint256,uint256)")) {
-                (loggedAmount, loggedShares) = abi.decode(entries[i].data, (uint256, uint256));
+            if (entries[i].topics[0] == keccak256("Unstaked(address,uint256,bytes)")) {
+                bytes memory x;
+                (loggedAmount, x) = abi.decode(entries[i].data, (uint256, bytes));
+                loggedShares = abi.decode(x, (uint256));
             } 
         }
         assertEq(totalShares * lstPrice / 10**18 / 1 ether, loggedAmount, "unstaked amount mismatch");
@@ -360,6 +380,8 @@ contract DelegationTest is Test {
         );
 
         vm.roll(block.number + blocksUntil);
+        //TODO: remove the next line once https://github.com/Zilliqa/zq2/issues/1761 is fixed
+        vm.warp(block.timestamp + blocksUntil);
 
         vm.recordLogs();
 
@@ -373,9 +395,10 @@ contract DelegationTest is Test {
             false,
             address(delegation)
         );
-        emit DelegationV2.Claimed(
+        emit Delegation.Claimed(
             staker,
-            unstakedAmount
+            unstakedAmount,
+            ""
         );
 
         uint256 stakerZILBefore = staker.balance;
@@ -389,8 +412,8 @@ contract DelegationTest is Test {
         entries = vm.getRecordedLogs();
 
         for (uint256 i = 0; i < entries.length; i++) {
-            if (entries[i].topics[0] == keccak256("Claimed(address,uint256)")) {
-                loggedAmount = abi.decode(entries[i].data, (uint256));
+            if (entries[i].topics[0] == keccak256("Claimed(address,uint256,bytes)")) {
+                (loggedAmount, ) = abi.decode(entries[i].data, (uint256,bytes));
             } 
         }
         assertEq(loggedAmount, unstakedAmount, "unstaked vs claimed amount mismatch");
@@ -446,10 +469,66 @@ contract DelegationTest is Test {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking, // rewardsBeforeUnstaking
-            30, // after unstaking wait blocksUntil claiming
+            WithdrawalQueue.UNBONDING_PERIOD, // after unstaking wait blocksUntil claiming
             true // initialDeposit using funds held by the node, otherwise delegated by a staker
         );
     } 
+
+    //TODO: remove the test once https://github.com/Zilliqa/zq2/issues/1761 is fixed
+    function test_DepositContract() public {
+        vm.deal(owner, 10_000_000 ether + 1_000_000 ether + 0 ether);
+        vm.deal(staker, 0);
+        vm.startPrank(owner);
+        Deposit(delegation.DEPOSIT_CONTRACT()).deposit{
+            value: 10_000_000 ether
+        }(
+            bytes(hex"92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c"),
+            bytes(hex"002408011220d5ed74b09dcbe84d3b32a56c01ab721cf82809848b6604535212a219d35c412f"),
+            bytes(hex"b14832a866a49ddf8a3104f8ee379d29c136f29aeb8fccec9d7fb17180b99e8ed29bee2ada5ce390cb704bc6fd7f5ce814f914498376c4b8bc14841a57ae22279769ec8614e2673ba7f36edc5a4bf5733aa9d70af626279ee2b2cde939b4bd8a"),
+            address(staker)
+        );
+        console.log("validator deposited");
+        console.log("validator stake: %s", Deposit(delegation.DEPOSIT_CONTRACT()).getStake(
+            bytes(hex"92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c")
+        ));
+        vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
+        console.log("validator stake: %s", Deposit(delegation.DEPOSIT_CONTRACT()).getStake(
+            bytes(hex"92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c")
+        ));
+        Deposit(delegation.DEPOSIT_CONTRACT()).depositTopup{
+            value: 1_000_000 ether
+        }();
+        console.log("validator staked");
+        console.log("validator stake: %s", Deposit(delegation.DEPOSIT_CONTRACT()).getStake(
+            bytes(hex"92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c")
+        ));
+        vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
+        console.log("validator stake: %s", Deposit(delegation.DEPOSIT_CONTRACT()).getStake(
+            bytes(hex"92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c")
+        ));
+        Deposit(delegation.DEPOSIT_CONTRACT()).unstake(
+            500_000 ether
+        );
+        console.log("validator unstaked");
+        console.log("validator stake: %s", Deposit(delegation.DEPOSIT_CONTRACT()).getStake(
+            bytes(hex"92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c")
+        ));
+        vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
+        console.log("validator stake: %s", Deposit(delegation.DEPOSIT_CONTRACT()).getStake(
+            bytes(hex"92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c")
+        ));
+        console.log("validator balance: %s", owner.balance);
+        Deposit(delegation.DEPOSIT_CONTRACT()).withdraw();
+        console.log("validator withdrew");
+        console.log("validator balance: %s", owner.balance);
+        //vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).withdrawalPeriod());
+        //TODO: once https://github.com/Zilliqa/zq2/issues/1761 is fixed, uncomment the previous line and comment out the next one
+        vm.warp(block.timestamp + Deposit(delegation.DEPOSIT_CONTRACT()).withdrawalPeriod()); // skip(WithdrawalQueue.UNBONDING_PERIOD);
+        Deposit(delegation.DEPOSIT_CONTRACT()).withdraw();
+        console.log("validator withdrew again");
+        console.log("validator balance: %s", owner.balance);
+        vm.stopPrank();
+    }
 
     function test_1b_LargeStake_Early_NoRewards_UnstakeAll() public {
         staker = 0x092E5E57955437876dA9Df998C96e2BE19341670;
@@ -469,7 +548,7 @@ contract DelegationTest is Test {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking, // rewardsBeforeUnstaking
-            30, // after unstaking wait blocksUntil claiming
+            WithdrawalQueue.UNBONDING_PERIOD, // after unstaking wait blocksUntil claiming
             true // initialDeposit using funds held by the node, otherwise delegated by a staker
         );
     } 
@@ -492,7 +571,7 @@ contract DelegationTest is Test {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            30, // after unstaking wait blocksUntil claiming
+            WithdrawalQueue.UNBONDING_PERIOD, // after unstaking wait blocksUntil claiming
             true // initialDeposit using funds held by the node, otherwise delegated by a staker
         );
     } 
@@ -515,7 +594,7 @@ contract DelegationTest is Test {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            30, // after unstaking wait blocksUntil claiming
+            WithdrawalQueue.UNBONDING_PERIOD, // after unstaking wait blocksUntil claiming
             true // initialDeposit using funds held by the node, otherwise delegated by a staker
         );
     } 
@@ -538,7 +617,7 @@ contract DelegationTest is Test {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            30, // after unstaking wait blocksUntil claiming
+            WithdrawalQueue.UNBONDING_PERIOD, // after unstaking wait blocksUntil claiming
             true // initialDeposit using funds held by the node, otherwise delegated by a staker
         );
     }
@@ -561,7 +640,7 @@ contract DelegationTest is Test {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            30, // after unstaking wait blocksUntil claiming
+            WithdrawalQueue.UNBONDING_PERIOD, // after unstaking wait blocksUntil claiming
             true // initialDeposit using funds held by the node, otherwise delegated by a staker
         );
     }
@@ -584,7 +663,7 @@ contract DelegationTest is Test {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            30, // after unstaking wait blocksUntil claiming
+            WithdrawalQueue.UNBONDING_PERIOD, // after unstaking wait blocksUntil claiming
             true // initialDeposit using funds held by the node, otherwise delegated by a staker
         );
     } 
@@ -607,7 +686,7 @@ contract DelegationTest is Test {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            30, // after unstaking wait blocksUntil claiming
+            WithdrawalQueue.UNBONDING_PERIOD, // after unstaking wait blocksUntil claiming
             false // initialDeposit using funds held by the node, otherwise delegated by a staker
         );
     } 
@@ -630,7 +709,7 @@ contract DelegationTest is Test {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            30, // after unstaking wait blocksUntil claiming
+            WithdrawalQueue.UNBONDING_PERIOD, // after unstaking wait blocksUntil claiming
             false // initialDeposit using funds held by the node, otherwise delegated by a staker
         );
     }
@@ -653,7 +732,7 @@ contract DelegationTest is Test {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            30, // after unstaking wait blocksUntil claiming
+            WithdrawalQueue.UNBONDING_PERIOD, // after unstaking wait blocksUntil claiming
             false // initialDeposit using funds held by the node, otherwise delegated by a staker
         );
     }
@@ -676,7 +755,7 @@ contract DelegationTest is Test {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            30, // after unstaking wait blocksUntil claiming
+            WithdrawalQueue.UNBONDING_PERIOD, // after unstaking wait blocksUntil claiming
             true // initialDeposit using funds held by the node, otherwise delegated by a staker
         );
     }
@@ -699,7 +778,7 @@ contract DelegationTest is Test {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            30, // after unstaking wait blocksUntil claiming
+            WithdrawalQueue.UNBONDING_PERIOD, // after unstaking wait blocksUntil claiming
             false // initialDeposit using funds held by the node, otherwise delegated by a staker
         );
     } 
@@ -722,7 +801,7 @@ contract DelegationTest is Test {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            30, // after unstaking wait blocksUntil claiming
+            WithdrawalQueue.UNBONDING_PERIOD, // after unstaking wait blocksUntil claiming
             false // initialDeposit using funds held by the node, otherwise delegated by a staker
         );
     }
@@ -745,7 +824,7 @@ contract DelegationTest is Test {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            30, // after unstaking wait blocksUntil claiming
+            WithdrawalQueue.UNBONDING_PERIOD, // after unstaking wait blocksUntil claiming
             false // initialDeposit using funds held by the node, otherwise delegated by a staker
         );
     } 
@@ -770,7 +849,7 @@ contract DelegationTest is Test {
             // (numberOfDelegations - 1) * rewardsAccruedAfterEach <= rewardsBeforeUnstaking
             5 * 51_000 ether / uint256(3600) * depositAmount / totalDeposit, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 51_000 ether / uint256(60) * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            30, // after unstaking wait blocksUntil claiming
+            WithdrawalQueue.UNBONDING_PERIOD, // after unstaking wait blocksUntil claiming
             true // initialDeposit using funds held by the node, otherwise delegated by a staker
         );
     }
@@ -793,7 +872,7 @@ contract DelegationTest is Test {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 51_000 ether / uint256(60) * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            30, // after unstaking wait blocksUntil claiming
+            WithdrawalQueue.UNBONDING_PERIOD, // after unstaking wait blocksUntil claiming
             true // initialDeposit using funds held by the node, otherwise delegated by a staker
         );
     }
@@ -819,7 +898,8 @@ contract DelegationTest is Test {
 
     Before running the test, replace the address on the first line with <staker_address>
     */
-    function test_0_ReproduceRealNetwork() public {
+    //TODO: update the values based on the devnet and fix the failing test (typo intentional)
+    function est_0_ReproduceRealNetwork() public {
         staker = 0xd819fFcE7A58b1E835c25617Db7b46a00888B013;
         uint256 delegatedAmount = 10_000 ether;
         // Insert the following values output by the STATE script below
@@ -840,7 +920,7 @@ contract DelegationTest is Test {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             rewardsBeforeUnstaking,
-            30, // blocksUntil claiming
+            WithdrawalQueue.UNBONDING_PERIOD, // blocksUntil claiming
             true // initialDeposit
         );
         // Replace the values below in the same order with the values output by the STATE script
@@ -858,8 +938,10 @@ contract DelegationTest is Test {
         // the owner's ZIL balance in wei according to the STATE script before staking
         // the transaction fees in wei output by the STAKING and UNSTAKING scripts
         Console.log("Actual owner commission: %s.%s%s ZIL",
-            100032.696802178975738911 ether - 100025.741948627073967394 ether
-            + 0.6143714334864 ether + 0.8724381022176 ether
+            uint256(
+                100032.696802178975738911 ether - 100025.741948627073967394 ether
+                + 0.6143714334864 ether + 0.8724381022176 ether
+            )
         );
         // Compare the value logged above with the sum of the following values
         // you will see after running the test:

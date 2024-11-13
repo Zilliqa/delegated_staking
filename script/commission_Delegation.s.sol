@@ -2,41 +2,47 @@
 pragma solidity ^0.8.26;
 
 import {Script} from "forge-std/Script.sol";
-import {NonRebasingLST} from "src/NonRebasingLST.sol";
-import {DelegationV2} from "src/DelegationV2.sol";
+import {BaseDelegation} from "src/BaseDelegation.sol";
 import {Console} from "src/Console.sol";
+import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import "forge-std/console.sol";
 
-contract Stake is Script {
-    function run(address payable proxy, uint16 commissionNumerator) external {
+contract Commission is Script {
+    using Strings for string;
 
+    function run(address payable proxy, string calldata commissionNumerator, bool collectCommission) external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
 
-        DelegationV2 delegation = DelegationV2(
-                proxy
-            );
+        BaseDelegation delegation = BaseDelegation(
+            proxy
+        );
 
         console.log("Running version: %s",
             delegation.version()
         );
 
-        NonRebasingLST lst = NonRebasingLST(delegation.getLST());
-        console.log("LST address: %s",
-            address(lst)
-        );
-
-        Console.log("Old commission rate: %s.%s%s%%",
+        Console.log("Commission rate: %s.%s%s%%",
             delegation.getCommissionNumerator(),
             2
         );
 
-        vm.broadcast(deployerPrivateKey);
+        if (!commissionNumerator.equal("same")) {
+            vm.broadcast(deployerPrivateKey);
 
-        delegation.setCommissionNumerator(commissionNumerator);
+            delegation.setCommissionNumerator(uint16(vm.parseUint(commissionNumerator)));
 
-        Console.log("New commission rate: %s.%s%s%%",
-            delegation.getCommissionNumerator(),
-            2
-        );
+            Console.log("New commission rate: %s.%s%s%%",
+                delegation.getCommissionNumerator(),
+                2
+            );
+        }
+
+        if (collectCommission) {
+            vm.broadcast(deployerPrivateKey);
+
+            delegation.collectCommission();
+
+            console.log("Outstanding commission transferred");
+        }
     }
 }
