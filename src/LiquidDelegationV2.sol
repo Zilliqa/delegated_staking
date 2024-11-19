@@ -96,26 +96,11 @@ contract LiquidDelegationV2 is BaseDelegation, ILiquidDelegation {
             $.taxedRewards -= msg.value;
         }
         uint256 depositedStake = getStake();
-        if (
-            // if the validator hasn't deposited or
-            NonRebasingLST($.lst).totalSupply() == 0 ||
-            // the deposit hasn't become effective yet
-            depositedStake + $.taxedRewards == 0
-            //TODO: The delay between staking and the deposit topup taking effect
-            //      is a more general issue and does not only concern the initial
-            //      deposit. It falsifies the price which does not take the stake
-            //      into account that has just been delegated and does yet not appear
-            //      in the depositedStake. It may help to add msg.value to depositedStake
-            //      and taxedRewards here to get the correct price and amount of LST to be
-            //      minted, but getPrice() will not take the pending stakings and unstakings
-            //      into account. unless the deposit contract includes them in the value returned
-            //      by getStake(). The solution proposed is to implement a getPendingStake()
-            //      function is the deposit contract which returns the total of the initial
-            //      deposit, all topups and unstaked amounts into account regardless of in
-            //      which epoch they become effective.
-        )
+        if (NonRebasingLST($.lst).totalSupply() == 0)
+            // if the validator hasn't deposited yet, the formula for calculating the shares would divide by zero, therefore
             shares = msg.value;
         else
+            // otherwise depositedStake is greater than zero even if the deposit hasn't been activated yet
             shares = NonRebasingLST($.lst).totalSupply() * msg.value / (depositedStake + $.taxedRewards);
         NonRebasingLST($.lst).mint(_msgSender(), shares);
         _increaseDeposit(msg.value);
@@ -194,6 +179,7 @@ contract LiquidDelegationV2 is BaseDelegation, ILiquidDelegation {
         taxRewards();
     }
 
+    // this function was only made public for testing purposes
     function getTaxedRewards() public view returns(uint256) {
         LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
         return $.taxedRewards;

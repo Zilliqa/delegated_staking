@@ -1,7 +1,7 @@
 #!/bin/bash
 
 if [ $# -lt 2 ]; then
-    echo "Provide the delegation contract address, a staker private key and optionally the number of shares as arguments."
+    echo "Provide the delegation contract address, a staker private key and optionally how much to unstake as arguments."
     exit 1
 fi
 
