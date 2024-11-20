@@ -15,7 +15,7 @@ The delegation contract is used by delegators to stake and unstake ZIL with the 
 
 `LiquidDelegation` is the initial implementation of the liquid staking variant of the delegation contract that creates a `NonRebasingLST` contract when it is initialized. `LiquidDelegationV2` implements all other features. `NonLiquidDelegation` is the initial implementation of the non-liquid staking variant of the delegation contract that allows delegators to withdraw rewards.
 
-The delegation contract shall be deployed and upgraded by the account with the private key that was used to run the validator node and was used to generate its BLS keypair and peer id. Make sure the `PRIVATE_KEY` environment variable is set accordingly.
+Before running the deployment script, set the `PRIVATE_KEY` environment variable to the private key of the contract owner. Note that only the contract owner will be able to upgrade the contract, change the commission and activate the node as a validator.
 
 To deploy `LiquidDelegation` run
 ```bash
@@ -60,7 +60,7 @@ The output will look like this:
 
 Now or at a later time you can set the commission on the rewards the validator earns to e.g. 10% as follows:
 ```bash
-forge script script/commission_Delegation.s.sol --rpc-url http://localhost:4201 --broadcast --legacy --sig "run(address payable, uint16, bool)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 1000 false
+forge script script/commission_Delegation.s.sol --rpc-url http://localhost:4201 --broadcast --legacy --sig "run(address payable, string, bool)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 1000 false
 ```
 
 The output will contain the following information:
@@ -77,7 +77,7 @@ cast call 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 "DENOMINATOR()(uint256)" --
 
 Once the validator is activated and starts earning rewards, commissions are transferred automatically to the validator node's account. Commissions of a non-liquid staking validator are deducted when delegators withdraw rewards. In case of the liquid staking variant, commissions are deducted each time delegators stake, unstake or claim what they unstaked, or when the node requests the outstanding commissions that haven't been transferred yet. To collect them, run
 ```bash
-forge script script/commission_Delegation.s.sol --rpc-url http://localhost:4201 --broadcast --legacy --sig "run(address payable, string, bool)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 10001 true
+forge script script/commission_Delegation.s.sol --rpc-url http://localhost:4201 --broadcast --legacy --sig "run(address payable, string, bool)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 same true
 ```
 using `same` for the second argument to leave the commission percentage unchanged and `true` for the third argument. Replacing the second argument with `same` and the third argument with `false` only displays the current commission rate.
 

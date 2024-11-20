@@ -10,9 +10,7 @@ import "src/Delegation.sol";
 
 library WithdrawalQueue {
 
-    //TODO: value set for testing purposes, make it equal to 2 * 7 * 24 * 60 * 60
-    // if governance changes the unbonding period, update the value and upgrade the contract
-    uint256 public constant UNBONDING_PERIOD = 30;
+    address public constant DEPOSIT_CONTRACT = 0x000000000000000000005a494C4445504F534954;
 
     struct Item {
         uint256 blockNumber;
@@ -25,8 +23,16 @@ library WithdrawalQueue {
         mapping(uint256 => Item) items;
     }
 
+    function unbondingPeriod() view internal returns(uint256) {
+        (bool success, bytes memory data) = DEPOSIT_CONTRACT.staticcall(
+            abi.encodeWithSignature("withdrawalPeriod()")
+        );
+        require(success, "unbonding period unknown");
+        return abi.decode(data, (uint256));
+    }
+
     function queue(Fifo storage fifo, uint256 amount) internal {
-        fifo.items[fifo.last] = Item(block.number + UNBONDING_PERIOD, amount);
+        fifo.items[fifo.last] = Item(block.number + unbondingPeriod(), amount);
         fifo.last++;
     }
 
@@ -216,7 +222,7 @@ abstract contract BaseDelegation is Delegation, PausableUpgradeable, Ownable2Ste
         if (!_isActivated())
             return address(this).balance;
         (bool success, bytes memory data) = DEPOSIT_CONTRACT.staticcall(
-            abi.encodeWithSignature("getStake(bytes)", $.blsPubKey)
+            abi.encodeWithSignature("getFutureStake(bytes)", $.blsPubKey)
         );
         require(success, "could not retrieve staked amount");
         return abi.decode(data, (uint256));

@@ -3,8 +3,10 @@ pragma solidity ^0.8.26;
 
 import "src/BaseDelegation.sol";
 import "src/NonLiquidDelegation.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 contract NonLiquidDelegationV2 is BaseDelegation, INonLiquidDelegation {
+    using SafeCast for int256;
 
     struct Staking {
         //TODO: just for testing purposes, can be removed
@@ -183,7 +185,7 @@ contract NonLiquidDelegationV2 is BaseDelegation, INonLiquidDelegation {
         uint256 newRewards; // no rewards before the first staker is added
         if ($.stakings.length > 0) {
             value += int256($.stakings[$.stakings.length - 1].total);
-            newRewards = _uint256(int256(getRewards()) - $.totalRewards);
+            newRewards = (int256(getRewards()) - $.totalRewards).toUint256();
         }
         $.totalRewards = int256(getRewards());
         //$.stakings.push(Staking(uint256(amount), uint256(value), newRewards));
@@ -240,6 +242,9 @@ contract NonLiquidDelegationV2 is BaseDelegation, INonLiquidDelegation {
         (uint256 result, uint64 i, uint64 index) = additionalSteps == type(uint64).max ?
             _rewards() :
             _rewards(additionalSteps);
+        // the caller has not delegated any stake
+        if (index == 0)
+            return 0;
         uint256 taxedRewards = taxRewards(result);
         $.allWithdrawnRewards[_msgSender()] += taxedRewards;
         $.firstStakingIndex[_msgSender()] = i;
@@ -260,15 +265,6 @@ contract NonLiquidDelegationV2 is BaseDelegation, INonLiquidDelegation {
         return _rewards(type(uint64).max);
     }
 
-    //TODO: The contract assumes that delegators start contributing to the rewards earned by the validator
-    //      from the point when they delegate their stake. However, this is not true since the delegated
-    //      stake is only added to the validator's deposit in the epoch after next. Smilarly, the contract
-    //      assumes that unstaking has immediate effect on the validator's deposit i.e. the delegator's
-    //      contribution to the rewards earned by the validator are descreased accordingly. This is also
-    //      not correct and it could be misused by delegators to maximize their share of the rewards at
-    //      the expense of other delegators by staking in the first and unstaking in the last block of an
-    //      epoch and thereby receiving a share of the rewards for 3599 additional blocks during which the
-    //      validator was actually not earning more rewards due to the stake of the delegator.
     function _rewards(uint64 additionalSteps) internal view returns(uint256 result, uint64 i, uint64 index) {
         NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
         uint64 firstIndex;
@@ -290,10 +286,18 @@ contract NonLiquidDelegationV2 is BaseDelegation, INonLiquidDelegation {
                     return (result, i, index);
             }
             // all rewards recorded in the stakings were taken into account
-            if (index == $.stakings.length)
+            if (index == $.stakings.length) {
+                // ensure that the next time we call withdrawRewards() the last index
+                // representing the rewards accrued since the last staking are not
+                // included in the result any more - however, what if there have
+                // been no stakings i.e. the last index remains the same, but there
+                // have been additional rewards - how can we determine the amount of
+                // rewards added since we called withdrawRewards() last time?
+                // index++;
                 // the last step is to add the rewards accrued since the last staking
                 if (total > 0)
-                    result += _uint256(int256(getRewards()) - $.totalRewards) * amount / total;
+                    result += (int256(getRewards()) - $.totalRewards).toUint256() * amount / total;
+            }
         }
         // ensure that the next time the function is called the initial value of i refers
         // to the last amount and total among the stakingIndices of the staker that already
@@ -303,12 +307,6 @@ contract NonLiquidDelegationV2 is BaseDelegation, INonLiquidDelegation {
     }
 
     function collectCommission() public override {}
-
-    function _uint256(int256 num) internal pure returns(uint256 res) {
-        // underflow is intentional as a way of handling
-        // assignments of a negative int256 to an uint256
-        res = num < 0 ? 0 - uint256(num) : uint256(num);
-    }
 
     function supportsInterface(bytes4 interfaceId) public view override returns (bool) {
        return interfaceId == type(INonLiquidDelegation).interfaceId || super.supportsInterface(interfaceId);

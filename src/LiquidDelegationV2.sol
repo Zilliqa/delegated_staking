@@ -96,30 +96,40 @@ contract LiquidDelegationV2 is BaseDelegation, ILiquidDelegation {
             $.taxedRewards -= msg.value;
         }
         uint256 depositedStake = getStake();
-        if (
-            // if the validator hasn't deposited or
-            NonRebasingLST($.lst).totalSupply() == 0 ||
-            // the deposit hasn't become effective yet
-            depositedStake + $.taxedRewards == 0
-            //TODO: The delay between staking and the deposit topup taking effect
-            //      is a more general issue and does not only concern the initial
-            //      deposit. It falsifies the price which does not take the stake
-            //      into account that has just been delegated and does yet not appear
-            //      in the depositedStake. It may help to add msg.value to depositedStake
-            //      and taxedRewards here to get the correct price and amount of LST to be
-            //      minted, but getPrice() will not take the pending stakings and unstakings
-            //      into account. unless the deposit contract includes them in the value returned
-            //      by getStake(). The solution proposed is to implement a getPendingStake()
-            //      function is the deposit contract which returns the total of the initial
-            //      deposit, all topups and unstaked amounts into account regardless of in
-            //      which epoch they become effective.
-        )
+        if (NonRebasingLST($.lst).totalSupply() == 0)
+            // if the validator hasn't deposited yet, the formula for calculating the shares would divide by zero, therefore
             shares = msg.value;
         else
+            // otherwise depositedStake is greater than zero even if the deposit hasn't been activated yet
             shares = NonRebasingLST($.lst).totalSupply() * msg.value / (depositedStake + $.taxedRewards);
         NonRebasingLST($.lst).mint(_msgSender(), shares);
         _increaseDeposit(msg.value);
         emit Staked(_msgSender(), msg.value, abi.encode(shares));
+    }
+
+    //TODO: remove the whole function, was added temporarily for testing if the
+    //      validator can unstake its entire deposit to remove itself from the committee,
+    //      returns the amount to be paid, the contract's balance,
+    //      the gap to be withdrawn from the deposit and the contract's deposit
+    function unstake2(uint256 shares) public view returns(uint256, uint256, int256, uint256) {
+        uint256 amount;
+        LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
+        // before calculating the amount deduct the commission from the yet untaxed rewards
+        //taxRewards();
+        uint256 rewards = getRewards();
+        uint256 commission = (rewards - $.taxedRewards) * getCommissionNumerator() / DENOMINATOR;
+        uint256 taxedRewards = rewards - commission;
+        if (NonRebasingLST($.lst).totalSupply() == 0)
+            amount = shares;
+        else
+            amount = (getStake() + taxedRewards) * shares / NonRebasingLST($.lst).totalSupply();
+        //_enqueueWithdrawal(amount);
+        // maintain a balance that is always sufficient to cover the claims
+        //if (address(this).balance < getTotalWithdrawals())
+        //    _decreaseDeposit(getTotalWithdrawals() - address(this).balance);
+        return (amount, address(this).balance - commission, int256(getTotalWithdrawals()) + int256(amount) - int256(address(this).balance - commission), getStake());
+        //NonRebasingLST($.lst).burn(_msgSender(), shares);
+        //emit Unstaked(_msgSender(), amount, abi.encode(shares));
     }
 
     function unstake(uint256 shares) public override whenNotPaused {
@@ -194,6 +204,7 @@ contract LiquidDelegationV2 is BaseDelegation, ILiquidDelegation {
         taxRewards();
     }
 
+    // this function was only made public for testing purposes
     function getTaxedRewards() public view returns(uint256) {
         LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
         return $.taxedRewards;

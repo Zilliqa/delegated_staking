@@ -52,7 +52,11 @@ commissionNumerator=$(cast call $1 "getCommissionNumerator()(uint256)" --block $
 denominator=$(cast call $1 "DENOMINATOR()(uint256)" --block $block_num --rpc-url http://localhost:4201 | sed 's/\[[^]]*\]//g')
 if [[ "$variant" == "ILiquidDelegation" ]]; then
     totalSupply=$(cast call $lst "totalSupply()(uint256)" --block $block_num --rpc-url http://localhost:4201 | sed 's/\[[^]]*\]//g')
-    price=$(bc -l <<< "scale=36; ($stake+$rewardsBeforeUnstaking-($rewardsBeforeUnstaking-$taxedRewardsBeforeUnstaking)*$commissionNumerator/$denominator)/$totalSupply")
+    if [[ $totalSupply -ne 0 ]]; then
+        price=$(bc -l <<< "scale=36; ($stake+$rewardsBeforeUnstaking-($rewardsBeforeUnstaking-$taxedRewardsBeforeUnstaking)*$commissionNumerator/$denominator)/$totalSupply")
+    else
+        price=$(bc -l <<< "scale=36; 1/1")
+    fi
     price0=$(cast call $1 "getPrice()(uint256)" --block $block_num --rpc-url http://localhost:4201 | sed 's/\[[^]]*\]//g')
     echo LST supply: $(cast to-unit $totalSupply ether) ZIL
     echo LST price: $price \~ $(cast to-unit $price0 ether)
@@ -66,5 +70,7 @@ fi
 claimable=$(cast call $1 "getClaimable()(uint256)" --from $2 --block $block_num --rpc-url http://localhost:4201 | sed 's/\[[^]]*\]//g')
 echo staker claimable: $(cast to-unit $claimable ether) ZIL
 
-echo validator stake: $(cast to-unit $stake ether) ZIL
+echo validator deposit: $(cast to-unit $stake ether) ZIL
+balance=$(cast rpc eth_getBalance $1 $block --rpc-url http://localhost:4201 | tr -d '"' | cast to-dec --base-in 16)
+echo validator balance: $(cast to-unit $balance ether) ZIL
 echo pending withdrawals: $(cast call $1 "getTotalWithdrawals()(uint256)" --block $block_num --rpc-url http://localhost:4201 | sed 's/\[[^]]*\]//g') wei

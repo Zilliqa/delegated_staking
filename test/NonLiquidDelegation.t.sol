@@ -24,6 +24,7 @@ contract NonLiquidDelegationTest is Test {
     ];
 
     function setUp() public {
+        vm.chainId(33469);
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         owner = vm.addr(deployerPrivateKey);
         //console.log("Signer is %s", owner);
@@ -338,6 +339,31 @@ contract NonLiquidDelegationTest is Test {
             //Console.log("staker balance: %s.%s%s", staker[i-1].balance);
             vm.stopPrank();
         }
+
+        // if we try to withdraw again immediately (in the same block),
+        // the amount withdrawn must equal zero
+        //*
+        for (uint256 i = 1; i <= staker.length; i++) {
+            vm.startPrank(staker[i-1]);
+            if (steps == 123_456_789)
+                snapshot("staker %s withdrawing all, remaining rewards:", i, 0);
+            else
+                snapshot("staker %s withdrawing 1+%s times", i, steps);
+            Console.log("rewards accrued until last staking: %s.%s%s", delegation.getTotalRewards());
+            Console.log("delegation contract balance: %s.%s%s", address(delegation).balance);
+            //Console.log("staker balance: %s.%s%s", staker[i-1].balance);
+            Console.log("staker rewards: %s.%s%s", delegation.rewards());
+            if (steps == 123_456_789)
+                Console.log("staker withdrew: %s.%s%s", delegation.withdrawAllRewards());
+            else
+                //TODO: add a test that withdraws a fixed amount < delegation.rewards(step)
+                Console.log("staker withdrew: %s.%s%s", delegation.withdrawRewards(delegation.rewards(steps), steps));
+            Console.log("rewards accrued until last staking: %s.%s%s", delegation.getTotalRewards());
+            Console.log("delegation contract balance: %s.%s%s", address(delegation).balance);
+            //Console.log("staker balance: %s.%s%s", staker[i-1].balance);
+            vm.stopPrank();
+        }
+        //*/
     }
 
     function test_withdrawAllRewards_OwnDeposit() public {
@@ -568,9 +594,9 @@ contract NonLiquidDelegationTest is Test {
         //Console.log("staker balance: %s.%s%s", staker[i-1].balance);
         vm.stopPrank();
 
-        vm.roll(block.number + WithdrawalQueue.UNBONDING_PERIOD);
+        vm.roll(block.number + WithdrawalQueue.unbondingPeriod());
         //TODO: remove the next line once https://github.com/Zilliqa/zq2/issues/1761 is fixed
-        vm.warp(block.timestamp + WithdrawalQueue.UNBONDING_PERIOD);
+        vm.warp(block.timestamp + WithdrawalQueue.unbondingPeriod());
 
 
         i = 1;
@@ -590,6 +616,110 @@ contract NonLiquidDelegationTest is Test {
         );
         delegation.claim();
         vm.stopPrank();
+    }
+
+    function test_rewardsAfterWithdrawalLessThanBeforeWithdrawal() public {
+        uint256 i;
+        uint256 x;
+
+        // otherwise snapshot() doesn't find the staker and reverts
+        staker[0] = owner;
+        deposit(10_000_000 ether, true);
+
+        // wait 2 epochs for the change to the deposit to take affect
+        vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
+
+        for (i = 0; i < 4; i++) {
+            vm.deal(staker[i], 100_000 ether);
+        }
+
+        delegation = NonLiquidDelegationV2(proxy);
+
+        // rewards accrued so far
+        vm.deal(address(delegation), 50_000 ether);
+        x = 50;
+        i = 2;
+        vm.startPrank(staker[i-1]);
+        vm.recordLogs();
+        vm.expectEmit(
+            true,
+            false,
+            false,
+            false,
+            address(delegation)
+        );
+        emit Delegation.Staked(
+            staker[i-1],
+            x * 1 ether,
+            ""
+        );
+        delegation.stake{value: x * 1 ether}();
+
+        // wait 2 epochs for the change to the deposit to take affect
+        vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
+        vm.stopPrank();
+
+        vm.deal(address(delegation), address(delegation).balance + 10_000 ether);
+        vm.startPrank(staker[i-1]);
+        snapshot("staker %s withdrawing all, remaining rewards:", i, 0);
+        console.log("-----------------------------------------------");
+
+        Console.log("contract balance: %s.%s%s", address(delegation).balance);
+        Console.log("staker balance: %s.%s%s", staker[i-1].balance);
+        uint256 rewards = delegation.rewards();
+        Console.log("staker rewards: %s.%s%s", rewards);
+
+        (
+        uint64[] memory stakingIndices,
+        uint64 firstStakingIndex,
+        uint256 allWithdrawnRewards,
+        uint64 lastWithdrawnRewardIndex
+        ) = delegation.getStakingData();
+        Console.log("stakingIndices = [ %s]", stakingIndices);
+        console.log("firstStakingIndex = %s   allWithdrawnRewards = %s   lastWithdrawnRewardIndex = %s", uint(firstStakingIndex), allWithdrawnRewards, uint(lastWithdrawnRewardIndex));
+
+        vm.recordLogs();
+        vm.expectEmit(
+            true,
+            true,
+            true,
+            true,
+            address(delegation)
+        );
+        emit NonLiquidDelegationV2.RewardPaid(
+            staker[i-1],
+            rewards
+        );
+        rewards = delegation.withdrawAllRewards();
+
+        (
+        stakingIndices,
+        firstStakingIndex,
+        allWithdrawnRewards,
+        lastWithdrawnRewardIndex
+        ) = delegation.getStakingData();
+        Console.log("stakingIndices = [ %s]", stakingIndices);
+        console.log("firstStakingIndex = %s   allWithdrawnRewards = %s   lastWithdrawnRewardIndex = %s", uint(firstStakingIndex), allWithdrawnRewards, uint(lastWithdrawnRewardIndex));
+
+        Console.log("contract balance: %s.%s%s", address(delegation).balance);
+        Console.log("staker balance: %s.%s%s", staker[i-1].balance);
+        Console.log("staker rewards: %s.%s%s", delegation.rewards());
+        Console.log("staker should have received: %s.%s%s", rewards);
+        vm.stopPrank();
+    }
+
+    function test_withdrawAllRewardsThenNoMoreStakings_DelegatedDeposit() public {
+        run(
+            abi.encode([uint256(0x20), 5, 1, 2, 3, 1, 2]), //bytes -> uint256[] memory stakerIndicesBeforeWithdrawals,
+            abi.encode([int256(0x20), 5, 50, 50, 25, 35, -35]), //bytes -> int256[] memory relativeAmountsBeforeWithdrawals,
+            abi.encode([uint256(0x20), 0]), //bytes -> uint256[] memory stakerIndicesAfterWithdrawals,
+            abi.encode([int256(0x20), 0]), //bytes -> int256[] memory relativeAmountsAfterWithdrawals,
+            123_456_789, //uint256 withdrawalInSteps,
+            10_000_000 ether, //uint256 depositAmount,
+            50_000 ether, //uint256 rewardsBeforeStaking,
+            10_000 ether, //uint256 rewardsAccruedAfterEach,
+            false //bool initialDeposit
+        );
     }
 
 }
