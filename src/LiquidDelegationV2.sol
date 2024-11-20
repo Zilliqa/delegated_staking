@@ -107,6 +107,31 @@ contract LiquidDelegationV2 is BaseDelegation, ILiquidDelegation {
         emit Staked(_msgSender(), msg.value, abi.encode(shares));
     }
 
+    //TODO: remove the whole function, was added temporarily for testing if the
+    //      validator can unstake its entire deposit to remove itself from the committee,
+    //      returns the amount to be paid, the contract's balance,
+    //      the gap to be withdrawn from the deposit and the contract's deposit
+    function unstake2(uint256 shares) public view returns(uint256, uint256, int256, uint256) {
+        uint256 amount;
+        LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
+        // before calculating the amount deduct the commission from the yet untaxed rewards
+        //taxRewards();
+        uint256 rewards = getRewards();
+        uint256 commission = (rewards - $.taxedRewards) * getCommissionNumerator() / DENOMINATOR;
+        uint256 taxedRewards = rewards - commission;
+        if (NonRebasingLST($.lst).totalSupply() == 0)
+            amount = shares;
+        else
+            amount = (getStake() + taxedRewards) * shares / NonRebasingLST($.lst).totalSupply();
+        //_enqueueWithdrawal(amount);
+        // maintain a balance that is always sufficient to cover the claims
+        //if (address(this).balance < getTotalWithdrawals())
+        //    _decreaseDeposit(getTotalWithdrawals() - address(this).balance);
+        return (amount, address(this).balance - commission, int256(getTotalWithdrawals()) + int256(amount) - int256(address(this).balance - commission), getStake());
+        //NonRebasingLST($.lst).burn(_msgSender(), shares);
+        //emit Unstaked(_msgSender(), amount, abi.encode(shares));
+    }
+
     function unstake(uint256 shares) public override whenNotPaused {
         uint256 amount;
         LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();

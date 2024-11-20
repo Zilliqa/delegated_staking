@@ -287,13 +287,13 @@ contract NonLiquidDelegationV2 is BaseDelegation, INonLiquidDelegation {
             }
             // all rewards recorded in the stakings were taken into account
             if (index == $.stakings.length) {
-                // ensure that the next time the function is called the last index
+                // ensure that the next time we call withdrawRewards() the last index
                 // representing the rewards accrued since the last staking are not
                 // included in the result any more - however, what if there have
                 // been no stakings i.e. the last index remains the same, but there
                 // have been additional rewards - how can we determine the amount of
-                // rewards added since we called _withdrawRewards() last time?
-                index++;
+                // rewards added since we called withdrawRewards() last time?
+                // index++;
                 // the last step is to add the rewards accrued since the last staking
                 if (total > 0)
                     result += (int256(getRewards()) - $.totalRewards).toUint256() * amount / total;
