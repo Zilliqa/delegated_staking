@@ -7,6 +7,10 @@ Install Foundry (https://book.getfoundry.sh/getting-started/installation) and th
 forge install OpenZeppelin/openzeppelin-contracts-upgradeable --no-commit
 forge install OpenZeppelin/openzeppelin-contracts --no-commit
 ```
+The Zilliqa 2.0 deposit contract must be compiled for the tests in this repository to work. Specify the folder containing the `deposit.sol` file in `remappings.txt`:
+```
+@zilliqa/zq2/=/home/user/zq2/zilliqa/src/contracts/
+```
 
 ## Contract Deployment
 The delegation contract is used by delegators to stake and unstake ZIL with the respective validator. It acts as the validator node's control address and interacts with the `Deposit` system contract.

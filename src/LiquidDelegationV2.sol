@@ -192,7 +192,6 @@ contract LiquidDelegationV2 is BaseDelegation, ILiquidDelegation {
         emit Claimed(_msgSender(), total, "");
     }
 
-    //TODO: make it onlyOwnerOrContract and call it every time someone stakes, unstakes or claims?
     function stakeRewards() public onlyOwner {
         // before the balance changes deduct the commission from the yet untaxed rewards
         taxRewards();

@@ -37,10 +37,13 @@ contract NonLiquidDelegationV2 is BaseDelegation, INonLiquidDelegation {
         // respective staker that can be fully/partially
         // transferred to the staker
         mapping(address => uint256) allWithdrawnRewards;
-        // the last staking index up to which the rewards
+        // the last staking nextStakingIndex up to which the rewards
         // of the respective staker have been calculated
         // and added to allWithdrawnRewards
-        mapping(address => uint64) lastWithdrawnRewardIndex;
+        mapping(address => uint64) lastWithdrawnStakingIndex;
+        // the amount that has already been withdrawn from the
+        // constantly growing rewards accrued since the last staking
+        mapping(address => uint256) withdrawnAfterLastStaking;
         // balance of the reward address minus the
         // rewards accrued since the last staking
         int256 totalRewards;
@@ -91,13 +94,15 @@ contract NonLiquidDelegationV2 is BaseDelegation, INonLiquidDelegation {
         uint64[] memory stakingIndices,
         uint64 firstStakingIndex,
         uint256 allWithdrawnRewards,
-        uint64 lastWithdrawnRewardIndex
+        uint64 lastWithdrawnStakingIndex,
+        uint256 withdrawnAfterLastStaking
     ) {
         NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
         stakingIndices = $.stakingIndices[_msgSender()];
         firstStakingIndex = $.firstStakingIndex[_msgSender()];
         allWithdrawnRewards = $.allWithdrawnRewards[_msgSender()];
-        lastWithdrawnRewardIndex = $.lastWithdrawnRewardIndex[_msgSender()];
+        lastWithdrawnStakingIndex = $.lastWithdrawnStakingIndex[_msgSender()];
+        withdrawnAfterLastStaking = $.withdrawnAfterLastStaking[_msgSender()];
     }
 
     function getDelegatedStake() public view returns(uint256 result) {
@@ -196,14 +201,16 @@ contract NonLiquidDelegationV2 is BaseDelegation, INonLiquidDelegation {
 
     function rewards(uint64 additionalSteps) public view returns(uint256) {
         NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
-        (uint256 result, , ) = _rewards(additionalSteps);
-        return result - result * getCommissionNumerator() / DENOMINATOR + $.allWithdrawnRewards[_msgSender()];
+        (uint256 resultInTotal, , , ) = _rewards(additionalSteps);
+        resultInTotal -= $.withdrawnAfterLastStaking[_msgSender()];
+        return resultInTotal - resultInTotal * getCommissionNumerator() / DENOMINATOR + $.allWithdrawnRewards[_msgSender()];
     }
 
     function rewards() public view returns(uint256) {
         NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
-        (uint256 result, , ) = _rewards();
-        return result - result * getCommissionNumerator() / DENOMINATOR + $.allWithdrawnRewards[_msgSender()];
+        (uint256 resultInTotal, , , ) = _rewards();
+        resultInTotal -= $.withdrawnAfterLastStaking[_msgSender()];
+        return resultInTotal - resultInTotal * getCommissionNumerator() / DENOMINATOR + $.allWithdrawnRewards[_msgSender()];
     }
 
     function taxRewards(uint256 untaxedRewards) internal returns (uint256) {
@@ -239,16 +246,28 @@ contract NonLiquidDelegationV2 is BaseDelegation, INonLiquidDelegation {
     // are only withdrawn from the first staking from which they have not been withdrawn yet
     function withdrawRewards(uint256 amount, uint64 additionalSteps) public whenNotPaused returns(uint256) {
         NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
-        (uint256 result, uint64 i, uint64 index) = additionalSteps == type(uint64).max ?
+        (
+            uint256 resultInTotal,
+            uint256 resultAfterLastStaking,
+            uint64 posInStakingIndices,
+            uint64 nextStakingIndex
+        ) = additionalSteps == type(uint64).max ?
             _rewards() :
             _rewards(additionalSteps);
         // the caller has not delegated any stake
-        if (index == 0)
+        if (nextStakingIndex == 0)
             return 0;
-        uint256 taxedRewards = taxRewards(result);
+        // store the rewards accrued since the last staking (`resultAfterLastStaking`)
+        // in order to know next time how much the caller has already withdrawn, and
+        // reduce the current withdrawal (`resultInTotal`) by the amount that was stored
+        // last time (`withdrawnAfterLastStaking`) - this is essential because the reward
+        // amount since the last staking is growing all the time, but only the delta accrued
+        // since the last withdrawal shall be taken into account in the current withdrawal
+        ($.withdrawnAfterLastStaking[_msgSender()], resultInTotal) = (resultAfterLastStaking, resultInTotal - $.withdrawnAfterLastStaking[_msgSender()]);
+        uint256 taxedRewards = taxRewards(resultInTotal);
         $.allWithdrawnRewards[_msgSender()] += taxedRewards;
-        $.firstStakingIndex[_msgSender()] = i;
-        $.lastWithdrawnRewardIndex[_msgSender()] = index - 1;
+        $.firstStakingIndex[_msgSender()] = posInStakingIndices;
+        $.lastWithdrawnStakingIndex[_msgSender()] = nextStakingIndex - 1;
         if (amount == type(uint256).max)
             amount = $.allWithdrawnRewards[_msgSender()];
         require(amount <= $.allWithdrawnRewards[_msgSender()], "can not withdraw more than accrued");
@@ -257,53 +276,72 @@ contract NonLiquidDelegationV2 is BaseDelegation, INonLiquidDelegation {
         (bool success, ) = _msgSender().call{value: amount}("");
         require(success, "transfer of rewards failed");
         emit RewardPaid(_msgSender(), amount);
-        //TODO: shouldn't we return amount instead?
         return taxedRewards;
     }
 
-    function _rewards() internal view returns(uint256 result, uint64 i, uint64 index) {
+    function _rewards() internal view returns (
+        uint256 resultInTotal,
+        uint256 resultAfterLastStaking,
+        uint64 posInStakingIndices,
+        uint64 nextStakingIndex
+    ) {
         return _rewards(type(uint64).max);
     }
 
-    function _rewards(uint64 additionalSteps) internal view returns(uint256 result, uint64 i, uint64 index) {
+    function _rewards(uint64 additionalSteps) internal view returns (
+        uint256 resultInTotal,
+        uint256 resultAfterLastStaking,
+        uint64 posInStakingIndices,
+        uint64 nextStakingIndex
+    ) {
         NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
-        uint64 firstIndex;
-        for (i = $.firstStakingIndex[_msgSender()]; i < $.stakingIndices[_msgSender()].length; i++) {
-            index = $.stakingIndices[_msgSender()][i];
-            uint256 amount = $.stakings[index].amount;
-            if (index < $.lastWithdrawnRewardIndex[_msgSender()])
-                index = $.lastWithdrawnRewardIndex[_msgSender()];
-            uint256 total = $.stakings[index].total;
-            index++;
-            if (firstIndex == 0)
-                firstIndex = index;
-            while (i == $.stakingIndices[_msgSender()].length - 1 ? index < $.stakings.length : index <= $.stakingIndices[_msgSender()][i+1]) {
+        uint64 firstStakingIndex;
+        for (
+            posInStakingIndices = $.firstStakingIndex[_msgSender()];
+            posInStakingIndices < $.stakingIndices[_msgSender()].length;
+            posInStakingIndices++
+        ) {
+            nextStakingIndex = $.stakingIndices[_msgSender()][posInStakingIndices];
+            uint256 amount = $.stakings[nextStakingIndex].amount;
+            if (nextStakingIndex < $.lastWithdrawnStakingIndex[_msgSender()])
+                nextStakingIndex = $.lastWithdrawnStakingIndex[_msgSender()];
+            uint256 total = $.stakings[nextStakingIndex].total;
+            nextStakingIndex++;
+            if (firstStakingIndex == 0)
+                firstStakingIndex = nextStakingIndex;
+            while (
+                posInStakingIndices == $.stakingIndices[_msgSender()].length - 1 ?
+                nextStakingIndex < $.stakings.length :
+                nextStakingIndex <= $.stakingIndices[_msgSender()][posInStakingIndices+1]
+            ) {
                 if (total > 0)
-                    result += $.stakings[index].rewards * amount / total;
-                total = $.stakings[index].total;
-                index++;
-                if (index - firstIndex > additionalSteps)
-                    return (result, i, index);
+                    resultInTotal += $.stakings[nextStakingIndex].rewards * amount / total;
+                total = $.stakings[nextStakingIndex].total;
+                nextStakingIndex++;
+                if (nextStakingIndex - firstStakingIndex > additionalSteps)
+                    return (resultInTotal, resultAfterLastStaking, posInStakingIndices, nextStakingIndex);
             }
             // all rewards recorded in the stakings were taken into account
-            if (index == $.stakings.length) {
-                // ensure that the next time we call withdrawRewards() the last index
+            if (nextStakingIndex == $.stakings.length) {
+                // ensure that the next time we call withdrawRewards() the last nextStakingIndex
                 // representing the rewards accrued since the last staking are not
                 // included in the result any more - however, what if there have
-                // been no stakings i.e. the last index remains the same, but there
+                // been no stakings i.e. the last nextStakingIndex remains the same, but there
                 // have been additional rewards - how can we determine the amount of
                 // rewards added since we called withdrawRewards() last time?
-                // index++;
+                // nextStakingIndex++;
                 // the last step is to add the rewards accrued since the last staking
-                if (total > 0)
-                    result += (int256(getRewards()) - $.totalRewards).toUint256() * amount / total;
+                if (total > 0) {
+                    resultAfterLastStaking = (int256(getRewards()) - $.totalRewards).toUint256() * amount / total;
+                    resultInTotal += resultAfterLastStaking;
+                }
             }
         }
-        // ensure that the next time the function is called the initial value of i refers
-        // to the last amount and total among the stakingIndices of the staker that already
+        // ensure that the next time the function is called the initial value of posInStakingIndices
+        // refers to the last amount and total among the stakingIndices of the staker that already
         // existed during the current call of the function so that we can continue from there
-        if (i > 0)
-            i--;
+        if (posInStakingIndices > 0)
+            posInStakingIndices--;
     }
 
     function collectCommission() public override {}
