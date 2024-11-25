@@ -49,6 +49,7 @@ contract Unstake is Script {
             );
 
             if (amount == 0) {
+                vm.prank(msg.sender);
                 amount = INonLiquidDelegation(address(delegation)).getDelegatedStake();
             }
         } else
