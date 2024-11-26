@@ -184,15 +184,15 @@ contract LiquidDelegationV2 is BaseDelegation, ILiquidDelegation {
         taxRewards();
         // withdraw the unstaked deposit once the unbonding period is over
         _withdrawDeposit();
+        $.taxedRewards -= total;
         (bool success, ) = _msgSender().call{
             value: total
         }("");
         require(success, "transfer of funds failed");
-        $.taxedRewards -= total;
         emit Claimed(_msgSender(), total, "");
     }
 
-    function stakeRewards() public onlyOwner {
+    function stakeRewards() public override onlyOwner {
         // before the balance changes deduct the commission from the yet untaxed rewards
         taxRewards();
         if (address(this).balance > getTotalWithdrawals())

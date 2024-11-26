@@ -6,7 +6,7 @@ import {NonLiquidDelegation} from "src/NonLiquidDelegation.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import "forge-std/console.sol";
 
-contract Rewards is Script {
+contract WithdrawRewards is Script {
     using Strings for string;
 
     function run(address payable proxy, string calldata amount, string calldata additionalSteps) external {

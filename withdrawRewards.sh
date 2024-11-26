@@ -30,7 +30,7 @@ if [[ "$variant" != "INonLiquidDelegation" ]]; then
     exit 1
 fi
 
-forge script script/rewards_Delegation.s.sol --rpc-url http://localhost:4201 --broadcast --legacy --sig "run(address payable, string, string)" $1 $amount $steps --private-key $2
+forge script script/withdrawRewards_Delegation.s.sol --rpc-url http://localhost:4201 --broadcast --legacy --sig "run(address payable, string, string)" $1 $amount $steps --private-key $2
 
 block=$(cast rpc eth_blockNumber --rpc-url http://localhost:4201)
 block_num=$(echo $block | tr -d '"' | cast to-dec --base-in 16)

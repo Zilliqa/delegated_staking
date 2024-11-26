@@ -158,10 +158,10 @@ contract NonLiquidDelegationV2 is BaseDelegation, INonLiquidDelegation {
             return;*/
         // withdraw the unstaked deposit once the unbonding period is over
         _withdrawDeposit();
+        $.totalRewards -= int256(total);
         (bool success, ) = _msgSender().call{
             value: total
         }("");
-        $.totalRewards -= int256(total);
         require(success, "transfer of funds failed");
         emit Claimed(_msgSender(), total, "");
     }
@@ -218,12 +218,12 @@ contract NonLiquidDelegationV2 is BaseDelegation, INonLiquidDelegation {
         uint256 commission = untaxedRewards * getCommissionNumerator() / DENOMINATOR;
         if (commission == 0)
             return untaxedRewards;
+        $.totalRewards -= int256(commission);
         // commissions are not subject to the unbonding period
         (bool success, ) = owner().call{
             value: commission
         }("");
         require(success, "transfer of commission failed");
-        $.totalRewards -= int256(commission);
         emit CommissionPaid(owner(), commission);
         return untaxedRewards - commission;
     }
@@ -240,11 +240,26 @@ contract NonLiquidDelegationV2 is BaseDelegation, INonLiquidDelegation {
         return withdrawRewards(amount, type(uint64).max);
     }
 
+    function withdrawRewards(uint256 amount, uint64 additionalSteps) public whenNotPaused returns(uint256 taxedRewards) {
+        (amount, taxedRewards) = _useRewards(amount, additionalSteps);
+        (bool success, ) = _msgSender().call{value: amount}("");
+        require(success, "transfer of rewards failed");
+        emit RewardPaid(_msgSender(), amount);
+    }
+
+    function stakeRewards() public override {
+        (uint256 amount, ) = _useRewards(type(uint256).max, type(uint64).max);
+        if (_isActivated())
+            _increaseDeposit(amount);
+        _append(int256(amount));
+        emit Staked(_msgSender(), amount, "");
+    }
+
     // if there have been more than 11,000 stakings or unstakings since the delegator's last reward
     // withdrawal, calling withdrawAllRewards() would exceed the block gas limit additionalSteps is
     // the number of additional stakings from which the rewards are withdrawn if zero, the rewards
     // are only withdrawn from the first staking from which they have not been withdrawn yet
-    function withdrawRewards(uint256 amount, uint64 additionalSteps) public whenNotPaused returns(uint256) {
+    function _useRewards(uint256 amount, uint64 additionalSteps) internal whenNotPaused returns(uint256, uint256) {
         NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
         (
             uint256 resultInTotal,
@@ -256,7 +271,7 @@ contract NonLiquidDelegationV2 is BaseDelegation, INonLiquidDelegation {
             _rewards(additionalSteps);
         // the caller has not delegated any stake
         if (nextStakingIndex == 0)
-            return 0;
+            return (0, 0);
         // store the rewards accrued since the last staking (`resultAfterLastStaking`)
         // in order to know next time how much the caller has already withdrawn, and
         // reduce the current withdrawal (`resultInTotal`) by the amount that was stored
@@ -273,10 +288,7 @@ contract NonLiquidDelegationV2 is BaseDelegation, INonLiquidDelegation {
         require(amount <= $.allWithdrawnRewards[_msgSender()], "can not withdraw more than accrued");
         $.allWithdrawnRewards[_msgSender()] -= amount;
         $.totalRewards -= int256(amount);
-        (bool success, ) = _msgSender().call{value: amount}("");
-        require(success, "transfer of rewards failed");
-        emit RewardPaid(_msgSender(), amount);
-        return taxedRewards;
+        return (amount, taxedRewards);
     }
 
     function _rewards() internal view returns (

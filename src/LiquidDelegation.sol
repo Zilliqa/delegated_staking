@@ -60,6 +60,10 @@ contract LiquidDelegation is BaseDelegation, ILiquidDelegation {
         revert("not implemented");
     }
 
+    function stakeRewards() public override {
+        revert("not implemented");
+    }
+
     function getPrice() public view returns(uint256) {
         revert("not implemented");
     }
