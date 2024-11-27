@@ -37,8 +37,6 @@ contract LiquidDelegationV2 is BaseDelegation, ILiquidDelegation {
     function reinitialize() reinitializer(version() + 1) public {
     }
 
-    event CommissionPaid(address indexed owner, uint256 rewardsBefore, uint256 commission);
-
     // called when stake withdrawn from the deposit contract is claimed
     // but not called when rewards are assigned to the reward address
     receive() payable external {
@@ -172,7 +170,7 @@ contract LiquidDelegationV2 is BaseDelegation, ILiquidDelegation {
             value: commission
         }("");
         require(success, "transfer of commission failed");
-        emit CommissionPaid(owner(), rewards, commission);
+        emit CommissionPaid(owner(), commission);
     }
 
     function claim() public override whenNotPaused {
@@ -193,10 +191,22 @@ contract LiquidDelegationV2 is BaseDelegation, ILiquidDelegation {
     }
 
     function stakeRewards() public override onlyOwner {
-        // before the balance changes deduct the commission from the yet untaxed rewards
+        LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
+        // rewards must be taxed before deposited since
+        // they will not be taxed when they are unstaked
         taxRewards();
-        if (address(this).balance > getTotalWithdrawals())
+        // we must not deposit the funds we need to pay out the claims
+        if (address(this).balance > getTotalWithdrawals()) {
+            // TODO: moving funds between rewards and deposit should
+            //       be okay but it's not, because the price calculation
+            //       assumes the rewards are higher than the taxed rewards
+            //       but after moving the rewards to the deposit they are not
+            // not only the rewards (balance) will be reduced
+            // by the deposit topup but also the taxed rewards
+            $.taxedRewards -= address(this).balance - getTotalWithdrawals();
             _increaseDeposit(address(this).balance - getTotalWithdrawals());
+        }
+        // TODO: replace address(this).balance everywhere with getRewards()
     }
 
     function collectCommission() public override onlyOwner {
