@@ -37,6 +37,12 @@ contract LiquidDelegationV2 is BaseDelegation, ILiquidDelegation {
     function reinitialize() reinitializer(version() + 1) public {
     }
 
+    function initialize(address initialOwner) initializer public {
+        __BaseDelegation_init(initialOwner);
+        LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
+        $.lst = address(new NonRebasingLST(address(this)));
+    }
+
     event CommissionPaid(address indexed owner, uint256 rewardsBefore, uint256 commission);
 
     // called when stake withdrawn from the deposit contract is claimed
