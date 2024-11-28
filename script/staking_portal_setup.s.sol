@@ -51,9 +51,8 @@ contract Create2Helper {
 contract StakingPortalSetup is Script {
     using Strings for string;
 
-    function _deployLiquidityPool(uint256 ownerPrivKey, bytes32 liquidityPoolId, uint16 commissionNumerator) internal {
+    function _deployLiquidityPool(Create2Helper create2Helper, uint256 ownerPrivKey, bytes32 liquidityPoolId, uint16 commissionNumerator) internal {
 
-      Create2Helper create2Helper = new Create2Helper();
 
       address owner = vm.addr(ownerPrivKey);
 
@@ -104,8 +103,11 @@ contract StakingPortalSetup is Script {
         //     // console.log("Amount: %s\n\n", balances[i]);
         // }
 
-        _deployLiquidityPool(vm.envUint("PRIVATE_KEY_VP_1"), bytes32(uint256(2)), 15);
-        _deployLiquidityPool(vm.envUint("PRIVATE_KEY_VP_1"), bytes32(uint256(2)), 15);
+        Create2Helper create2Helper = new Create2Helper();
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY_VP_1");
+
+        _deployLiquidityPool(create2Helper, deployerPrivateKey, bytes32(uint256(2)), 15);
+        // _deployLiquidityPool(create2Helper, deployerPrivateKey, bytes32(uint256(2)), 15); // this line fails if uncommented
 
         // _deployLiquidityPool(vm.envUint("PRIVATE_KEY_VP_2"), bytes32(uint256(2)), 5);
         // _deployLiquidityPool(vm.envUint("PRIVATE_KEY_VP_3"), bytes32(uint256(2)), 30);
