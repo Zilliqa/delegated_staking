@@ -6,17 +6,11 @@ import {LiquidDelegationV2} from "src/LiquidDelegationV2.sol";
 import {NonRebasingLST} from "src/NonRebasingLST.sol";
 import {WithdrawalQueue} from "src/BaseDelegation.sol";
 import {Delegation} from "src/Delegation.sol";
-import {Deposit, InitialStaker} from "@zilliqa/zq2/deposit.sol";
+import {Deposit, InitialStaker} from "src/Deposit.sol";
 import {Console} from "src/Console.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {Test, Vm} from "forge-std/Test.sol";
 import "forge-std/console.sol";
-
-contract PopVerifyPrecompile {
-    function popVerify(bytes memory, bytes memory) public pure returns(bool) {
-        return true;
-    }
-}
 
 contract LiquidDelegationTest is Test {
     address payable proxy;
@@ -124,10 +118,6 @@ contract LiquidDelegationTest is Test {
         console.log("Deposit.maximumStakers() =", Deposit(delegation.DEPOSIT_CONTRACT()).maximumStakers());
         console.log("Deposit.blocksPerEpoch() =", Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch());
         //*/
-
-        vm.etch(address(0x5a494c80), address(new PopVerifyPrecompile()).code);
-
-        vm.stopPrank();
     }
 
     function run(

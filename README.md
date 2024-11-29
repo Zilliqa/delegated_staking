@@ -7,10 +7,6 @@ Install Foundry (https://book.getfoundry.sh/getting-started/installation) and th
 forge install OpenZeppelin/openzeppelin-contracts-upgradeable --no-commit
 forge install OpenZeppelin/openzeppelin-contracts --no-commit
 ```
-The Zilliqa 2.0 deposit contract must be compiled for the tests in this repository to work. Specify the folder containing the `deposit.sol` file in `remappings.txt`:
-```
-@zilliqa/zq2/=/home/user/zq2/zilliqa/src/contracts/
-```
 
 ## Contract Deployment
 The delegation contract is used by delegators to stake and unstake ZIL with the respective validator. It acts as the validator node's control address and interacts with the `Deposit` system contract.
@@ -86,7 +82,7 @@ forge script script/commission_Delegation.s.sol --rpc-url http://localhost:4201 
 using `same` for the second argument to leave the commission percentage unchanged and `true` for the third argument. Replacing the second argument with `same` and the third argument with `false` only displays the current commission rate.
 
 ## Validator Activation
-If your node's account has enough ZIL for the minimum stake required, you can activate your node as a validator with a deposit of e.g. 10 million ZIL. Run
+If you node's account has enough ZIL for the minimum stake required, you can activate your node as a validator with a deposit of e.g. 10 million ZIL. Run
 ```bash
 cast send --legacy --value 10000000ether --rpc-url http://localhost:4201 --private-key $PRIVATE_KEY \
 0x7a0b7e6d24ede78260c9ddbd98e828b0e11a8ea2 "deposit(bytes,bytes,bytes)" \
@@ -189,13 +185,8 @@ To query how much ZIL you can already claim, run
 cast to-unit $(cast call 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 "getClaimable()(uint256)" --from 0xd819fFcE7A58b1E835c25617Db7b46a00888B013 --block latest --rpc-url http://localhost:4201 | sed 's/\[[^]]*\]//g') ether
 ```
 
-## Staking and Withdrawing Rewards
-In the liquid staking variant, only you as the node operator can stake the rewards accrued by the node. To do so, run
-```bash
-forge script script/stakeRewards_Delegation.s.sol --rpc-url http://localhost:4201 --broadcast --legacy --sig "run(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 --private-key 0x...
-```
-
-In the non-liquid variant of staking, delegators can stake or withdraw their share of the rewards earned by the validator. To query the amount of rewards available, run
+## Withdrawing Rewards
+In the non-liquid variant of staking delegators can withdraw their share of the rewards earned by the validator. To query the amount of rewards available, run
 ```bash
 cast to-unit $(cast call 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 "rewards()(uint256)" --from 0xd819fFcE7A58b1E835c25617Db7b46a00888B013 --block latest --rpc-url http://localhost:4201 | sed 's/\[[^]]*\]//g') ether
 ```
@@ -206,14 +197,8 @@ cast to-unit $(cast call 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 "rewards(uin
 ```
 Note that `n` actually denotes the number of additional (un)stakings so that at least one is always reflected in the result, even if you specified `n = 0`.
 
-To withdraw 1 ZIL of rewards using `n = 100`, run
+Last but not least, to withdraw 1 ZIL of rewards using `n = 100`, run
 ```bash
-forge script script/withdrawRewards_Delegation.s.sol --rpc-url http://localhost:4201 --broadcast --legacy --sig "run(address payable, string, string)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 1000000000000000000 100 --private-key 0x...
+forge script script/rewards_Delegation.s.sol --rpc-url http://localhost:4201 --broadcast --legacy --sig "run(address payable, string, string)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 1000000000000000000 100 --private-key 0x...
 ```
-with the private key of a staked account. To withdrawn as much as possible with the given value of `n` set the amount to `all`. To withdraw the chosen amount without setting `n` replace `n` with `all`. To withdraw all rewards replace both the amount and `n` with `all`.
-
-Last but not least, in order to stake rewards instead of withdrawing them, run
-```bash
-forge script script/stakeRewards_Delegation.s.sol --rpc-url http://localhost:4201 --broadcast --legacy --sig "run(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 --private-key 0x...
-```
-with the private key of a staked account.
+with the private key of an staked account. To withdrawn as much as possible with the given value of `n` set the amount to `all`. To withdraw the chosen amount without setting `n` replace `n` with `all`. To withdraw all rewards replace both the amount and `n` with `all`.

@@ -177,8 +177,6 @@ abstract contract BaseDelegation is Delegation, PausableUpgradeable, Ownable2Ste
 
     function collectCommission() public virtual;
 
-    function stakeRewards() public virtual;
-
     function getClaimable() public virtual view returns(uint256 total) {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
         WithdrawalQueue.Fifo storage fifo = $.withdrawals[_msgSender()];
