@@ -24,7 +24,7 @@ if [[ "$variant" == "ILiquidDelegation" ]]; then
     echo taxedRewardsAfterStaking = $(cast call $1 "getTaxedRewards()(uint256)" --block $block_num --rpc-url http://localhost:4201 | sed 's/\[[^]]*\]//g')
 fi
 
-staker_wei_after=$(cast rpc eth_getBalance $staker $block --rpc-url http://localhost:4201 | tr -d '"' | cast to-dec --base-in 16)
+stakerWeiAfter=$(cast rpc eth_getBalance $staker $block --rpc-url http://localhost:4201 | tr -d '"' | cast to-dec --base-in 16)
 
 tmp=$(cast logs --from-block $block_num --to-block $block_num --address $1 "Staked(address,uint256,bytes)" --rpc-url http://localhost:4201 | grep "data")
 if [[ "$tmp" != "" ]]; then
@@ -62,8 +62,8 @@ if [[ "$variant" == "ILiquidDelegation" ]]; then
     echo staked ZIL shares: $(bc -l <<< "scale=18; $3/$price/10^18") LST
 fi
 
-staker_wei_before=$(cast rpc eth_getBalance $staker $block --rpc-url http://localhost:4201 | tr -d '"' | cast to-dec --base-in 16)
-echo staked amount + gas fee = $(bc -l <<< "scale=18; $staker_wei_before-$staker_wei_after") wei
+stakerWeiBefore=$(cast rpc eth_getBalance $staker $block --rpc-url http://localhost:4201 | tr -d '"' | cast to-dec --base-in 16)
+echo staked amount + gas fee = $(bc -l <<< "scale=18; $stakerWeiBefore-$stakerWeiAfter") wei
 
 if [[ "$tmp" != "" ]]; then echo event Staked\($staker, $d1, $d2\) emitted; fi
 

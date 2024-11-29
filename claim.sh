@@ -24,7 +24,7 @@ if [[ "$variant" == "ILiquidDelegation" ]]; then
     echo taxedRewardsAfterClaiming = $(cast call $1 "getTaxedRewards()(uint256)" --block $block_num --rpc-url http://localhost:4201 | sed 's/\[[^]]*\]//g')
 fi
 
-staker_wei_after=$(cast rpc eth_getBalance $staker $block --rpc-url http://localhost:4201 | tr -d '"' | cast to-dec --base-in 16)
+stakerWeiAfter=$(cast rpc eth_getBalance $staker $block --rpc-url http://localhost:4201 | tr -d '"' | cast to-dec --base-in 16)
 
 tmp=$(cast logs --from-block $block_num --to-block $block_num --address $1 "Claimed(address,uint256,bytes)" --rpc-url http://localhost:4201 | grep "data")
 if [[ "$tmp" != "" ]]; then
@@ -48,9 +48,9 @@ if [[ "$variant" == "ILiquidDelegation" ]]; then
     echo taxedRewardsBeforeClaiming = $(cast call $1 "getTaxedRewards()(uint256)" --block $block_num --rpc-url http://localhost:4201 | sed 's/\[[^]]*\]//g')
 fi
 
-staker_wei_before=$(cast rpc eth_getBalance $staker $block --rpc-url http://localhost:4201 | tr -d '"' | cast to-dec --base-in 16)
+stakerWeiBefore=$(cast rpc eth_getBalance $staker $block --rpc-url http://localhost:4201 | tr -d '"' | cast to-dec --base-in 16)
 
-echo claimed amount - gas fee = $(bc -l <<< "scale=18; $staker_wei_after-$staker_wei_before") wei
+echo claimed amount - gas fee = $(bc -l <<< "scale=18; $stakerWeiAfter-$stakerWeiBefore") wei
 
 if [[ "$tmp" != "" ]]; then echo event Claimed\($staker, $d1, $d2\) emitted; fi
 

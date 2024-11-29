@@ -30,7 +30,7 @@ if [[ "$variant" != "INonLiquidDelegation" ]]; then
     exit 1
 fi
 
-forge script script/rewards_Delegation.s.sol --rpc-url http://localhost:4201 --broadcast --legacy --sig "run(address payable, string, string)" $1 $amount $steps --private-key $2
+forge script script/withdrawRewards_Delegation.s.sol --rpc-url http://localhost:4201 --broadcast --legacy --sig "run(address payable, string, string)" $1 $amount $steps --private-key $2
 
 block=$(cast rpc eth_blockNumber --rpc-url http://localhost:4201)
 block_num=$(echo $block | tr -d '"' | cast to-dec --base-in 16)
@@ -40,8 +40,8 @@ owner=$(cast call $1 "owner()(address)" --block $block_num --rpc-url http://loca
 rewardsAfterWithdrawal=$(cast call $1 "getRewards()(uint256)" --block $block_num --rpc-url http://localhost:4201 | sed 's/\[[^]]*\]//g')
 echo rewardsAfterWithdrawal = $rewardsAfterWithdrawal
 
-staker_wei_after=$(cast rpc eth_getBalance $staker $block --rpc-url http://localhost:4201 | tr -d '"' | cast to-dec --base-in 16)
-owner_wei_after=$(cast rpc eth_getBalance $owner $block --rpc-url http://localhost:4201 | tr -d '"' | cast to-dec --base-in 16)
+stakerWeiAfter=$(cast rpc eth_getBalance $staker $block --rpc-url http://localhost:4201 | tr -d '"' | cast to-dec --base-in 16)
+ownerWeiAfter=$(cast rpc eth_getBalance $owner $block --rpc-url http://localhost:4201 | tr -d '"' | cast to-dec --base-in 16)
 
 tmp1=$(cast logs --from-block $block_num --to-block $block_num --address $1 "RewardPaid(address,uint256)" --rpc-url http://localhost:4201 | grep "data")
 if [[ "$tmp1" != "" ]]; then
@@ -76,16 +76,16 @@ stake=$(cast call $1 "getStake()(uint256)" --block $block_num --rpc-url http://l
 commissionNumerator=$(cast call $1 "getCommissionNumerator()(uint256)" --block $block_num --rpc-url http://localhost:4201 | sed 's/\[[^]]*\]//g')
 denominator=$(cast call $1 "DENOMINATOR()(uint256)" --block $block_num --rpc-url http://localhost:4201 | sed 's/\[[^]]*\]//g')
 
-staker_wei_before=$(cast rpc eth_getBalance $staker $block --rpc-url http://localhost:4201 | tr -d '"' | cast to-dec --base-in 16)
-owner_wei_before=$(cast rpc eth_getBalance $owner $block --rpc-url http://localhost:4201 | tr -d '"' | cast to-dec --base-in 16)
+stakerWeiBefore=$(cast rpc eth_getBalance $staker $block --rpc-url http://localhost:4201 | tr -d '"' | cast to-dec --base-in 16)
+ownerWeiBefore=$(cast rpc eth_getBalance $owner $block --rpc-url http://localhost:4201 | tr -d '"' | cast to-dec --base-in 16)
 
 x=$(cast call $1 "rewards()(uint256)" --from $staker --block $block_num --rpc-url http://localhost:4201 | sed 's/\[[^]]*\]//g')
 staker_rewards_before_withdrawal=$(cast to-unit $x ether)
 
 echo staker rewards before withdrawal: $staker_rewards_before_withdrawal ZIL
 echo staker rewards after withdrawal: $staker_rewards_after_withdrawal ZIL
-echo withdrawn rewards - gas fee = $(bc -l <<< "scale=18; $staker_wei_after-$staker_wei_before") wei
-echo validator commission = $(bc -l <<< "scale=18; $owner_wei_after-$owner_wei_before") wei
+echo withdrawn rewards - gas fee = $(bc -l <<< "scale=18; $stakerWeiAfter-$stakerWeiBefore") wei
+echo validator commission = $(bc -l <<< "scale=18; $ownerWeiAfter-$ownerWeiBefore") wei
 echo total reward reduction = $(bc -l <<< "scale=18; $rewardsBeforeWithdrawal-$rewardsAfterWithdrawal") wei
 
 if [[ "$tmp1" != "" ]]; then echo event RewardPaid\($staker, $d1\) emitted; fi

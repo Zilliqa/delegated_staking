@@ -55,6 +55,10 @@ contract NonLiquidDelegation is BaseDelegation, INonLiquidDelegation {
         revert("not implemented");
     }
 
+    function stakeRewards() public override {
+        revert("not implemented");
+    }
+
     function rewards() public view returns(uint256) {
         revert("not implemented");
     }

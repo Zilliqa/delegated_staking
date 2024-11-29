@@ -5,12 +5,18 @@ import {NonLiquidDelegation} from "src/NonLiquidDelegation.sol";
 import {NonLiquidDelegationV2} from "src/NonLiquidDelegationV2.sol";
 import {WithdrawalQueue} from "src/BaseDelegation.sol";
 import {Delegation} from "src/Delegation.sol";
-import {Deposit, InitialStaker} from "src/Deposit.sol";
+import {Deposit, InitialStaker} from "@zilliqa/zq2/deposit.sol";
 import {Console} from "src/Console.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {Test, Vm} from "forge-std/Test.sol";
 import "forge-std/console.sol";
+
+contract PopVerifyPrecompile {
+    function popVerify(bytes memory, bytes memory) public pure returns(bool) {
+        return true;
+    }
+}
 
 contract NonLiquidDelegationTest is Test {
     address payable proxy;
@@ -122,6 +128,9 @@ contract NonLiquidDelegationTest is Test {
         console.log("Deposit.maximumStakers() =", Deposit(delegation.DEPOSIT_CONTRACT()).maximumStakers());
         console.log("Deposit.blocksPerEpoch() =", Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch());
         //*/
+
+        vm.etch(address(0x5a494c80), address(new PopVerifyPrecompile()).code);
+
         vm.stopPrank();
     }
 
@@ -217,9 +226,16 @@ contract NonLiquidDelegationTest is Test {
                     s = string.concat(s, "0.0%\t\t");
             console.log(s);
         } 
-        (uint64[] memory stakingIndices, uint64 firstStakingIndex, uint256 allWithdrawnRewards, uint64 lastWithdrawnRewardIndex) = delegation.getStakingData();
-        Console.log("stakingIndices: %s", stakingIndices);
-        console.log("firstStakingIndex: %s   lastWithdrawnRewardIndex: %s   allWithdrawnRewards: %s", firstStakingIndex, lastWithdrawnRewardIndex, allWithdrawnRewards);
+        (
+            uint64[] memory stakingIndices,
+            uint64 firstStakingIndex,
+            uint256 allWithdrawnRewards,
+            uint64 lastWithdrawnRewardIndex,
+            uint256 withdrawnAfterLastStaking
+        ) = delegation.getStakingData();
+        Console.log("stakingIndices = [ %s]", stakingIndices);
+        console.log("firstStakingIndex = %s   lastWithdrawnRewardIndex = %s", uint(firstStakingIndex), uint(lastWithdrawnRewardIndex));
+        console.log("allWithdrawnRewards = %s   withdrawnAfterLastStaking = %s", allWithdrawnRewards, withdrawnAfterLastStaking);
     } 
 
     //TODO: add assertions
@@ -673,10 +689,12 @@ contract NonLiquidDelegationTest is Test {
         uint64[] memory stakingIndices,
         uint64 firstStakingIndex,
         uint256 allWithdrawnRewards,
-        uint64 lastWithdrawnRewardIndex
+        uint64 lastWithdrawnRewardIndex,
+        uint256 withdrawnAfterLastStaking
         ) = delegation.getStakingData();
         Console.log("stakingIndices = [ %s]", stakingIndices);
-        console.log("firstStakingIndex = %s   allWithdrawnRewards = %s   lastWithdrawnRewardIndex = %s", uint(firstStakingIndex), allWithdrawnRewards, uint(lastWithdrawnRewardIndex));
+        console.log("firstStakingIndex = %s   lastWithdrawnRewardIndex = %s", uint(firstStakingIndex), uint(lastWithdrawnRewardIndex));
+        console.log("allWithdrawnRewards = %s   withdrawnAfterLastStaking = %s", allWithdrawnRewards, withdrawnAfterLastStaking);
 
         vm.recordLogs();
         vm.expectEmit(
@@ -696,10 +714,12 @@ contract NonLiquidDelegationTest is Test {
         stakingIndices,
         firstStakingIndex,
         allWithdrawnRewards,
-        lastWithdrawnRewardIndex
+        lastWithdrawnRewardIndex,
+        withdrawnAfterLastStaking
         ) = delegation.getStakingData();
         Console.log("stakingIndices = [ %s]", stakingIndices);
-        console.log("firstStakingIndex = %s   allWithdrawnRewards = %s   lastWithdrawnRewardIndex = %s", uint(firstStakingIndex), allWithdrawnRewards, uint(lastWithdrawnRewardIndex));
+        console.log("firstStakingIndex = %s   lastWithdrawnRewardIndex = %s", uint(firstStakingIndex), uint(lastWithdrawnRewardIndex));
+        console.log("allWithdrawnRewards = %s   withdrawnAfterLastStaking = %s", allWithdrawnRewards, withdrawnAfterLastStaking);
 
         Console.log("contract balance: %s.%s%s", address(delegation).balance);
         Console.log("staker balance: %s.%s%s", staker[i-1].balance);
