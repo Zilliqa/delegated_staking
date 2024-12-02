@@ -166,16 +166,14 @@ contract NonLiquidDelegationV2 is BaseDelegation, INonLiquidDelegation {
     }
 
     function stake() public override payable whenNotPaused {
-        if (_isActivated())
-            _increaseDeposit(msg.value);
+        _increaseDeposit(msg.value);
         _append(int256(msg.value));
         emit Staked(_msgSender(), msg.value, "");
     }
 
     function unstake(uint256 value) public override whenNotPaused {
         _append(-int256(value));
-        if (_isActivated())
-            _decreaseDeposit(uint256(value));
+        _decreaseDeposit(uint256(value));
         _enqueueWithdrawal(value);
         emit Unstaked(_msgSender(), value, "");
     }
@@ -248,8 +246,7 @@ contract NonLiquidDelegationV2 is BaseDelegation, INonLiquidDelegation {
 
     function stakeRewards() public override {
         (uint256 amount, ) = _useRewards(type(uint256).max, type(uint64).max);
-        if (_isActivated())
-            _increaseDeposit(amount);
+        _increaseDeposit(amount);
         _append(int256(amount));
         emit Staked(_msgSender(), amount, "");
     }

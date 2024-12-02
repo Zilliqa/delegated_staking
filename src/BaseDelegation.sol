@@ -31,7 +31,7 @@ library WithdrawalQueue {
         return abi.decode(data, (uint256));
     }
 
-    function queue(Fifo storage fifo, uint256 amount) internal {
+    function enqueue(Fifo storage fifo, uint256 amount) internal {
         fifo.items[fifo.last] = Item(block.number + unbondingPeriod(), amount);
         fifo.last++;
     }
@@ -198,7 +198,7 @@ abstract contract BaseDelegation is Delegation, PausableUpgradeable, Ownable2Ste
 
     function _enqueueWithdrawal(uint256 amount) internal virtual {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
-        $.withdrawals[_msgSender()].queue(amount);
+        $.withdrawals[_msgSender()].enqueue(amount);
         $.totalWithdrawals += amount;
     }
 

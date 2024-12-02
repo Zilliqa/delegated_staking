@@ -533,7 +533,7 @@ contract LiquidDelegationTest is Test {
         console.log("validator withdrew");
         console.log("validator balance: %s", owner.balance);
         //vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).withdrawalPeriod());
-        //TODO: once https://github.com/Zilliqa/zq2/issues/1761 is fixed, uncomment the previous line and comment out the next one
+        //TODO: remove the next line and uncomment the previous once https://github.com/Zilliqa/zq2/issues/1761 is fixed
         vm.warp(block.timestamp + Deposit(delegation.DEPOSIT_CONTRACT()).withdrawalPeriod()); // skip(WithdrawalQueue.unbondingPeriod());
         Deposit(delegation.DEPOSIT_CONTRACT()).withdraw();
         console.log("validator withdrew again");
