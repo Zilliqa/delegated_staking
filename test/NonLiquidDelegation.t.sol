@@ -141,9 +141,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
             }
             vm.stopPrank();
             // wait 2 epochs for the change to the deposit to take affect
-            vm.roll(block.number + 3600 * 2);
-            // remove the previous line and comment out the next one once https://github.com/Zilliqa/zq2/issues/1956 is implemented
-            //vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
+            vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
         }
 
         //no rewards if we withdraw in the same block as the last staking
@@ -182,9 +180,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
             }
             vm.stopPrank();
             // wait 2 epochs for the change to the deposit to take affect
-            vm.roll(block.number + 3600 * 2);
-            // remove the previous line and comment out the next one once https://github.com/Zilliqa/zq2/issues/1956 is implemented
-            //vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
+            vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
         }
 
         //further rewards accrued since the last staking
@@ -387,9 +383,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         deposit(BaseDelegation(delegation), 10_000_000 ether, true);
 
         // wait 2 epochs for the change to the deposit to take affect
-        vm.roll(block.number + 3600 * 2);
-        // remove the previous line and comment out the next one once https://github.com/Zilliqa/zq2/issues/1956 is implemented
-        //vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
+        vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
 
         for (i = 0; i < 4; i++) {
             vm.deal(stakers[i], 100_000 ether);
@@ -419,9 +413,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
                 );
                 delegation.stake{value: x * 1 ether}();
                 // wait 2 epochs for the change to the deposit to take affect
-                vm.roll(block.number + 3600 * 2);
-                // remove the previous line and comment out the next one once https://github.com/Zilliqa/zq2/issues/1956 is implemented
-                //vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
+                vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
                 //snapshot("staker %s staked %s", i, x);
                 vm.stopPrank();
                 vm.deal(address(delegation), address(delegation).balance + 10_000 ether);
@@ -443,9 +435,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
                 );
                 delegation.unstake(x * 1 ether);
                 // wait 2 epochs for the change to the deposit to take affect
-                vm.roll(block.number + 3600 * 2);
-                // remove the previous line and comment out the next one once https://github.com/Zilliqa/zq2/issues/1956 is implemented
-                //vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
+                vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
                 //snapshot("staker %s unstaked %s", i, x);
                 vm.stopPrank();
                 vm.deal(address(delegation), address(delegation).balance + 10_000 ether);
@@ -504,9 +494,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         deposit(BaseDelegation(delegation), 10_000_000 ether, true);
 
         // wait 2 epochs for the change to the deposit to take affect
-        vm.roll(block.number + 3600 * 2);
-        // remove the previous line and comment out the next one once https://github.com/Zilliqa/zq2/issues/1956 is implemented
-        //vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
+        vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
 
         for (i = 0; i < 4; i++) {
             vm.deal(stakers[i], 100_000 ether);
@@ -535,9 +523,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         delegation.stake{value: x * 1 ether}();
 
         // wait 2 epochs for the change to the deposit to take affect
-        vm.roll(block.number + 3600 * 2);
-        // remove the previous line and comment out the next one once https://github.com/Zilliqa/zq2/issues/1956 is implemented
-        //vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
+        vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
         vm.stopPrank();
 
         vm.deal(address(delegation), address(delegation).balance + 10_000 ether);

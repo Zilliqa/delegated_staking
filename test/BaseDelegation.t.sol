@@ -177,8 +177,6 @@ abstract contract BaseDelegationTest is Test {
             );
         }
         // wait 2 epochs for the change to the deposit to take affect
-        vm.roll(block.number + 3600 * 2);
-        // remove the previous line and comment out the next one once https://github.com/Zilliqa/zq2/issues/1956 is implemented
-        //vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
+        vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
     }
 }

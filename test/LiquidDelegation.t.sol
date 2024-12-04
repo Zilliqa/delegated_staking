@@ -119,9 +119,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
             }();
 
             // wait 2 epochs for the change to the deposit to take affect
-            vm.roll(block.number + 3600 * 2);
-            // remove the previous line and comment out the next one once https://github.com/Zilliqa/zq2/issues/1956 is implemented
-            //vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
+            vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
 
             ownerZIL[1] = delegation.owner().balance;
 
@@ -209,9 +207,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         );
 
         // wait 2 epochs for the change to the deposit to take affect
-        vm.roll(block.number + 3600 * 2);
-        // remove the previous line and comment out the next one once https://github.com/Zilliqa/zq2/issues/1956 is implemented
-        //vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
+        vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
 
         stakerLST[1] = lst.balanceOf(stakers[0]);
         ownerZIL[1] = delegation.owner().balance;
@@ -374,9 +370,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         console.log("validator stake: %s", Deposit(delegation.DEPOSIT_CONTRACT()).getStake(
             bytes(hex"92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c")
         ));
-        vm.roll(block.number + 3600 * 2);
-        // remove the previous line and comment out the next one once https://github.com/Zilliqa/zq2/issues/1956 is implemented
-        //vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
+        vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
         console.log("validator stake: %s", Deposit(delegation.DEPOSIT_CONTRACT()).getStake(
             bytes(hex"92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c")
         ));
@@ -387,9 +381,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         console.log("validator stake: %s", Deposit(delegation.DEPOSIT_CONTRACT()).getStake(
             bytes(hex"92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c")
         ));
-        vm.roll(block.number + 3600 * 2);
-        // remove the previous line and comment out the next one once https://github.com/Zilliqa/zq2/issues/1956 is implemented
-        //vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
+        vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
         console.log("validator stake: %s", Deposit(delegation.DEPOSIT_CONTRACT()).getStake(
             bytes(hex"92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c")
         ));
@@ -400,9 +392,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         console.log("validator stake: %s", Deposit(delegation.DEPOSIT_CONTRACT()).getStake(
             bytes(hex"92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c")
         ));
-                vm.roll(block.number + 3600 * 2);
-        // remove the previous line and comment out the next one once https://github.com/Zilliqa/zq2/issues/1956 is implemented
-        //vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
+        vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
         console.log("validator stake: %s", Deposit(delegation.DEPOSIT_CONTRACT()).getStake(
             bytes(hex"92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c")
         ));
