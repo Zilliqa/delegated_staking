@@ -119,6 +119,18 @@ abstract contract BaseDelegation is Delegation, PausableUpgradeable, Ownable2Ste
         require(success, "deposit failed");
     }
 
+    function deposit(
+        bytes calldata blsPubKey,
+        bytes calldata peerId,
+        bytes calldata signature
+    ) public virtual payable;
+
+    function deposit2(
+        bytes calldata blsPubKey,
+        bytes calldata peerId,
+        bytes calldata signature
+    ) public virtual;
+
     function _increaseDeposit(uint256 amount) internal virtual {
         // topup the deposit only if already activated as a validator
         if (_isActivated()) {

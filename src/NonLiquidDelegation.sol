@@ -39,6 +39,22 @@ contract NonLiquidDelegation is BaseDelegation, INonLiquidDelegation {
         __BaseDelegation_init(initialOwner);
     }
 
+    function deposit(
+        bytes calldata blsPubKey,
+        bytes calldata peerId,
+        bytes calldata signature
+    ) public override payable {
+        revert("not implemented");
+    }
+
+    function deposit2(
+        bytes calldata blsPubKey,
+        bytes calldata peerId,
+        bytes calldata signature
+    ) public override {
+        revert("not implemented");
+    }
+
     function stake() external payable override {
         revert("not implemented");
     }

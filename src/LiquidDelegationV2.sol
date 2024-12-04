@@ -51,7 +51,7 @@ contract LiquidDelegationV2 is BaseDelegation, ILiquidDelegation {
         bytes calldata blsPubKey,
         bytes calldata peerId,
         bytes calldata signature
-    ) public onlyOwner {
+    ) public override onlyOwner {
         _deposit(
             blsPubKey,
             peerId,
@@ -67,7 +67,7 @@ contract LiquidDelegationV2 is BaseDelegation, ILiquidDelegation {
         bytes calldata blsPubKey,
         bytes calldata peerId,
         bytes calldata signature
-    ) public payable onlyOwner {
+    ) public override payable onlyOwner {
         _deposit(
             blsPubKey,
             peerId,
