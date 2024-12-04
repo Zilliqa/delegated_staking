@@ -3,7 +3,7 @@ pragma solidity ^0.8.26;
 
 import {BaseDelegation} from "src/BaseDelegation.sol";
 import {Delegation} from "src/Delegation.sol";
-import {Deposit, InitialStaker} from "@zilliqa/zq2/deposit.sol";
+import {Deposit, InitialStaker} from "@zilliqa/zq2/deposit_v2.sol";
 import {Console} from "src/Console.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {Test, Vm} from "forge-std/Test.sol";
@@ -106,12 +106,20 @@ abstract contract BaseDelegationTest is Test {
         //vm.deployCodeTo("Deposit.sol", delegation.DEPOSIT_CONTRACT());
         vm.etch(
             delegation.DEPOSIT_CONTRACT(), //0x000000000000000000005a494C4445504F534954,
-            address(new Deposit(10_000_000 ether, 256, 10, initialStakers)).code
+            // since the deposit contract is upgradeable, the constructor has no parameters
+            //address(new Deposit(10_000_000 ether, 256, 10, initialStakers)).code
+            address(new Deposit()).code
         );
+        vm.store(delegation.DEPOSIT_CONTRACT(), bytes32(uint256(0x958a6cf6390bd7165e3519675caa670ab90f0161508a9ee714d3db7edc50740b)), bytes32(uint256(block.number / 10)));
+        vm.store(delegation.DEPOSIT_CONTRACT(), bytes32(uint256(0x958a6cf6390bd7165e3519675caa670ab90f0161508a9ee714d3db7edc50740c)), bytes32(uint256(10_000_000 ether)));
+        vm.store(delegation.DEPOSIT_CONTRACT(), bytes32(uint256(0x958a6cf6390bd7165e3519675caa670ab90f0161508a9ee714d3db7edc50740d)), bytes32(uint256(256)));
+        vm.store(delegation.DEPOSIT_CONTRACT(), bytes32(uint256(0x958a6cf6390bd7165e3519675caa670ab90f0161508a9ee714d3db7edc50740e)), bytes32(uint256(10)));
+        /* since the deposit contract is upgradeable, the storage locations changed too
         vm.store(delegation.DEPOSIT_CONTRACT(), bytes32(uint256(11)), bytes32(uint256(block.number / 10)));
         vm.store(delegation.DEPOSIT_CONTRACT(), bytes32(uint256(12)), bytes32(uint256(10_000_000 ether)));
         vm.store(delegation.DEPOSIT_CONTRACT(), bytes32(uint256(13)), bytes32(uint256(256)));
         vm.store(delegation.DEPOSIT_CONTRACT(), bytes32(uint256(14)), bytes32(uint256(10)));
+        */
         /*
         console.log("Deposit.minimimStake() =", Deposit(delegation.DEPOSIT_CONTRACT()).minimumStake());
         console.log("Deposit.maximumStakers() =", Deposit(delegation.DEPOSIT_CONTRACT()).maximumStakers());
@@ -169,6 +177,8 @@ abstract contract BaseDelegationTest is Test {
             );
         }
         // wait 2 epochs for the change to the deposit to take affect
-        vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
+        vm.roll(block.number + 3600 * 2);
+        // remove the previous line and comment out the next one once https://github.com/Zilliqa/zq2/issues/1956 is implemented
+        //vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
     }
 }
