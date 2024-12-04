@@ -1,7 +1,7 @@
 #!/bin/bash
 
-if [ $# -ne 2 ]; then
-  echo "Provide the delegation contract address and a staker address as arguments."
+if [ $# -lt 2 ]; then
+  echo "Provide the delegation contract address, a staker address and optionally, a block number as arguments."
   exit 1
 fi
 
@@ -12,8 +12,13 @@ if [[ "$variant" == "$temp" ]]; then
     exit 1
 fi
 
-block=$(cast rpc eth_blockNumber --rpc-url http://localhost:4201)
-block_num=$(echo $block | tr -d '"' | cast to-dec --base-in 16)
+if [ $# -eq 3 ]; then
+    block_num=$3
+    block=$(echo $block_num | cast to-hex --base-in 10)
+else
+    block=$(cast rpc eth_blockNumber --rpc-url http://localhost:4201)
+    block_num=$(echo $block | tr -d '"' | cast to-dec --base-in 16)
+fi
 echo $(date +"%T,%3N") $block_num
 
 owner=$(cast call $1 "owner()(address)" --block $block_num --rpc-url http://localhost:4201)
@@ -71,6 +76,15 @@ claimable=$(cast call $1 "getClaimable()(uint256)" --from $2 --block $block_num 
 echo staker claimable: $(cast to-unit $claimable ether) ZIL
 
 echo validator deposit: $(cast to-unit $stake ether) ZIL
-balance=$(cast rpc eth_getBalance $1 $block --rpc-url http://localhost:4201 | tr -d '"' | cast to-dec --base-in 16)
-echo validator balance: $(cast to-unit $balance ether) ZIL
-echo pending withdrawals: $(cast call $1 "getTotalWithdrawals()(uint256)" --block $block_num --rpc-url http://localhost:4201 | sed 's/\[[^]]*\]//g') wei
+
+validatorBalance=$(cast rpc eth_getBalance $1 $block --rpc-url http://localhost:4201 | tr -d '"' | cast to-dec --base-in 16)
+echo validator balance: $(cast to-unit $validatorBalance ether) ZIL
+
+pendingWithdrawals=$(cast call $1 "getTotalWithdrawals()(uint256)" --block $block_num --rpc-url http://localhost:4201 | sed 's/\[[^]]*\]//g')
+echo pending withdrawals: $(cast to-unit $pendingWithdrawals ether) ZIL
+
+totalStake=$(cast call 0x000000000000000000005a494C4445504F534954 "getFutureTotalStake()(uint256)" --block $block_num --rpc-url http://localhost:4201 | sed 's/\[[^]]*\]//g')
+echo total stake: $(cast to-unit $totalStake ether) ZIL
+
+depositBalance=$(cast rpc eth_getBalance 0x000000000000000000005a494C4445504F534954 $block --rpc-url http://localhost:4201 | tr -d '"' | cast to-dec --base-in 16)
+echo deposit balance: $(cast to-unit $depositBalance ether) ZIL

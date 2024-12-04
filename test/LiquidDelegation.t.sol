@@ -1,133 +1,43 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 pragma solidity ^0.8.26;
 
+import {BaseDelegationTest, PopVerifyPrecompile} from "test/BaseDelegation.t.sol";
 import {LiquidDelegation} from "src/LiquidDelegation.sol";
 import {LiquidDelegationV2} from "src/LiquidDelegationV2.sol";
 import {NonRebasingLST} from "src/NonRebasingLST.sol";
-import {WithdrawalQueue} from "src/BaseDelegation.sol";
+import {BaseDelegation, WithdrawalQueue} from "src/BaseDelegation.sol";
 import {Delegation} from "src/Delegation.sol";
-import {Deposit, InitialStaker} from "@zilliqa/zq2/deposit.sol";
+import {Deposit} from "@zilliqa/zq2/deposit_v2.sol";
 import {Console} from "src/Console.sol";
-import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {Test, Vm} from "forge-std/Test.sol";
+import {Vm} from "forge-std/Test.sol";
 import "forge-std/console.sol";
 
-contract PopVerifyPrecompile {
-    function popVerify(bytes memory, bytes memory) public pure returns(bool) {
-        return true;
-    }
-}
-
-contract LiquidDelegationTest is Test {
-    address payable proxy;
+contract LiquidDelegationTest is BaseDelegationTest {
     LiquidDelegationV2 delegation;
     NonRebasingLST lst;
-    address owner;
-    address staker = 0xd819fFcE7A58b1E835c25617Db7b46a00888B013;
 
-    function setUp() public {
-        vm.chainId(33469);
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-        owner = vm.addr(deployerPrivateKey);
-        //console.log("Signer is %s", owner);
-        vm.deal(owner, 100_000 ether);
-        vm.startPrank(owner);
-
-        address oldImplementation = address(
-            new LiquidDelegation()
-        );
-
-        bytes memory initializerCall = abi.encodeWithSelector(
+    constructor() BaseDelegationTest() {
+        oldImplementation = address(new LiquidDelegation());
+        newImplementation = payable(new LiquidDelegationV2());
+        initializerCall = abi.encodeWithSelector(
             LiquidDelegation.initialize.selector,
             owner
         );
-
-        proxy = payable(
-            new ERC1967Proxy(oldImplementation, initializerCall)
-        );
-        /*
-        console.log(
-            "Proxy deployed: %s \r\n  Implementation deployed: %s",
-            proxy,
-            oldImplementation
-        );
-        //*/
-        LiquidDelegation oldDelegation = LiquidDelegation(
-                proxy
-            );
-        /*
-        console.log("Deployed version: %s",
-            oldDelegation.version()
-        );
-
-        console.log("Owner is %s",
-            oldDelegation.owner()
-        );
-        //*/
-        address payable newImplementation = payable(
-            new LiquidDelegationV2()
-        );
-        /*
-        console.log("New implementation deployed: %s",
-            newImplementation
-        );
-        //*/
-        bytes memory reinitializerCall = abi.encodeWithSelector(
+        reinitializerCall = abi.encodeWithSelector(
             LiquidDelegationV2.reinitialize.selector
         );
+    }
 
-        oldDelegation.upgradeToAndCall(
-            newImplementation,
-            reinitializerCall
-        );
-
+    function storeDelegation() internal override {
         delegation = LiquidDelegationV2(
-                proxy
-            );
-        /*
-        console.log("Upgraded to version: %s",
-            delegation.version()
+            proxy
         );
-        //*/
         lst = NonRebasingLST(delegation.getLST());
         /*
         console.log("LST address: %s",
             address(lst)
         );
-
-        Console.log("Old commission rate: %s.%s%s%%",
-            delegation.getCommissionNumerator(),
-            2
-        );
         //*/
-        uint256 commissionNumerator = 1_000;
-        delegation.setCommissionNumerator(commissionNumerator);
-        /*
-        Console.log("New commission rate: %s.%s%s%%",
-            delegation.getCommissionNumerator(),
-            2
-        );
-        //*/
-
-        InitialStaker[] memory initialStakers = new InitialStaker[](0);
-        //vm.deployCodeTo("Deposit.sol", delegation.DEPOSIT_CONTRACT());
-        vm.etch(
-            delegation.DEPOSIT_CONTRACT(), //0x000000000000000000005a494C4445504F534954,
-            address(new Deposit(10_000_000 ether, 256, 10, initialStakers)).code
-        );
-        vm.store(delegation.DEPOSIT_CONTRACT(), bytes32(uint256(11)), bytes32(uint256(block.number / 10)));
-        vm.store(delegation.DEPOSIT_CONTRACT(), bytes32(uint256(12)), bytes32(uint256(10_000_000 ether)));
-        vm.store(delegation.DEPOSIT_CONTRACT(), bytes32(uint256(13)), bytes32(uint256(256)));
-        vm.store(delegation.DEPOSIT_CONTRACT(), bytes32(uint256(14)), bytes32(uint256(10)));
-        /*
-        console.log("Deposit.minimimStake() =", Deposit(delegation.DEPOSIT_CONTRACT()).minimumStake());
-        console.log("Deposit.maximumStakers() =", Deposit(delegation.DEPOSIT_CONTRACT()).maximumStakers());
-        console.log("Deposit.blocksPerEpoch() =", Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch());
-        //*/
-
-        vm.etch(address(0x5a494c80), address(new PopVerifyPrecompile()).code);
-
-        vm.stopPrank();
     }
 
     function run(
@@ -144,53 +54,12 @@ contract LiquidDelegationTest is Test {
         delegation = LiquidDelegationV2(proxy);
         lst = NonRebasingLST(delegation.getLST());
 
-        if (initialDeposit) {
-            vm.deal(owner, owner.balance + depositAmount);
-            vm.startPrank(owner);
-
-            delegation.deposit{
-                value: depositAmount
-            }(
-                bytes(hex"92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c"),
-                bytes(hex"002408011220d5ed74b09dcbe84d3b32a56c01ab721cf82809848b6604535212a219d35c412f"),
-                bytes(hex"b14832a866a49ddf8a3104f8ee379d29c136f29aeb8fccec9d7fb17180b99e8ed29bee2ada5ce390cb704bc6fd7f5ce814f914498376c4b8bc14841a57ae22279769ec8614e2673ba7f36edc5a4bf5733aa9d70af626279ee2b2cde939b4bd8a")
-            );
-        } else { 
-            vm.deal(staker, staker.balance + depositAmount);
-            vm.startPrank(staker);
-
-            vm.expectEmit(
-                true,
-                false,
-                false,
-                true,
-                address(delegation)
-            );
-            emit Delegation.Staked(
-                staker,
-                depositAmount,
-                abi.encode(depositAmount)
-            );
-
-            delegation.stake{
-                value: depositAmount
-            }();
-
-            vm.startPrank(owner);
-
-            delegation.deposit2(
-                bytes(hex"92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c"),
-                bytes(hex"002408011220d5ed74b09dcbe84d3b32a56c01ab721cf82809848b6604535212a219d35c412f"),
-                bytes(hex"b14832a866a49ddf8a3104f8ee379d29c136f29aeb8fccec9d7fb17180b99e8ed29bee2ada5ce390cb704bc6fd7f5ce814f914498376c4b8bc14841a57ae22279769ec8614e2673ba7f36edc5a4bf5733aa9d70af626279ee2b2cde939b4bd8a")
-            );
-        }
-        // wait 2 epochs for the change to the deposit to take affect
-        vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
+        deposit(BaseDelegation(delegation), depositAmount, initialDeposit);
 
         vm.store(address(delegation), 0xfa57cbed4b267d0bc9f2cbdae86b4d1d23ca818308f873af9c968a23afadfd01, bytes32(taxedRewardsBeforeStaking));
         vm.deal(address(delegation), rewardsBeforeStaking);
-        vm.deal(staker, 100_000 ether);
-        vm.startPrank(staker);
+        vm.deal(stakers[0], 100_000 ether);
+        vm.startPrank(stakers[0]);
 
         Console.log("Deposit before staking: %s.%s%s ZIL",
             delegation.getStake()
@@ -205,11 +74,11 @@ contract LiquidDelegationTest is Test {
         );
 
         Console.log("Staker balance before staking: %s.%s%s ZIL",
-            staker.balance
+            stakers[0].balance
         );
 
         Console.log("Staker balance before staking: %s.%s%s LST",
-            lst.balanceOf(staker)
+            lst.balanceOf(stakers[0])
         );
 
         Console.log("Total supply before staking: %s.%s%s LST", 
@@ -217,7 +86,6 @@ contract LiquidDelegationTest is Test {
         );
 
         uint256[2] memory ownerZIL = [uint256(0), 0];
-        uint256 ownerZILAfter;
         uint256 loggedAmount;
         uint256 loggedShares;
         uint256 totalShares;
@@ -239,7 +107,7 @@ contract LiquidDelegationTest is Test {
                 address(delegation)
             );
             emit Delegation.Staked(
-                staker,
+                stakers[0],
                 delegatedAmount,
                 abi.encode(lst.totalSupply() * delegatedAmount / (delegation.getStake() + delegation.getRewards()))
             );
@@ -286,11 +154,11 @@ contract LiquidDelegationTest is Test {
             );
 
             Console.log("Staker balance after staking: %s.%s%s ZIL",
-                staker.balance
+                stakers[0].balance
             );
 
             Console.log("Staker balance after staking: %s.%s%s LST",
-                lst.balanceOf(staker)
+                lst.balanceOf(stakers[0])
             );
 
             Console.log("Total supply after staking: %s.%s%s LST",
@@ -323,15 +191,15 @@ contract LiquidDelegationTest is Test {
             address(delegation)
         );
         emit Delegation.Unstaked(
-            staker,
-            (delegation.getStake() + delegation.getRewards()) * lst.balanceOf(staker) / lst.totalSupply(),
-            abi.encode(lst.balanceOf(staker))
+            stakers[0],
+            (delegation.getStake() + delegation.getRewards()) * lst.balanceOf(stakers[0]) / lst.totalSupply(),
+            abi.encode(lst.balanceOf(stakers[0]))
         );
 
-        uint256[2] memory stakerLST = [lst.balanceOf(staker), 0];
+        uint256[2] memory stakerLST = [lst.balanceOf(stakers[0]), 0];
         ownerZIL[0] = delegation.owner().balance;
 
-        uint256 shares = initialDeposit ? lst.balanceOf(staker) : lst.balanceOf(staker) - depositAmount;
+        uint256 shares = initialDeposit ? lst.balanceOf(stakers[0]) : lst.balanceOf(stakers[0]) - depositAmount;
         assertEq(totalShares, shares, "staked shares balance mismatch");
 
         delegation.unstake(
@@ -341,7 +209,7 @@ contract LiquidDelegationTest is Test {
         // wait 2 epochs for the change to the deposit to take affect
         vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
 
-        stakerLST[1] = lst.balanceOf(staker);
+        stakerLST[1] = lst.balanceOf(stakers[0]);
         ownerZIL[1] = delegation.owner().balance;
 
         assertEq((rewardsBeforeUnstaking - taxedRewardsAfterStaking) * delegation.getCommissionNumerator() / delegation.DENOMINATOR(), ownerZIL[1] - ownerZIL[0], "commission mismatch after unstaking");
@@ -377,13 +245,13 @@ contract LiquidDelegationTest is Test {
             taxedRewardsAfterUnstaking
         );
 
-        uint256 stakerBalanceAfterUnstaking = staker.balance;
+        uint256 stakerBalanceAfterUnstaking = stakers[0].balance;
         Console.log("Staker balance after unstaking: %s.%s%s ZIL",
             stakerBalanceAfterUnstaking
         );
 
         Console.log("Staker balance after unstaking: %s.%s%s LST",
-            lst.balanceOf(staker)
+            lst.balanceOf(stakers[0])
         );
 
         Console.log("Total supply after unstaking: %s.%s%s LST", 
@@ -407,17 +275,17 @@ contract LiquidDelegationTest is Test {
             address(delegation)
         );
         emit Delegation.Claimed(
-            staker,
+            stakers[0],
             unstakedAmount,
             ""
         );
 
-        uint256[2] memory stakerZIL = [staker.balance, 0];
+        uint256[2] memory stakerZIL = [stakers[0].balance, 0];
         ownerZIL[0] = delegation.owner().balance;
 
         delegation.claim();
 
-        stakerZIL[1] = staker.balance;
+        stakerZIL[1] = stakers[0].balance;
         ownerZIL[1] = delegation.owner().balance;
 
         entries = vm.getRecordedLogs();
@@ -448,12 +316,12 @@ contract LiquidDelegationTest is Test {
         );
 
         Console.log("Staker balance after claiming: %s.%s%s ZIL",
-            staker.balance
+            stakers[0].balance
         );
-        assertEq(staker.balance, stakerBalanceAfterUnstaking + unstakedAmount, "final staker balance mismatch");
+        assertEq(stakers[0].balance, stakerBalanceAfterUnstaking + unstakedAmount, "final staker balance mismatch");
 
         Console.log("Staker balance after claiming: %s.%s%s LST",
-            lst.balanceOf(staker)
+            lst.balanceOf(stakers[0])
         );
 
         Console.log("Total supply after claiming: %s.%s%s LST", 
@@ -463,7 +331,7 @@ contract LiquidDelegationTest is Test {
     }
 
     function test_1a_LargeStake_Late_NoRewards_UnstakeAll() public {
-        staker = 0x092E5E57955437876dA9Df998C96e2BE19341670;
+        stakers[0] = 0x092E5E57955437876dA9Df998C96e2BE19341670;
         uint256 depositAmount = 10_000_000 ether;
         uint256 totalDeposit = 5_200_000_000 ether;
         uint256 delegatedAmount = 10_000 ether;
@@ -488,7 +356,7 @@ contract LiquidDelegationTest is Test {
     //TODO: remove the test once https://github.com/Zilliqa/zq2/issues/1761 is fixed
     function test_DepositContract() public {
         vm.deal(owner, 10_000_000 ether + 1_000_000 ether + 0 ether);
-        vm.deal(staker, 0);
+        vm.deal(stakers[0], 0);
         vm.startPrank(owner);
         Deposit(delegation.DEPOSIT_CONTRACT()).deposit{
             value: 10_000_000 ether
@@ -496,7 +364,7 @@ contract LiquidDelegationTest is Test {
             bytes(hex"92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c"),
             bytes(hex"002408011220d5ed74b09dcbe84d3b32a56c01ab721cf82809848b6604535212a219d35c412f"),
             bytes(hex"b14832a866a49ddf8a3104f8ee379d29c136f29aeb8fccec9d7fb17180b99e8ed29bee2ada5ce390cb704bc6fd7f5ce814f914498376c4b8bc14841a57ae22279769ec8614e2673ba7f36edc5a4bf5733aa9d70af626279ee2b2cde939b4bd8a"),
-            address(staker)
+            address(stakers[0])
         );
         console.log("validator deposited");
         console.log("validator stake: %s", Deposit(delegation.DEPOSIT_CONTRACT()).getStake(
@@ -542,7 +410,7 @@ contract LiquidDelegationTest is Test {
     }
 
     function test_1b_LargeStake_Early_NoRewards_UnstakeAll() public {
-        staker = 0x092E5E57955437876dA9Df998C96e2BE19341670;
+        stakers[0] = 0x092E5E57955437876dA9Df998C96e2BE19341670;
         uint256 depositAmount = 10_000_000 ether;
         uint256 totalDeposit = 5_200_000_000 ether;
         uint256 delegatedAmount = 10_000 ether;
@@ -565,7 +433,7 @@ contract LiquidDelegationTest is Test {
     } 
 
     function test_2a_LargeStake_Late_SmallValidator_OwnDeposit_OneYearOfRewards_UnstakeAll() public {
-        staker = 0x092E5E57955437876dA9Df998C96e2BE19341670;
+        stakers[0] = 0x092E5E57955437876dA9Df998C96e2BE19341670;
         uint256 depositAmount = 10_000_000 ether;
         uint256 totalDeposit = 5_200_000_000 ether;
         uint256 delegatedAmount = 10_000 ether;
@@ -588,7 +456,7 @@ contract LiquidDelegationTest is Test {
     } 
 
     function test_3a_SmallStake_Late_SmallValidator_OwnDeposit_OneYearOfRewards_UnstakeAll() public {
-        staker = 0x092E5E57955437876dA9Df998C96e2BE19341670;
+        stakers[0] = 0x092E5E57955437876dA9Df998C96e2BE19341670;
         uint256 depositAmount = 10_000_000 ether;
         uint256 totalDeposit = 5_200_000_000 ether;
         uint256 delegatedAmount = 100 ether;
@@ -611,7 +479,7 @@ contract LiquidDelegationTest is Test {
     } 
 
     function test_4a_LargeStake_Late_LargeValidator_OwnDeposit_OneYearOfRewards_UnstakeAll() public {
-        staker = 0x092E5E57955437876dA9Df998C96e2BE19341670;
+        stakers[0] = 0x092E5E57955437876dA9Df998C96e2BE19341670;
         uint256 depositAmount = 100_000_000 ether;
         uint256 totalDeposit = 5_200_000_000 ether;
         uint256 delegatedAmount = 10_000 ether;
@@ -634,7 +502,7 @@ contract LiquidDelegationTest is Test {
     }
 
     function test_5a_SmallStake_Late_LargeValidator_OwnDeposit_OneYearOfRewards_UnstakeAll() public {
-        staker = 0x092E5E57955437876dA9Df998C96e2BE19341670;
+        stakers[0] = 0x092E5E57955437876dA9Df998C96e2BE19341670;
         uint256 depositAmount = 100_000_000 ether;
         uint256 totalDeposit = 5_200_000_000 ether;
         uint256 delegatedAmount = 100 ether;
@@ -657,7 +525,7 @@ contract LiquidDelegationTest is Test {
     }
 
     function test_2b_LargeStake_Late_SmallValidator_DelegatedDeposit_OneYearOfRewards_UnstakeAll() public {
-        staker = 0x092E5E57955437876dA9Df998C96e2BE19341670;
+        stakers[0] = 0x092E5E57955437876dA9Df998C96e2BE19341670;
         uint256 depositAmount = 10_000_000 ether;
         uint256 totalDeposit = 5_200_000_000 ether;
         uint256 delegatedAmount = 10_000 ether;
@@ -680,7 +548,7 @@ contract LiquidDelegationTest is Test {
     } 
 
     function test_3b_SmallStake_Late_SmallValidator_DelegatedDeposit_OneYearOfRewards_UnstakeAll() public {
-        staker = 0x092E5E57955437876dA9Df998C96e2BE19341670;
+        stakers[0] = 0x092E5E57955437876dA9Df998C96e2BE19341670;
         uint256 depositAmount = 10_000_000 ether;
         uint256 totalDeposit = 5_200_000_000 ether;
         uint256 delegatedAmount = 100 ether;
@@ -703,7 +571,7 @@ contract LiquidDelegationTest is Test {
     } 
 
     function test_4b_LargeStake_Late_LargeValidator_DelegatedDeposit_OneYearOfRewards_UnstakeAll() public {
-        staker = 0x092E5E57955437876dA9Df998C96e2BE19341670;
+        stakers[0] = 0x092E5E57955437876dA9Df998C96e2BE19341670;
         uint256 depositAmount = 100_000_000 ether;
         uint256 totalDeposit = 5_200_000_000 ether;
         uint256 delegatedAmount = 10_000 ether;
@@ -726,7 +594,7 @@ contract LiquidDelegationTest is Test {
     }
 
     function test_5b_SmallStake_Late_LargeValidator_DelegatedDeposit_OneYearOfRewards_UnstakeAll() public {
-        staker = 0x092E5E57955437876dA9Df998C96e2BE19341670;
+        stakers[0] = 0x092E5E57955437876dA9Df998C96e2BE19341670;
         uint256 depositAmount = 100_000_000 ether;
         uint256 totalDeposit = 5_200_000_000 ether;
         uint256 delegatedAmount = 100 ether;
@@ -749,7 +617,7 @@ contract LiquidDelegationTest is Test {
     }
 
     function test_2c_LargeStake_Early_SmallValidator_OwnDeposit_OneYearOfRewards_UnstakeAll() public {
-        staker = 0x092E5E57955437876dA9Df998C96e2BE19341670;
+        stakers[0] = 0x092E5E57955437876dA9Df998C96e2BE19341670;
         uint256 depositAmount = 10_000_000 ether;
         uint256 totalDeposit = 5_200_000_000 ether;
         uint256 delegatedAmount = 10_000 ether;
@@ -772,7 +640,7 @@ contract LiquidDelegationTest is Test {
     }
 
     function test_3c_SmallStake_Early_SmallValidator_OwnDeposit_OneYearOfRewards_UnstakeAll() public {
-        staker = 0x092E5E57955437876dA9Df998C96e2BE19341670;
+        stakers[0] = 0x092E5E57955437876dA9Df998C96e2BE19341670;
         uint256 depositAmount = 10_000_000 ether;
         uint256 totalDeposit = 5_200_000_000 ether;
         uint256 delegatedAmount = 100 ether;
@@ -795,7 +663,7 @@ contract LiquidDelegationTest is Test {
     } 
 
     function test_4c_LargeStake_Early_LargeValidator_OwnDeposit_OneYearOfRewards_UnstakeAll() public {
-        staker = 0x092E5E57955437876dA9Df998C96e2BE19341670;
+        stakers[0] = 0x092E5E57955437876dA9Df998C96e2BE19341670;
         uint256 depositAmount = 100_000_000 ether;
         uint256 totalDeposit = 5_200_000_000 ether;
         uint256 delegatedAmount = 10_000 ether;
@@ -818,7 +686,7 @@ contract LiquidDelegationTest is Test {
     }
 
     function test_5c_SmallStake_Early_LargeValidator_OwnDeposit_OneYearOfRewards_UnstakeAll() public {
-        staker = 0x092E5E57955437876dA9Df998C96e2BE19341670;
+        stakers[0] = 0x092E5E57955437876dA9Df998C96e2BE19341670;
         uint256 depositAmount = 100_000_000 ether;
         uint256 totalDeposit = 5_200_000_000 ether;
         uint256 delegatedAmount = 100 ether;
@@ -841,7 +709,7 @@ contract LiquidDelegationTest is Test {
     } 
 
     function test_6a_ManyVsOneStake_UnstakeAll() public {
-        staker = 0x092E5E57955437876dA9Df998C96e2BE19341670;
+        stakers[0] = 0x092E5E57955437876dA9Df998C96e2BE19341670;
         uint256 depositAmount = 10_000_000 ether;
         uint256 totalDeposit = 110_000_000 ether;
         uint256 delegatedAmount = 10_000 ether;
@@ -866,7 +734,7 @@ contract LiquidDelegationTest is Test {
     }
 
     function test_6b_OneVsManyStakes_UnstakeAll() public {
-        staker = 0x092E5E57955437876dA9Df998C96e2BE19341670;
+        stakers[0] = 0x092E5E57955437876dA9Df998C96e2BE19341670;
         uint256 depositAmount = 10_000_000 ether;
         uint256 totalDeposit = 110_000_000 ether;
         uint256 delegatedAmount = 90_000 ether;
@@ -911,7 +779,7 @@ contract LiquidDelegationTest is Test {
     */
     //TODO: update the values based on the devnet and fix the failing test (typo intentional)
     function est_0_ReproduceRealNetwork() public {
-        staker = 0xd819fFcE7A58b1E835c25617Db7b46a00888B013;
+        stakers[0] = 0xd819fFcE7A58b1E835c25617Db7b46a00888B013;
         uint256 delegatedAmount = 10_000 ether;
         // Insert the following values output by the STATE script below
         uint256 rewardsBeforeStaking = 197818620596390326580;

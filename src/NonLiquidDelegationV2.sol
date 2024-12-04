@@ -120,7 +120,7 @@ contract NonLiquidDelegationV2 is BaseDelegation, INonLiquidDelegation {
         bytes calldata blsPubKey,
         bytes calldata peerId,
         bytes calldata signature
-    ) public onlyOwner {
+    ) public override onlyOwner {
         _deposit(
             blsPubKey,
             peerId,
@@ -136,7 +136,7 @@ contract NonLiquidDelegationV2 is BaseDelegation, INonLiquidDelegation {
         bytes calldata blsPubKey,
         bytes calldata peerId,
         bytes calldata signature
-    ) public payable onlyOwner {
+    ) public payable override onlyOwner {
         _deposit(
             blsPubKey,
             peerId,
