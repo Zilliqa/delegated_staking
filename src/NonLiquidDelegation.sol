@@ -12,6 +12,7 @@ interface INonLiquidDelegation {
     function rewards() external view returns(uint256);
 }
 
+/// Initial dummy implementation of Non-Liquid Delegation contract
 contract NonLiquidDelegation is BaseDelegation, INonLiquidDelegation {
 
     /* commented out because defining empty structs is disallowed

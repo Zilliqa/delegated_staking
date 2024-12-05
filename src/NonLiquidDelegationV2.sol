@@ -5,6 +5,8 @@ import {BaseDelegation} from "src/BaseDelegation.sol";
 import {INonLiquidDelegation} from "src/NonLiquidDelegation.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
+/// Non-Liquid Delegation contract V2.
+/// A staking pool implementation in which users receive no representation for their staked assets. Assets are locked up until the staking period has ended.
 contract NonLiquidDelegationV2 is BaseDelegation, INonLiquidDelegation {
     using SafeCast for int256;
 

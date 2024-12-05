@@ -13,6 +13,7 @@ interface ILiquidDelegation {
     function getPrice() external view returns(uint256);
 }
 
+/// Initial dummy implementation of Liquid Delegation contract
 contract LiquidDelegation is BaseDelegation, ILiquidDelegation {
 
     /// @custom:storage-location erc7201:zilliqa.storage.LiquidDelegation

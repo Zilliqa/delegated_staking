@@ -6,6 +6,8 @@ import {ILiquidDelegation} from "src/LiquidDelegation.sol";
 import {NonRebasingLST} from "src/NonRebasingLST.sol";
 
 // the contract is supposed to be deployed with the node's signer account
+/// Liquid Delegation contract V2.
+/// A staking pool implementation in which users receive a Non-Rebasing Liquid Staking Token to represent their staked assets
 contract LiquidDelegationV2 is BaseDelegation, ILiquidDelegation {
 
     /// @custom:storage-location erc7201:zilliqa.storage.LiquidDelegation
