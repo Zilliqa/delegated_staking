@@ -10,7 +10,7 @@ import "src/Delegation.sol";
 
 library WithdrawalQueue {
 
-    address public constant DEPOSIT_CONTRACT = 0x000000000000000000005a494C4445504F534954;
+    address public constant DEPOSIT_CONTRACT = address(0x5A494C4445504F53495450524F5859);
 
     struct Item {
         uint256 blockNumber;
@@ -75,7 +75,7 @@ abstract contract BaseDelegation is Delegation, PausableUpgradeable, Ownable2Ste
     }
 
     uint256 public constant MIN_DELEGATION = 100 ether;
-    address public constant DEPOSIT_CONTRACT = 0x000000000000000000005a494C4445504F534954;
+    address public constant DEPOSIT_CONTRACT = WithdrawalQueue.DEPOSIT_CONTRACT;
     uint256 public constant DENOMINATOR = 10_000;
 
     function version() public view returns(uint64) {

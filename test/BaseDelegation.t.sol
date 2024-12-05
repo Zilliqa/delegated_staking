@@ -105,7 +105,7 @@ abstract contract BaseDelegationTest is Test {
         InitialStaker[] memory initialStakers = new InitialStaker[](0);
         //vm.deployCodeTo("Deposit.sol", delegation.DEPOSIT_CONTRACT());
         vm.etch(
-            delegation.DEPOSIT_CONTRACT(), //0x000000000000000000005a494C4445504F534954,
+            delegation.DEPOSIT_CONTRACT(),
             // since the deposit contract is upgradeable, the constructor has no parameters
             //address(new Deposit(10_000_000 ether, 256, 10, initialStakers)).code
             address(new Deposit()).code
