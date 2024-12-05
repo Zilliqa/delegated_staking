@@ -112,7 +112,7 @@ contract NonLiquidDelegationV2 is BaseDelegation, INonLiquidDelegation {
             result = $.stakings[stakingIndices[stakingIndices.length - 1]].amount;
     }
 
-    event RewardPaid(address indexed owner, uint256 reward);
+    event RewardPaid(address indexed delegator, uint256 reward);
 
     // called by the node's account that deployed this contract and is its owner
     // to request the node's activation as a validator using the delegated stake

@@ -10,7 +10,7 @@ To interact with the contracts throught the CLI, you can use the Forge scripts p
 forge install OpenZeppelin/openzeppelin-contracts-upgradeable --no-commit
 forge install OpenZeppelin/openzeppelin-contracts --no-commit
 ```
-To allow stakers to interact with the contracts through your dapp, use the events and methods defined in the `Deposit` interface:
+To allow stakers to interact with the contracts through your dapp, use the events and methods defined in the `Deposit` interface and the `BaseDelegation` contract:
 ```solidity
 event Staked(address indexed delegator, uint256 amount, bytes data);
 event Unstaked(address indexed delegator, uint256 amount, bytes data);
@@ -19,19 +19,20 @@ event Claimed(address indexed delegator, uint256 amount, bytes data);
 function stake() external payable;
 function unstake(uint256) external;
 function claim() external;
+function getClaimable() external virtual view returns(uint256 total);
 ```
 as well as the additional events and methods applicable to a specific staking variant such as
 ```solidity
-function getLST() external view returns(address);
-function getPrice() external view returns(uint256);
+function getLST() external view returns(address erc20Contract);
+function getPrice() external view returns(uint256 oneTokenToZil);
 ```
 for liquid staking and
 ```solidity
-event RewardPaid(address indexed owner, uint256 reward);
+event RewardPaid(address indexed delegator, uint256 reward);
 
-function rewards() external view returns(uint256);
-function withdrawAllRewards() external returns(uint256);
-function withdrawRewards(uint256 amount) external returns(uint256);
+function rewards() external view returns(uint256 total);
+function withdrawAllRewards() external returns(uint256 taxedRewards);
+function withdrawRewards(uint256 amount) external returns(uint256 taxedRewards);
 function stakeRewards() external;
 ```
 for the non-liquid variant.
