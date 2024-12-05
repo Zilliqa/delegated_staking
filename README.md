@@ -5,12 +5,38 @@ This repository contains the contracts and scripts needed to activate a validato
 1. When delegating stake to the non-liquid variant, the users can regularly withdraw their share of the rewards without withdrawing their stake.
 
 ## Prerequisites
-Install Foundry (https://book.getfoundry.sh/getting-started/installation) and the OpenZeppelin contracts before proceeding with the deployment:
+To interact with the contracts throught the CLI, you can use the Forge scripts provided in this repository and described further below. First, install Foundry (https://book.getfoundry.sh/getting-started/installation) and the OpenZeppelin contracts before proceeding with the deployment:
 ```
 forge install OpenZeppelin/openzeppelin-contracts-upgradeable --no-commit
 forge install OpenZeppelin/openzeppelin-contracts --no-commit
 ```
-The Zilliqa 2.0 deposit contract must be compiled for the tests included in this repository to work. Specify the folder containing the `deposit.sol` file in `remappings.txt`:
+To allow stakers to interact with the contracts through your dapp, use the events and methods defined in the `Deposit` interface:
+```solidity
+event Staked(address indexed delegator, uint256 amount, bytes data);
+event Unstaked(address indexed delegator, uint256 amount, bytes data);
+event Claimed(address indexed delegator, uint256 amount, bytes data);
+
+function stake() external payable;
+function unstake(uint256) external;
+function claim() external;
+```
+as well as the additional events and methods applicable to a specific staking variant such as
+```solidity
+function getLST() external view returns(address);
+function getPrice() external view returns(uint256);
+```
+for liquid staking and
+```solidity
+event RewardPaid(address indexed owner, uint256 reward);
+
+function rewards() external view returns(uint256);
+function withdrawAllRewards() external returns(uint256);
+function withdrawRewards(uint256 amount) external returns(uint256);
+function stakeRewards() external;
+```
+for the non-liquid variant.
+
+To enable the tests included in this repository to interact with the Zilliqa 2.0 deposit contract, it must be compiled along with the test contracts. Specify the folder containing the `deposit.sol` file in `remappings.txt`:
 ```
 @zilliqa/zq2/=/home/user/zq2/zilliqa/src/contracts/
 ```
