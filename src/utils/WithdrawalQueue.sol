@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 pragma solidity ^0.8.26;
 
+/// Interal WithdrawalQueue error
+error WithdrawalQueueError(string msg);
+
 library WithdrawalQueue {
 
-    address public constant DEPOSIT_CONTRACT = 0x000000000000000000005a494C4445504F534954;
+    address public constant DEPOSIT_CONTRACT = address(0x5A494C4445504F53495450524F5859);
 
     struct Item {
         uint256 blockNumber;
@@ -16,7 +19,7 @@ library WithdrawalQueue {
         mapping(uint256 => Item) items;
     }
 
-    function unbondingPeriod() internal view returns(uint256) {
+    function unbondingPeriod() view internal returns(uint256) {
         (bool success, bytes memory data) = DEPOSIT_CONTRACT.staticcall(
             abi.encodeWithSignature("withdrawalPeriod()")
         );
@@ -24,7 +27,7 @@ library WithdrawalQueue {
         return abi.decode(data, (uint256));
     }
 
-    function queue(Fifo storage fifo, uint256 amount) internal {
+    function enqueue(Fifo storage fifo, uint256 amount) internal {
         fifo.items[fifo.last] = Item(block.number + unbondingPeriod(), amount);
         fifo.last++;
     }

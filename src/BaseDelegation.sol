@@ -39,7 +39,8 @@ abstract contract BaseDelegation is Delegation, PausableUpgradeable, Ownable2Ste
         return _getInitializedVersion();
     } 
 
-    function __baseDelegationInit(address initialOwner) internal onlyInitializing {
+    // solhint-disable-next-line func-name-mixedcase
+    function __baseDelegation_init(address initialOwner) internal onlyInitializing {
         __Pausable_init_unchained();
         __Ownable2Step_init_unchained();
         __Ownable_init_unchained(initialOwner);

@@ -10,25 +10,12 @@ import {BaseDelegation, WithdrawalQueue} from "src/BaseDelegation.sol";
 import {Delegation} from "src/Delegation.sol";
 import {Deposit} from "@zilliqa/zq2/deposit_v2.sol";
 import {Console} from "src/Console.sol";
-<<<<<<< HEAD
 import {Vm} from "forge-std/Test.sol";
 import "forge-std/console.sol";
 
 contract LiquidDelegationTest is BaseDelegationTest {
     LiquidDelegationV2 delegation;
     NonRebasingLST lst;
-=======
-import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {Test, Vm} from "forge-std/Test.sol";
-import {console} from "forge-std/console.sol";
-
-contract LiquidDelegationTest is Test {
-    address payable private proxy;
-    LiquidDelegationV2 private delegation;
-    NonRebasingLST private lst;
-    address private owner;
-    address private staker = 0xd819fFcE7A58b1E835c25617Db7b46a00888B013;
->>>>>>> 0cacad0 (feat: apply basic linting rules to codebase)
 
     constructor() BaseDelegationTest() {
         oldImplementation = address(new LiquidDelegation());
@@ -133,7 +120,7 @@ contract LiquidDelegationTest is Test {
             }();
 
             // wait 2 epochs for the change to the deposit to take affect
-            vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).BLOCKS_PER_EPOCH() * 2);
+            vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
 
             ownerZIL[1] = delegation.owner().balance;
 
@@ -221,7 +208,7 @@ contract LiquidDelegationTest is Test {
         );
 
         // wait 2 epochs for the change to the deposit to take affect
-        vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).BLOCKS_PER_EPOCH() * 2);
+        vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
 
         stakerLST[1] = lst.balanceOf(stakers[0]);
         ownerZIL[1] = delegation.owner().balance;
@@ -384,7 +371,7 @@ contract LiquidDelegationTest is Test {
         console.log("validator stake: %s", Deposit(delegation.DEPOSIT_CONTRACT()).getStake(
             bytes(hex"92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c")
         ));
-        vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).BLOCKS_PER_EPOCH() * 2);
+        vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
         console.log("validator stake: %s", Deposit(delegation.DEPOSIT_CONTRACT()).getStake(
             bytes(hex"92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c")
         ));
@@ -395,7 +382,7 @@ contract LiquidDelegationTest is Test {
         console.log("validator stake: %s", Deposit(delegation.DEPOSIT_CONTRACT()).getStake(
             bytes(hex"92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c")
         ));
-        vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).BLOCKS_PER_EPOCH() * 2);
+        vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
         console.log("validator stake: %s", Deposit(delegation.DEPOSIT_CONTRACT()).getStake(
             bytes(hex"92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c")
         ));
@@ -406,7 +393,7 @@ contract LiquidDelegationTest is Test {
         console.log("validator stake: %s", Deposit(delegation.DEPOSIT_CONTRACT()).getStake(
             bytes(hex"92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c")
         ));
-        vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).BLOCKS_PER_EPOCH() * 2);
+        vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
         console.log("validator stake: %s", Deposit(delegation.DEPOSIT_CONTRACT()).getStake(
             bytes(hex"92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c")
         ));

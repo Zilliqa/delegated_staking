@@ -3,8 +3,8 @@
   "rules": {
     "no-inline-assembly": "off",
     "avoid-low-level-calls": "off",
-    "gas-custom-errors": "off",
     "reason-string": ["warn",{"maxLength":70}],
-    "func-visibility": ["warn", { "ignoreConstructors": true }]
+    "func-visibility": ["warn", { "ignoreConstructors": true }],
+    "gas-custom-errors": "off" 
   }
 }

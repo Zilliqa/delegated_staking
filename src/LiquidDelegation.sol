@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
+/* solhint-disable no-unused-vars */
 pragma solidity ^0.8.26;
 
 import {BaseDelegation} from "src/BaseDelegation.sol";
@@ -34,7 +35,7 @@ contract LiquidDelegation is BaseDelegation, ILiquidDelegation {
     }
 
     function initialize(address initialOwner) public initializer {
-        __baseDelegationInit(initialOwner);
+        __baseDelegation_init(initialOwner);
         LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
         $.lst = address(new NonRebasingLST(address(this)));
     }

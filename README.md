@@ -15,10 +15,19 @@ The Zilliqa 2.0 deposit contract must be compiled for the tests included in this
 @zilliqa/zq2/=/home/user/zq2/zilliqa/src/contracts/
 ```
 
-For linting: 
+## Development 
+
+### Linting
+To run linter:
 ```
 npm install -g solhint
 solhint 'src/**/*.sol'
+```
+
+### Tests
+To run Solidity tests:
+```sh
+PRIVATE_KEY="0x$(openssl rand -hex 32)" forge test
 ```
 
 ## Contract Deployment
