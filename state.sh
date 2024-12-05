@@ -83,8 +83,8 @@ echo validator balance: $(cast to-unit $validatorBalance ether) ZIL
 pendingWithdrawals=$(cast call $1 "getTotalWithdrawals()(uint256)" --block $block_num --rpc-url http://localhost:4201 | sed 's/\[[^]]*\]//g')
 echo pending withdrawals: $(cast to-unit $pendingWithdrawals ether) ZIL
 
-totalStake=$(cast call 0x000000000000000000005a494C4445504F534954 "getFutureTotalStake()(uint256)" --block $block_num --rpc-url http://localhost:4201 | sed 's/\[[^]]*\]//g')
+totalStake=$(cast call 0x00000000005A494C4445504F53495450524F5859 "getFutureTotalStake()(uint256)" --block $block_num --rpc-url http://localhost:4201 | sed 's/\[[^]]*\]//g')
 echo total stake: $(cast to-unit $totalStake ether) ZIL
 
-depositBalance=$(cast rpc eth_getBalance 0x000000000000000000005a494C4445504F534954 $block --rpc-url http://localhost:4201 | tr -d '"' | cast to-dec --base-in 16)
+depositBalance=$(cast rpc eth_getBalance 0x00000000005A494C4445504F53495450524F5859 $block --rpc-url http://localhost:4201 | tr -d '"' | cast to-dec --base-in 16)
 echo deposit balance: $(cast to-unit $depositBalance ether) ZIL
