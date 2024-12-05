@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
+/* solhint-disable no-unused-vars */
 pragma solidity ^0.8.26;
 
-import "src/BaseDelegation.sol";
+import {BaseDelegation} from "src/BaseDelegation.sol";
 
 // do not change this interface, it will break the detection of
 // the staking variant of an already deployed delegation contract
@@ -11,6 +12,7 @@ interface INonLiquidDelegation {
     function rewards() external view returns(uint256);
 }
 
+/// Initial dummy implementation of Non-Liquid Delegation contract
 contract NonLiquidDelegation is BaseDelegation, INonLiquidDelegation {
 
     /* commented out because defining empty structs is disallowed
@@ -20,12 +22,12 @@ contract NonLiquidDelegation is BaseDelegation, INonLiquidDelegation {
     */
 
     // keccak256(abi.encode(uint256(keccak256("zilliqa.storage.NonLiquidDelegation")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant NonLiquidDelegationStorageLocation = 0x66c8dc4f9c8663296597cb1e39500488e05713d82a9122d4f548b19a70fc2000;
+    bytes32 private constant NON_LIQUID_DELEGATION_STORAGE_LOCATION = 0x66c8dc4f9c8663296597cb1e39500488e05713d82a9122d4f548b19a70fc2000;
 
     /* commented out because defining empty structs is disallowed
     function _getNonLiquidDelegationStorage() private pure returns (NonLiquidDelegationStorage storage $) {
         assembly {
-            $.slot := NonLiquidDelegationStorageLocation
+            $.slot := NON_LIQUID_DELEGATION_STORAGE_LOCATION
         }
     }
     */
@@ -35,8 +37,8 @@ contract NonLiquidDelegation is BaseDelegation, INonLiquidDelegation {
         _disableInitializers();
     }
 
-    function initialize(address initialOwner) initializer public {
-        __BaseDelegation_init(initialOwner);
+    function initialize(address initialOwner) public initializer {
+        __baseDelegation_init(initialOwner);
     }
 
     function deposit(
@@ -59,15 +61,15 @@ contract NonLiquidDelegation is BaseDelegation, INonLiquidDelegation {
         revert("not implemented");
     }
 
-    function unstake(uint256) external override {
+    function unstake(uint256) external pure override {
         revert("not implemented");
     }
 
-    function claim() external override {
+    function claim() external override pure {
         revert("not implemented");
     }
 
-    function collectCommission() public override {
+    function collectCommission() public pure override {
         revert("not implemented");
     }
 
@@ -79,32 +81,32 @@ contract NonLiquidDelegation is BaseDelegation, INonLiquidDelegation {
         revert("not implemented");
     }
 
-    function rewards(uint64) public view returns(uint256) {
+    function rewards(uint64) public pure returns(uint256) {
         revert("not implemented");
     }
 
-    function getDelegatedStake() public view returns(uint256) {
+    function getDelegatedStake() public pure returns(uint256) {
         revert("not implemented");
     }
 
-    function withdrawRewards(uint256, uint64) public returns(uint256) {
+    function withdrawRewards(uint256, uint64) public pure returns(uint256) {
         revert("not implemented");
     }
 
-    function withdrawRewards(uint256) public returns(uint256) {
+    function withdrawRewards(uint256) public pure returns(uint256) {
         revert("not implemented");
     }
 
-    function withdrawAllRewards(uint64) public returns(uint256) {
+    function withdrawAllRewards(uint64) public pure returns(uint256) {
         revert("not implemented");
     }
 
-    function withdrawAllRewards() public returns(uint256) {
+    function withdrawAllRewards() public pure returns(uint256) {
         revert("not implemented");
     }
 
-    function supportsInterface(bytes4 interfaceId) public view override returns (bool) {
-       return interfaceId == type(INonLiquidDelegation).interfaceId || super.supportsInterface(interfaceId);
+    function supportsInterface(bytes4 _interfaceId) public view override returns (bool) {
+       return _interfaceId == type(INonLiquidDelegation).interfaceId || super.supportsInterface(_interfaceId);
     }
 
     function interfaceId() public pure returns (bytes4) {

@@ -1,3 +1,4 @@
+/* solhint-disable no-console, func-name-mixedcase */
 // SPDX-License-Identifier: MIT OR Apache-2.0
 pragma solidity ^0.8.26;
 
@@ -40,7 +41,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         revert("staker not found");
     }  
 
-    function snapshot(string memory s, uint256 i, uint256 x) internal view {
+    function snapshot(string memory s, uint256 i, uint256 x) internal {
         console.log("-----------------------------------------------");
         console.log(s, i, x);
         uint256[] memory shares = new uint256[](stakers.length);

@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
+/* solhint-disable no-unused-vars */
 pragma solidity ^0.8.26;
 
-import "src/BaseDelegation.sol";
-import "src/NonRebasingLST.sol";
+import {BaseDelegation} from "src/BaseDelegation.sol";
+import {NonRebasingLST} from "src/NonRebasingLST.sol";
 
 // do not change this interface, it will break the detection of
 // the staking variant of an already deployed delegation contract
@@ -12,6 +13,7 @@ interface ILiquidDelegation {
     function getPrice() external view returns(uint256);
 }
 
+/// Initial dummy implementation of Liquid Delegation contract
 contract LiquidDelegation is BaseDelegation, ILiquidDelegation {
 
     /// @custom:storage-location erc7201:zilliqa.storage.LiquidDelegation
@@ -20,11 +22,11 @@ contract LiquidDelegation is BaseDelegation, ILiquidDelegation {
     }
 
     // keccak256(abi.encode(uint256(keccak256("zilliqa.storage.LiquidDelegation")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant LiquidDelegationStorageLocation = 0xfa57cbed4b267d0bc9f2cbdae86b4d1d23ca818308f873af9c968a23afadfd00;
+    bytes32 private constant LIQUID_DELEGATION_STORAGE_LOCATION = 0xfa57cbed4b267d0bc9f2cbdae86b4d1d23ca818308f873af9c968a23afadfd00;
 
     function _getLiquidDelegationStorage() private pure returns (LiquidDelegationStorage storage $) {
         assembly {
-            $.slot := LiquidDelegationStorageLocation
+            $.slot := LIQUID_DELEGATION_STORAGE_LOCATION
         }
     }
 
@@ -33,8 +35,8 @@ contract LiquidDelegation is BaseDelegation, ILiquidDelegation {
         _disableInitializers();
     }
 
-    function initialize(address initialOwner) initializer public {
-        __BaseDelegation_init(initialOwner);
+    function initialize(address initialOwner) public initializer {
+        __baseDelegation_init(initialOwner);
         LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
         $.lst = address(new NonRebasingLST(address(this)));
     }
@@ -64,15 +66,15 @@ contract LiquidDelegation is BaseDelegation, ILiquidDelegation {
         revert("not implemented");
     }
 
-    function unstake(uint256) external override {
+    function unstake(uint256) external pure override {
         revert("not implemented");
     }
 
-    function claim() external override {
+    function claim() external pure override {
         revert("not implemented");
     }
 
-    function collectCommission() public override {
+    function collectCommission() public pure override {
         revert("not implemented");
     }
 
@@ -84,8 +86,8 @@ contract LiquidDelegation is BaseDelegation, ILiquidDelegation {
         revert("not implemented");
     }
 
-    function supportsInterface(bytes4 interfaceId) public view override returns (bool) {
-       return interfaceId == type(ILiquidDelegation).interfaceId || super.supportsInterface(interfaceId);
+    function supportsInterface(bytes4 _interfaceId) public view override returns (bool) {
+       return _interfaceId == type(ILiquidDelegation).interfaceId || super.supportsInterface(_interfaceId);
     }
 
     function interfaceId() public pure returns (bytes4) {

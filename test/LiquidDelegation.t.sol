@@ -1,3 +1,4 @@
+/* solhint-disable no-console, func-name-mixedcase */
 // SPDX-License-Identifier: MIT OR Apache-2.0
 pragma solidity ^0.8.26;
 
