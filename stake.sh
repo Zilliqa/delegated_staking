@@ -53,13 +53,14 @@ if [[ "$variant" == "ILiquidDelegation" ]]; then
     echo taxedRewardsBeforeStaking = $taxedRewardsBeforeStaking
 
     lst=$(cast call $1 "getLST()(address)" --block $block_num --rpc-url http://localhost:4201)
+    symbol=$(cast call $lst "symbol()(string)" --block $block_num --rpc-url http://localhost:4201 | tr -d '"')
 
     totalSupply=$(cast call $lst "totalSupply()(uint256)" --block $block_num --rpc-url http://localhost:4201 | sed 's/\[[^]]*\]//g')
     price=$(bc -l <<< "scale=36; ($stake+$rewardsBeforeStaking-($rewardsBeforeStaking-$taxedRewardsBeforeStaking)*$commissionNumerator/$denominator)/$totalSupply")
     price0=$(cast call $1 "getPrice()(uint256)" --block $block_num --rpc-url http://localhost:4201 | sed 's/\[[^]]*\]//g')
 
-    echo LST price: $price \~ $(cast to-unit $price0 ether)
-    echo staked ZIL shares: $(bc -l <<< "scale=18; $3/$price/10^18") LST
+    echo $symbol price: $price \~ $(cast to-unit $price0 ether)
+    echo staked ZIL shares: $(bc -l <<< "scale=18; $3/$price/10^18") $symbol
 fi
 
 stakerWeiBefore=$(cast rpc eth_getBalance $staker $block --rpc-url http://localhost:4201 | tr -d '"' | cast to-dec --base-in 16)

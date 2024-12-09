@@ -34,9 +34,10 @@ contract Stake is Script {
                 address(lst)
             );
 
-            console.log("Staker balance before: %s wei %s LST",
+            console.log("Staker balance before: %s wei %s %s",
                 staker.balance,
-                lst.balanceOf(staker)
+                lst.balanceOf(staker),
+                lst.symbol()
             );
         } else {
             console.log("Staker balance before: %s wei",
@@ -52,9 +53,10 @@ contract Stake is Script {
 
         if (address(delegation).supportsInterface(type(ILiquidDelegation).interfaceId)) {
             NonRebasingLST lst = NonRebasingLST(LiquidDelegationV2(payable(address(delegation))).getLST());
-            console.log("Staker balance after: %s wei %s LST",
+            console.log("Staker balance after: %s wei %s %s",
                 staker.balance,
-                lst.balanceOf(staker)
+                lst.balanceOf(staker),
+                lst.symbol()
             );
         } else {
             console.log("Staker balance after: %s wei",

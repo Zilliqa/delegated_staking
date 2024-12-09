@@ -37,12 +37,13 @@ if [[ "$variant" == "ILiquidDelegation" ]]; then
     echo taxedRewardsBeforeUnstaking = $taxedRewardsBeforeUnstaking
 
     lst=$(cast call $1 "getLST()(address)" --block $block_num --rpc-url http://localhost:4201)
+    symbol=$(cast call $lst "symbol()(string)" --block $block_num --rpc-url http://localhost:4201 | tr -d '"')
     x=$(cast call $lst "balanceOf(address)(uint256)" $owner --block $block_num --rpc-url http://localhost:4201 | sed 's/\[[^]]*\]//g')
     owner_lst=$(cast to-unit $x ether)
     x=$(cast call $lst "balanceOf(address)(uint256)" $2 --block $block_num --rpc-url http://localhost:4201 | sed 's/\[[^]]*\]//g')
     staker_lst=$(cast to-unit $x ether)
-    echo owner: $owner_lst LST && echo owner: $owner_zil ZIL unstaked
-    echo staker: $staker_lst LST && echo staker: $staker_zil ZIL unstaked
+    echo owner: $owner_lst $symbol && echo owner: $owner_zil ZIL unstaked
+    echo staker: $staker_lst $symbol && echo staker: $staker_zil ZIL unstaked
 else
     x=$(cast call $1 "getDelegatedStake()(uint256)" --from $owner --block $block_num --rpc-url http://localhost:4201 | sed 's/\[[^]]*\]//g')
     owner_staked=$(cast to-unit $x ether)
@@ -63,9 +64,9 @@ if [[ "$variant" == "ILiquidDelegation" ]]; then
         price=$(bc -l <<< "scale=36; 1/1")
     fi
     price0=$(cast call $1 "getPrice()(uint256)" --block $block_num --rpc-url http://localhost:4201 | sed 's/\[[^]]*\]//g')
-    echo LST supply: $(cast to-unit $totalSupply ether) ZIL
-    echo LST price: $price \~ $(cast to-unit $price0 ether)
-    echo staker LST value: $(bc -l <<< "scale=18; $staker_lst*$price") ZIL
+    echo $symbol supply: $(cast to-unit $totalSupply ether) ZIL
+    echo $symbol price: $price \~ $(cast to-unit $price0 ether)
+    echo staker $symbol value: $(bc -l <<< "scale=18; $staker_lst*$price") ZIL
 else
     x=$(cast call $1 "rewards()(uint256)" --from $2 --block $block_num --rpc-url http://localhost:4201 | sed 's/\[[^]]*\]//g')
     staker_rewards=$(cast to-unit $x ether)
