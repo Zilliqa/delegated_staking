@@ -21,7 +21,9 @@ contract LiquidDelegationTest is BaseDelegationTest {
         newImplementation = payable(new LiquidDelegationV2());
         initializerCall = abi.encodeWithSelector(
             LiquidDelegation.initialize.selector,
-            owner
+            owner,
+            "LiquidStakingToken",
+            "LST"
         );
         reinitializerCall = abi.encodeWithSelector(
             LiquidDelegationV2.reinitialize.selector

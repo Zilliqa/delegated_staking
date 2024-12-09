@@ -12,7 +12,7 @@ import "forge-std/console.sol";
 contract Deploy is Script {
     using Strings for string;
 
-    function run(string calldata variant) external {
+    function run(string calldata variant, string calldata name, string calldata symbol) external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         address owner = vm.addr(deployerPrivateKey);
         console.log("Signer is %s", owner);
@@ -20,18 +20,24 @@ contract Deploy is Script {
         vm.startBroadcast(deployerPrivateKey);
 
         address implementation;
+        bytes memory initializerCall;
 
-        if (variant.equal("LiquidDelegation"))
+        if (variant.equal("LiquidDelegation")) {
             implementation = address(new LiquidDelegation());
-        else if (variant.equal("NonLiquidDelegation"))
+            initializerCall = abi.encodeWithSignature(
+                "initialize(address,string,string)",
+                owner,
+                name,
+                symbol
+            );
+        } else if (variant.equal("NonLiquidDelegation")) {
             implementation = address(new NonLiquidDelegation());
-        else
+            initializerCall = abi.encodeWithSignature(
+                "initialize(address)",
+                owner
+            );
+        } else
             return;
-
-        bytes memory initializerCall = abi.encodeWithSignature(
-            "initialize(address)",
-            owner
-        );
 
         address payable proxy = payable(
             new ERC1967Proxy(implementation, initializerCall)

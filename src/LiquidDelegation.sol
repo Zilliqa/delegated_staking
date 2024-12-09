@@ -33,10 +33,10 @@ contract LiquidDelegation is BaseDelegation, ILiquidDelegation {
         _disableInitializers();
     }
 
-    function initialize(address initialOwner) initializer public {
+    function initialize(address initialOwner, string calldata name, string calldata symbol) initializer public {
         __BaseDelegation_init(initialOwner);
         LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
-        $.lst = address(new NonRebasingLST(address(this)));
+        $.lst = address(new NonRebasingLST(address(this), name, symbol));
     }
 
     function getLST() public view returns(address) {

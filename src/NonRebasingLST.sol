@@ -5,8 +5,8 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract NonRebasingLST is ERC20, Ownable {
-    constructor(address initialOwner)
-        ERC20("MyToken", "MTK")
+    constructor(address initialOwner, string memory name, string memory symbol)
+        ERC20(name, symbol)
         Ownable(initialOwner)
     {}
 

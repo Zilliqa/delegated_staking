@@ -52,12 +52,13 @@ Before running the deployment script, set the `PRIVATE_KEY` environment variable
 
 To deploy `LiquidDelegation` run
 ```bash
-forge script script/deploy_Delegation.s.sol --rpc-url http://localhost:4201 --broadcast --legacy --sig "run(string)" LiquidDelegation
+forge script script/deploy_Delegation.s.sol --rpc-url http://localhost:4201 --broadcast --legacy --sig "run(string,string,string)" LiquidDelegation Name Symbol
 ```
+using the `Name` and the `Symbol` of your LST.
 
 To deploy ``NonLiquidDelegation` run
 ```bash
-forge script script/deploy_Delegation.s.sol --rpc-url http://localhost:4201 --broadcast --legacy --sig "run(string)" NonLiquidDelegation
+forge script script/deploy_Delegation.s.sol --rpc-url http://localhost:4201 --broadcast --legacy --sig "run(string,string,string)" NonLiquidDelegation "" ""
 ```
 
 You will see an output like this:
