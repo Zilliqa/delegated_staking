@@ -32,6 +32,8 @@ abstract contract BaseDelegationTest is Test {
     constructor() {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         owner = vm.addr(deployerPrivateKey);
+        for (uint256 i = 0; i < stakers.length; i++)
+            assertNotEq(owner, stakers[i], "owner and staker must be different");
         //console.log("Signer is %s", owner);
     }
 
