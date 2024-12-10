@@ -35,7 +35,7 @@ function withdrawAllRewards() external returns(uint256 taxedRewards);
 function withdrawRewards(uint256 amount) external returns(uint256 taxedRewards);
 function stakeRewards() external;
 ```
-for the non-liquid variant.
+and a few more for the non-liquid variant.
 
 To enable the tests included in this repository to interact with the Zilliqa 2.0 deposit contract, it must be compiled along with the test contracts. Specify the folder containing the `deposit.sol` file in `remappings.txt`:
 ```
