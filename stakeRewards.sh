@@ -1,7 +1,7 @@
 #!/bin/bash
 
 if [ $# -lt 2 ]; then
-    echo "Provide the delegation contract address and the validator or stakker private key."
+    echo "Provide the delegation contract address and the validator or staker private key."
     exit 1
 fi
 

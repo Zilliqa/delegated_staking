@@ -64,8 +64,8 @@ if [[ "$variant" == "ILiquidDelegation" ]]; then
         price=$(bc -l <<< "scale=36; 1/1")
     fi
     price0=$(cast call $1 "getPrice()(uint256)" --block $block_num --rpc-url http://localhost:4201 | sed 's/\[[^]]*\]//g')
-    echo $symbol supply: $(cast to-unit $totalSupply ether) ZIL
-    echo $symbol price: $price \~ $(cast to-unit $price0 ether)
+    echo $symbol supply: $(cast to-unit $totalSupply ether)
+    echo $symbol price: $price \~ $(cast to-unit $price0 ether) ZIL
     echo staker $symbol value: $(bc -l <<< "scale=18; $staker_lst*$price") ZIL
 else
     x=$(cast call $1 "rewards()(uint256)" --from $2 --block $block_num --rpc-url http://localhost:4201 | sed 's/\[[^]]*\]//g')

@@ -1,8 +1,8 @@
 # Delegated Staking
 
 This repository contains the contracts and scripts needed to activate a validator that users can delegate stake to. Currently, there are two variants of the contracts: 
-1. When delegating stake to the liquid variant, users receive a non-rebasing **liquid staking token** (LST) that anyone can send to the validator's contract later on to withdraw the stake plus the corresponding share of the validator rewards.
-1. When delegating stake to the non-liquid variant, the users can regularly withdraw their share of the rewards without withdrawing their stake.
+1. When delegating stake to the **liquid variant**, users receive a non-rebasing liquid staking token (LST) that anyone can send to the validator's contract later on to withdraw the stake plus the corresponding share of the validator rewards.
+1. When delegating stake to the **non-liquid variant**, the users can regularly withdraw their share of the rewards without withdrawing their stake.
 
 ## Prerequisites
 To interact with the contracts throught the CLI, you can use the Forge scripts provided in this repository and described further below. First, install Foundry (https://book.getfoundry.sh/getting-started/installation) and the OpenZeppelin contracts before proceeding with the deployment:
@@ -21,7 +21,7 @@ function unstake(uint256) external;
 function claim() external;
 function getClaimable() external virtual view returns(uint256 total);
 ```
-as well as the additional events and methods applicable to a specific staking variant such as
+as well as the additional events and methods applicable to a specific staking variant only such as
 ```solidity
 function getLST() external view returns(address erc20Contract);
 function getPrice() external view returns(uint256 oneTokenToZil);
@@ -254,3 +254,44 @@ Last but not least, in order to stake rewards instead of withdrawing them, your 
 forge script script/stakeRewards_Delegation.s.sol --rpc-url http://localhost:4201 --broadcast --legacy --sig "run(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 --private-key 0x...
 ```
 using the private key of their account.
+
+## Development and Testing
+Staking pool operators are encouraged to fork and adapt the above contracts to implement features such as instant unstaking for a premium fee, automated staking of rewards to achieve the best possible APR or issuing a rebasing liquid staking token with a constant price of 1 ZIL but holder balances adjusted according to the rewards accrued.
+
+The tests included in this repository should also be adjusted and extended accordingly. They can be executed by running
+```bash
+forge test
+```
+
+The following bash scripts with verbose output can be used to test staking, unstaking and claiming of unstaked funds as well as withdrawing and staking of rewards and to print the current state of a delegator's stake queried from the validator's local node. Their output is useful for checking the results of these operations. Here a few examples of how to use them (private key replaced with `0x...`):
+```bash
+# stake 200 ZIL
+chmod +x stake.sh && ./stake.sh 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 0x... 200000000000000000000
+
+# unstake 100 ZIL
+chmod +x unstake.sh && ./unstake.sh 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 0x... 100000000000000000000
+
+# unstake all staked ZIL
+chmod +x unstake.sh && ./unstake.sh 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 0x...
+
+# claim the unstaked ZIL
+chmod +x claim.sh && ./claim.sh 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 0x...
+
+# stake all rewards accrued so far
+chmod +x stakeRewards.sh && ./stakeRewards.sh 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 0x...
+
+# withdraw all rewards accrued so far
+chmod +x withdrawRewards.sh && ./withdrawRewards.sh 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 0x...
+
+# withdraw 10 ZIL from the rewards accrued so far
+chmod +x withdrawRewards.sh && ./withdrawRewards.sh 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 0x... 10000000000000000000
+
+# withdraw 10 ZIL from the rewards accrued during the next 1000 (un)stakings
+chmod +x withdrawRewards.sh && ./withdrawRewards.sh 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 0x... 10000000000000000000 1000
+
+# display the current state of the stake of the below delegator address
+chmod +x state.sh && ./state.sh 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 0xd819fFcE7A58b1E835c25617Db7b46a00888B013
+
+# display the state of the stake of the below delegator at block 4800000
+chmod +x state.sh && ./state.sh 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 0xd819fFcE7A58b1E835c25617Db7b46a00888B013 4800000
+```
