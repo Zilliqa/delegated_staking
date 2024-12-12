@@ -367,9 +367,13 @@ contract LiquidDelegationTest is BaseDelegationTest {
             bls_pub_key,
             peer_id,
             signature,
+            address(stakers[0]),
             address(stakers[0])
         );
         console.log("validator deposited");
+        console.log("validator signingAddress %s", Deposit(delegation.DEPOSIT_CONTRACT()).getSigningAddress(
+            bytes(hex"92370645a6ad97d8a4e4b44b8e6db63ab8409473310ac7b21063809450192bace7fb768d60c697a18bbf98b4ddb511f2")
+        ));
         console.log("validator stake: %s", Deposit(delegation.DEPOSIT_CONTRACT()).getStake(
             bytes(hex"92370645a6ad97d8a4e4b44b8e6db63ab8409473310ac7b21063809450192bace7fb768d60c697a18bbf98b4ddb511f2")
         ));

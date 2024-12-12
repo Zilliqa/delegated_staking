@@ -3,7 +3,8 @@ pragma solidity ^0.8.26;
 
 import {BaseDelegation} from "src/BaseDelegation.sol";
 import {Delegation} from "src/Delegation.sol";
-import {Deposit, InitialStaker} from "@zilliqa/zq2/deposit_v3.sol";
+import {InitialStaker} from "@zilliqa/zq2/deposit_v1.sol";
+import {Deposit} from "@zilliqa/zq2/deposit_v3.sol";
 import {Console} from "src/Console.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {Test, Vm} from "forge-std/Test.sol";

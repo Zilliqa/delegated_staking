@@ -109,10 +109,11 @@ abstract contract BaseDelegation is Delegation, PausableUpgradeable, Ownable2Ste
         (bool success, ) = DEPOSIT_CONTRACT.call{
             value: depositAmount
         }(
-            abi.encodeWithSignature("deposit(bytes,bytes,bytes,address)",
+            abi.encodeWithSignature("deposit(bytes,bytes,bytes,address, address)",
                 blsPubKey,
                 peerId,
                 signature,
+                address(this),
                 address(this)
             )
         );
