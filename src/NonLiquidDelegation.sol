@@ -59,7 +59,7 @@ contract NonLiquidDelegation is BaseDelegation, INonLiquidDelegation {
         revert("not implemented");
     }
 
-    function unstake(uint256) external override {
+    function unstake(uint256) external override returns(uint256) {
         revert("not implemented");
     }
 

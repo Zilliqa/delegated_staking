@@ -17,9 +17,14 @@ event Unstaked(address indexed delegator, uint256 amount, bytes data);
 event Claimed(address indexed delegator, uint256 amount, bytes data);
 
 function stake() external payable;
-function unstake(uint256) external;
+function unstake(uint256) external returns(uint256 unstakedZil);
 function claim() external;
+
 function getClaimable() external virtual view returns(uint256 total);
+function getPendingClaims() external virtual view returns(uint256[2][] memory blockNumbersAndAmounts);
+function getMinDelegation() external view returns(uint256 amount);
+function getCommission() external view returns(uint256 numerator, uint256 denominator);
+function getStake() external view returns(uint256 validatorStake);
 ```
 as well as the additional events and methods applicable to a specific staking variant only such as
 ```solidity

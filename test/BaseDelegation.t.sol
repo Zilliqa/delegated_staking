@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 pragma solidity ^0.8.26;
 
-import {BaseDelegation} from "src/BaseDelegation.sol";
+import {BaseDelegation, WithdrawalQueue} from "src/BaseDelegation.sol";
 import {Delegation} from "src/Delegation.sol";
 import {Deposit, InitialStaker} from "@zilliqa/zq2/deposit_v2.sol";
 import {Console} from "src/Console.sol";
@@ -180,5 +180,119 @@ abstract contract BaseDelegationTest is Test {
         }
         // wait 2 epochs for the change to the deposit to take affect
         vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
+    }
+
+    function claimsAfterManyUnstakings(BaseDelegation delegation, uint64 steps) public {
+        uint256 i;
+        uint256 x;
+
+        deposit(BaseDelegation(delegation), 10_000_000 ether, true);
+
+        // wait 2 epochs for the change to the deposit to take affect
+        vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
+
+        for (i = 0; i < 4; i++) {
+            vm.deal(stakers[i], 100_000 ether);
+            console.log("staker %s: %s", i+1, stakers[i]);
+        }
+
+        // rewards accrued so far
+        vm.deal(address(delegation), 50_000 ether);
+        x = 50;
+        i = 1;
+
+        vm.startPrank(stakers[i-1]);
+        vm.recordLogs();
+        vm.expectEmit(
+            true,
+            false,
+            false,
+            false,
+            address(delegation)
+        );
+        emit Delegation.Staked(
+            stakers[i-1],
+            steps * x * 1 ether,
+            ""
+        );
+        delegation.stake{value: 2 * steps * x * 1 ether}();
+        // wait 2 epochs for the change to the deposit to take affect
+        vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
+        vm.stopPrank();
+        vm.deal(address(delegation), address(delegation).balance + 10_000 ether);
+
+        uint256 totalUnstaked;
+        for (uint256 j = 0; j < steps; j++) {
+            console.log("--------------------------------------------------------------------");
+            vm.startPrank(stakers[i-1]);
+
+            uint256 amount = delegation.unstake(x * 1 ether);
+            console.log("%s unstaked %s in block %s", stakers[i-1], amount, block.number);
+            totalUnstaked += amount;
+
+            //console.log("block number: %s", block.number);
+            console.log("claimable: %s", delegation.getClaimable());
+            uint256[2][] memory claims = delegation.getPendingClaims();
+            console.log("%s pending claims:", claims.length);
+            uint256 totalPending;
+            for (uint256 j = 0; j < claims.length; j++) {
+                console.log("%s can claim %s in block %s", stakers[i-1], claims[j][1], claims[j][0]);
+                totalPending += claims[j][1];
+            }
+            assertEq(delegation.getClaimable() + totalPending, totalUnstaked, "claims must match unstaked amount");
+
+            // wait 2 epochs for the change to the deposit to take affect
+            vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
+            vm.stopPrank();
+            vm.deal(address(delegation), address(delegation).balance + 10_000 ether);
+        }
+
+        vm.startPrank(stakers[i-1]);
+
+        console.log("--------------------------------------------------------------------");
+        console.log("block number: %s", block.number);
+        console.log("claimable: %s", delegation.getClaimable());
+        uint256[2][] memory claims = delegation.getPendingClaims();
+        console.log("%s pending claims:", claims.length);
+        uint256 totalPending;
+        for (uint256 j = 0; j < claims.length; j++) {
+            console.log("%s can claim %s in block %s", stakers[i-1], claims[j][1], claims[j][0]);
+            totalPending += claims[j][1];
+        }
+        assertEq(delegation.getClaimable() + totalPending, totalUnstaked, "claims must match unstaked amount");
+
+        vm.roll(block.number + 100);
+        //TODO: remove the next line once https://github.com/Zilliqa/zq2/issues/1761 is fixed
+        vm.warp(block.timestamp + 100);
+
+        console.log("--------------------------------------------------------------------");
+        console.log("block number: %s", block.number);
+        console.log("claimable: %s", delegation.getClaimable());
+        claims = delegation.getPendingClaims();
+        console.log("%s pending claims:", claims.length);
+        totalPending = 0;
+        for (uint256 j = 0; j < claims.length; j++) {
+            console.log("%s can claim %s in block %s", stakers[i-1], claims[j][1], claims[j][0]);
+            totalPending += claims[j][1];
+        }
+        assertEq(delegation.getClaimable() + totalPending, totalUnstaked, "claims must match unstaked amount");
+
+        vm.roll(block.number + WithdrawalQueue.unbondingPeriod());
+        //TODO: remove the next line once https://github.com/Zilliqa/zq2/issues/1761 is fixed
+        vm.warp(block.timestamp + WithdrawalQueue.unbondingPeriod());
+
+        console.log("--------------------------------------------------------------------");
+        console.log("block number: %s", block.number);
+        console.log("claimable: %s", delegation.getClaimable());
+        claims = delegation.getPendingClaims();
+        console.log("%s pending claims:", claims.length);
+        totalPending = 0;
+        for (uint256 j = 0; j < claims.length; j++) {
+            console.log("%s can claim %s in block %s", stakers[i-1], claims[j][1], claims[j][0]);
+            totalPending += claims[j][1];
+        }
+        assertEq(delegation.getClaimable() + totalPending, totalUnstaked, "claims must match unstaked amount");
+
+        vm.stopPrank();
     }
 }

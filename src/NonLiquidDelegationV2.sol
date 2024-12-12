@@ -171,11 +171,12 @@ contract NonLiquidDelegationV2 is BaseDelegation, INonLiquidDelegation {
         emit Staked(_msgSender(), msg.value, "");
     }
 
-    function unstake(uint256 value) public override whenNotPaused {
+    function unstake(uint256 value) public override whenNotPaused returns(uint256 amount) {
         _append(-int256(value));
         _decreaseDeposit(uint256(value));
         _enqueueWithdrawal(value);
         emit Unstaked(_msgSender(), value, "");
+        return value;
     }
 
     function _append(int256 value) internal {

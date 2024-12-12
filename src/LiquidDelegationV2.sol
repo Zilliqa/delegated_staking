@@ -105,8 +105,7 @@ contract LiquidDelegationV2 is BaseDelegation, ILiquidDelegation {
         emit Staked(_msgSender(), msg.value, abi.encode(shares));
     }
 
-    function unstake(uint256 shares) public override whenNotPaused {
-        uint256 amount;
+    function unstake(uint256 shares) public override whenNotPaused returns(uint256 amount) {
         LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
         // before calculating the amount deduct the commission from the yet untaxed rewards
         taxRewards();

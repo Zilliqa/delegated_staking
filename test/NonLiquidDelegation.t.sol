@@ -98,7 +98,6 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         console.log("allWithdrawnRewards = %s   withdrawnAfterLastStaking = %s", allWithdrawnRewards, withdrawnAfterLastStaking);
     } 
 
-    //TODO: add assertions
     function run (
         bytes memory _stakerIndicesBeforeWithdrawals,
         // each element in the interval (-100, 100)
@@ -477,7 +476,6 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         //TODO: remove the next line once https://github.com/Zilliqa/zq2/issues/1761 is fixed
         vm.warp(block.timestamp + WithdrawalQueue.unbondingPeriod());
 
-
         i = 1;
         vm.startPrank(stakers[i-1]);
         vm.recordLogs();
@@ -495,6 +493,13 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         );
         delegation.claim();
         vm.stopPrank();
+    }
+
+    function test_claimsAfterManyUnstakings() public {
+        claimsAfterManyUnstakings(
+            NonLiquidDelegationV2(proxy), //delegation
+            20 //steps
+        );
     }
 
     function test_rewardsAfterWithdrawalLessThanBeforeWithdrawal() public {

@@ -332,29 +332,6 @@ contract LiquidDelegationTest is BaseDelegationTest {
 
     }
 
-    function test_1a_LargeStake_Late_NoRewards_UnstakeAll() public {
-        stakers[0] = 0x092E5E57955437876dA9Df998C96e2BE19341670;
-        uint256 depositAmount = 10_000_000 ether;
-        uint256 totalDeposit = 5_200_000_000 ether;
-        uint256 delegatedAmount = 10_000 ether;
-        uint256 rewardsBeforeStaking = 365 * 24 * 51_000 ether * depositAmount / totalDeposit;
-        uint256 taxedRewardsBeforeStaking = 0;
-        uint256 taxedRewardsAfterStaking =
-            rewardsBeforeStaking - (rewardsBeforeStaking - taxedRewardsBeforeStaking) / uint256(10);
-        Console.log("taxedRewardsAfterStaking = %s.%s%s", taxedRewardsAfterStaking);
-        run(
-            depositAmount,
-            rewardsBeforeStaking,
-            taxedRewardsBeforeStaking,
-            delegatedAmount,
-            1, // numberOfDelegations
-            0, // rewardsAccruedAfterEach
-            taxedRewardsAfterStaking, // rewardsBeforeUnstaking
-            WithdrawalQueue.unbondingPeriod(), // after unstaking wait blocksUntil claiming
-            true // initialDeposit using funds held by the node, otherwise delegated by a staker
-        );
-    } 
-
     //TODO: remove the test once https://github.com/Zilliqa/zq2/issues/1761 is fixed
     function test_DepositContract() public {
         vm.deal(owner, 10_000_000 ether + 1_000_000 ether + 0 ether);
@@ -409,6 +386,36 @@ contract LiquidDelegationTest is BaseDelegationTest {
         console.log("validator withdrew again");
         console.log("validator balance: %s", owner.balance);
         vm.stopPrank();
+    }
+
+    function test_claimsAfterManyUnstakings() public {
+        claimsAfterManyUnstakings(
+            LiquidDelegationV2(proxy), //delegation
+            20 //steps
+        );
+    }
+
+    function test_1a_LargeStake_Late_NoRewards_UnstakeAll() public {
+        stakers[0] = 0x092E5E57955437876dA9Df998C96e2BE19341670;
+        uint256 depositAmount = 10_000_000 ether;
+        uint256 totalDeposit = 5_200_000_000 ether;
+        uint256 delegatedAmount = 10_000 ether;
+        uint256 rewardsBeforeStaking = 365 * 24 * 51_000 ether * depositAmount / totalDeposit;
+        uint256 taxedRewardsBeforeStaking = 0;
+        uint256 taxedRewardsAfterStaking =
+            rewardsBeforeStaking - (rewardsBeforeStaking - taxedRewardsBeforeStaking) / uint256(10);
+        Console.log("taxedRewardsAfterStaking = %s.%s%s", taxedRewardsAfterStaking);
+        run(
+            depositAmount,
+            rewardsBeforeStaking,
+            taxedRewardsBeforeStaking,
+            delegatedAmount,
+            1, // numberOfDelegations
+            0, // rewardsAccruedAfterEach
+            taxedRewardsAfterStaking, // rewardsBeforeUnstaking
+            WithdrawalQueue.unbondingPeriod(), // after unstaking wait blocksUntil claiming
+            true // initialDeposit using funds held by the node, otherwise delegated by a staker
+        );
     }
 
     function test_1b_LargeStake_Early_NoRewards_UnstakeAll() public {

@@ -47,6 +47,10 @@ library WithdrawalQueue {
         return index < fifo.last && fifo.items[index].blockNumber <= block.number;
     }
 
+    function notReady(Fifo storage fifo, uint256 index) internal view returns(bool) {
+        return index < fifo.last && fifo.items[index].blockNumber > block.number;
+    }
+
     function ready(Fifo storage fifo) internal view returns(bool) {
         return ready(fifo, fifo.first);
     }
@@ -181,9 +185,19 @@ abstract contract BaseDelegation is Delegation, PausableUpgradeable, Ownable2Ste
         $.commissionNumerator = _commissionNumerator;
     }
 
+    function getCommission() public virtual view returns(uint256 numerator, uint256 denominator) {
+        BaseDelegationStorage storage $ = _getBaseDelegationStorage();
+        numerator = $.commissionNumerator;
+        denominator = DENOMINATOR;
+    }
+
+    function getMinDelegation() public virtual view returns(uint256) {
+        return MIN_DELEGATION;
+    }
+
     function stake() external virtual payable;
 
-    function unstake(uint256) external virtual;
+    function unstake(uint256) external virtual returns(uint256);
 
     function claim() external virtual;
 
@@ -197,6 +211,20 @@ abstract contract BaseDelegation is Delegation, PausableUpgradeable, Ownable2Ste
         uint256 index = fifo.first;
         while (fifo.ready(index)) {
             total += fifo.items[index].amount;
+            index++;
+        }
+    }
+
+    function getPendingClaims() public virtual view returns(uint256[2][] memory claims) {
+        BaseDelegationStorage storage $ = _getBaseDelegationStorage();
+        WithdrawalQueue.Fifo storage fifo = $.withdrawals[_msgSender()];
+        uint256 index = fifo.first;
+        while (fifo.ready(index))
+            index++;
+        uint256 firstPending = index;
+        claims = new uint256[2][](fifo.last - index);
+        while (fifo.notReady(index)) {
+            claims[index - firstPending] = [fifo.items[index].blockNumber, fifo.items[index].amount];
             index++;
         }
     }
