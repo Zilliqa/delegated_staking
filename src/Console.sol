@@ -35,24 +35,24 @@ library Console {
         result = string.concat(result, Strings.toString(postdecimal));
     }
 
-    function log(string memory format, uint256 amount, uint8 precision) pure internal {
+    function log(string memory format, uint256 amount, uint8 precision) view internal {
         log(format, int256(amount), precision);
     }
 
-    function log(string memory format, int256 amount, uint8 precision) pure internal {
+    function log(string memory format, int256 amount, uint8 precision) view internal {
         (int256 predecimal, string memory zeros, uint256 postdecimal) = convert(amount, precision);
         console.log(format, Strings.toStringSigned(predecimal), zeros, postdecimal);
     }
 
-    function log(string memory format, uint256 amount) pure internal {
+    function log(string memory format, uint256 amount) view internal {
         return log(format, amount, 18);
     }
 
-    function log(string memory format, int256 amount) pure internal {
+    function log(string memory format, int256 amount) view internal {
         return log(format, amount, 18);
     }
 
-    function log(string memory format, uint64[] memory array) pure internal {
+    function log(string memory format, uint64[] memory array) view internal {
         string memory s;
         for (uint256 i = 0; i < array.length; i++) {
             s = string.concat(s, Strings.toString(array[i]));

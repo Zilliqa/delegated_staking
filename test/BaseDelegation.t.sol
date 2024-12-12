@@ -3,7 +3,7 @@ pragma solidity ^0.8.26;
 
 import {BaseDelegation} from "src/BaseDelegation.sol";
 import {Delegation} from "src/Delegation.sol";
-import {Deposit, InitialStaker} from "@zilliqa/zq2/deposit_v2.sol";
+import {Deposit, InitialStaker} from "@zilliqa/zq2/deposit_v3.sol";
 import {Console} from "src/Console.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {Test, Vm} from "forge-std/Test.sol";
@@ -11,6 +11,12 @@ import "forge-std/console.sol";
 
 contract PopVerifyPrecompile {
     function popVerify(bytes memory, bytes memory) public pure returns(bool) {
+        return true;
+    }
+}
+
+contract BlsVerifyPrecompile {
+    function blsVerify(bytes memory, bytes memory, bytes memory) public pure returns(bool) {
         return true;
     }
 }
@@ -127,6 +133,7 @@ abstract contract BaseDelegationTest is Test {
         //*/
 
         vm.etch(address(0x5a494c80), address(new PopVerifyPrecompile()).code);
+        vm.etch(address(0x5a494c81), address(new BlsVerifyPrecompile()).code);
 
         vm.stopPrank();
     }

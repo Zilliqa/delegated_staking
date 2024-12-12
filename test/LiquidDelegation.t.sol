@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 pragma solidity ^0.8.26;
 
-import {BaseDelegationTest, PopVerifyPrecompile} from "test/BaseDelegation.t.sol";
+import {BaseDelegationTest, PopVerifyPrecompile, BlsVerifyPrecompile} from "test/BaseDelegation.t.sol";
 import {LiquidDelegation} from "src/LiquidDelegation.sol";
 import {LiquidDelegationV2} from "src/LiquidDelegationV2.sol";
 import {NonRebasingLST} from "src/NonRebasingLST.sol";
 import {BaseDelegation, WithdrawalQueue} from "src/BaseDelegation.sol";
 import {Delegation} from "src/Delegation.sol";
-import {Deposit} from "@zilliqa/zq2/deposit_v2.sol";
+import {Deposit} from "@zilliqa/zq2/deposit_v3.sol";
 import {Console} from "src/Console.sol";
 import {Vm} from "forge-std/Test.sol";
 import "forge-std/console.sol";
@@ -259,8 +259,6 @@ contract LiquidDelegationTest is BaseDelegationTest {
         );
 
         vm.roll(block.number + blocksUntil);
-        //TODO: remove the next line once https://github.com/Zilliqa/zq2/issues/1761 is fixed
-        vm.warp(block.timestamp + blocksUntil);
 
         vm.recordLogs();
 
@@ -358,51 +356,56 @@ contract LiquidDelegationTest is BaseDelegationTest {
         vm.deal(owner, 10_000_000 ether + 1_000_000 ether + 0 ether);
         vm.deal(stakers[0], 0);
         vm.startPrank(owner);
+        
+        bytes memory bls_pub_key = bytes(hex"92370645a6ad97d8a4e4b44b8e6db63ab8409473310ac7b21063809450192bace7fb768d60c697a18bbf98b4ddb511f2");
+        bytes memory peer_id = bytes(hex"002408011220bed0be7a6dfa10c2335148e04927155a726174d6bac61a09ad8e2f72ac697eda");
+        bytes memory signature = bytes(hex"90ec9a22e030a42d9b519b322d31b8090f796b3f75fc74261b04d0dcc632fd8c5b7a074c5ba61f0845b310fa9931d01c079eebe82813d7021ef4172e01a7d3710a5f9a4634e9a03a51e985836021c356a1eb476a14f558cbae1f4264edca5dac");
+
         Deposit(delegation.DEPOSIT_CONTRACT()).deposit{
             value: 10_000_000 ether
         }(
-            bytes(hex"92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c"),
-            bytes(hex"002408011220d5ed74b09dcbe84d3b32a56c01ab721cf82809848b6604535212a219d35c412f"),
-            bytes(hex"b14832a866a49ddf8a3104f8ee379d29c136f29aeb8fccec9d7fb17180b99e8ed29bee2ada5ce390cb704bc6fd7f5ce814f914498376c4b8bc14841a57ae22279769ec8614e2673ba7f36edc5a4bf5733aa9d70af626279ee2b2cde939b4bd8a"),
+            bls_pub_key,
+            peer_id,
+            signature,
             address(stakers[0])
         );
         console.log("validator deposited");
         console.log("validator stake: %s", Deposit(delegation.DEPOSIT_CONTRACT()).getStake(
-            bytes(hex"92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c")
+            bytes(hex"92370645a6ad97d8a4e4b44b8e6db63ab8409473310ac7b21063809450192bace7fb768d60c697a18bbf98b4ddb511f2")
         ));
         vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
         console.log("validator stake: %s", Deposit(delegation.DEPOSIT_CONTRACT()).getStake(
-            bytes(hex"92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c")
+            bytes(hex"92370645a6ad97d8a4e4b44b8e6db63ab8409473310ac7b21063809450192bace7fb768d60c697a18bbf98b4ddb511f2")
         ));
         Deposit(delegation.DEPOSIT_CONTRACT()).depositTopup{
             value: 1_000_000 ether
         }();
         console.log("validator staked");
         console.log("validator stake: %s", Deposit(delegation.DEPOSIT_CONTRACT()).getStake(
-            bytes(hex"92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c")
+            bytes(hex"92370645a6ad97d8a4e4b44b8e6db63ab8409473310ac7b21063809450192bace7fb768d60c697a18bbf98b4ddb511f2")
         ));
         vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
         console.log("validator stake: %s", Deposit(delegation.DEPOSIT_CONTRACT()).getStake(
-            bytes(hex"92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c")
+            bytes(hex"92370645a6ad97d8a4e4b44b8e6db63ab8409473310ac7b21063809450192bace7fb768d60c697a18bbf98b4ddb511f2")
         ));
         Deposit(delegation.DEPOSIT_CONTRACT()).unstake(
             500_000 ether
         );
         console.log("validator unstaked");
         console.log("validator stake: %s", Deposit(delegation.DEPOSIT_CONTRACT()).getStake(
-            bytes(hex"92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c")
+            bytes(hex"92370645a6ad97d8a4e4b44b8e6db63ab8409473310ac7b21063809450192bace7fb768d60c697a18bbf98b4ddb511f2")
         ));
         vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
         console.log("validator stake: %s", Deposit(delegation.DEPOSIT_CONTRACT()).getStake(
-            bytes(hex"92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c")
+            bytes(hex"92370645a6ad97d8a4e4b44b8e6db63ab8409473310ac7b21063809450192bace7fb768d60c697a18bbf98b4ddb511f2")
         ));
         console.log("validator balance: %s", owner.balance);
         Deposit(delegation.DEPOSIT_CONTRACT()).withdraw();
         console.log("validator withdrew");
         console.log("validator balance: %s", owner.balance);
-        //vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).withdrawalPeriod());
+        vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).withdrawalPeriod());
         //TODO: remove the next line and uncomment the previous once https://github.com/Zilliqa/zq2/issues/1761 is fixed
-        vm.warp(block.timestamp + Deposit(delegation.DEPOSIT_CONTRACT()).withdrawalPeriod()); // skip(WithdrawalQueue.unbondingPeriod());
+        // vm.warp(block.timestamp + Deposit(delegation.DEPOSIT_CONTRACT()).withdrawalPeriod()); // skip(WithdrawalQueue.unbondingPeriod());
         Deposit(delegation.DEPOSIT_CONTRACT()).withdraw();
         console.log("validator withdrew again");
         console.log("validator balance: %s", owner.balance);

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 pragma solidity ^0.8.26;
 
-import {BaseDelegationTest, PopVerifyPrecompile} from "test/BaseDelegation.t.sol";
+import {BaseDelegationTest, PopVerifyPrecompile, BlsVerifyPrecompile} from "test/BaseDelegation.t.sol";
 import {NonLiquidDelegation} from "src/NonLiquidDelegation.sol";
 import {NonLiquidDelegationV2} from "src/NonLiquidDelegationV2.sol";
 import {BaseDelegation, WithdrawalQueue} from "src/BaseDelegation.sol";
@@ -40,7 +40,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         revert("staker not found");
     }  
 
-    function snapshot(string memory s, uint256 i, uint256 x) internal view {
+    function snapshot(string memory s, uint256 i, uint256 x) internal {
         console.log("-----------------------------------------------");
         console.log(s, i, x);
         uint256[] memory shares = new uint256[](stakers.length);
@@ -462,9 +462,6 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         vm.stopPrank();
 
         vm.roll(block.number + WithdrawalQueue.unbondingPeriod());
-        //TODO: remove the next line once https://github.com/Zilliqa/zq2/issues/1761 is fixed
-        vm.warp(block.timestamp + WithdrawalQueue.unbondingPeriod());
-
 
         i = 1;
         vm.startPrank(stakers[i-1]);
