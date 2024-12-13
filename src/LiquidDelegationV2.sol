@@ -45,9 +45,18 @@ contract LiquidDelegationV2 is BaseDelegation, ILiquidDelegation {
         $.taxedRewards += msg.value;
     }
 
-    // called by the node's account that deployed this contract and is its owner
-    // to request the node's activation as a validator using the delegated stake
-    function deposit2(
+    // called by the node's owner who deployed this contract
+    // to turn the already deposited validator node into a staking pool
+    function migrate(bytes calldata blsPubKey) public override onlyOwner {
+        _migrate(blsPubKey);
+        LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
+        require(NonRebasingLST($.lst).totalSupply() == 0, "stake already delegated");
+        NonRebasingLST($.lst).mint(owner(), getStake());
+    }
+
+    // called by the node's owner who deployed this contract
+    // to deposit the node as a validator using the delegated stake
+    function depositLater(
         bytes calldata blsPubKey,
         bytes calldata peerId,
         bytes calldata signature
@@ -60,10 +69,10 @@ contract LiquidDelegationV2 is BaseDelegation, ILiquidDelegation {
         );
     }
 
-    // called by the node's account that deployed this contract and is its owner
-    // with at least the minimum stake to request the node's activation as a validator
-    // before any stake is delegated to it
-    function deposit(
+    // called by the node's owner who deployed this contract
+    // with at least the minimum stake to deposit the node
+    // as a validator before any stake is delegated to it
+    function depositFirst(
         bytes calldata blsPubKey,
         bytes calldata peerId,
         bytes calldata signature

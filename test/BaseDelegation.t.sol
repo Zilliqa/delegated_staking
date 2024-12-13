@@ -133,6 +133,36 @@ abstract contract BaseDelegationTest is Test {
         vm.stopPrank();
     }
 
+    enum DepositMode {DepositThenStake, StakeThenDeposit, DepositThenMigrate}
+
+    function migrate(
+        BaseDelegation delegation,
+        uint256 depositAmount
+    ) internal {
+        vm.deal(owner, owner.balance + depositAmount);
+        vm.startPrank(owner);
+
+        Deposit(delegation.DEPOSIT_CONTRACT()).deposit{
+            value: depositAmount
+        }(
+            bytes(hex"92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c"),
+            bytes(hex"002408011220d5ed74b09dcbe84d3b32a56c01ab721cf82809848b6604535212a219d35c412f"),
+            bytes(hex"b14832a866a49ddf8a3104f8ee379d29c136f29aeb8fccec9d7fb17180b99e8ed29bee2ada5ce390cb704bc6fd7f5ce814f914498376c4b8bc14841a57ae22279769ec8614e2673ba7f36edc5a4bf5733aa9d70af626279ee2b2cde939b4bd8a"),
+            address(0x0)
+        );
+
+        Deposit(delegation.DEPOSIT_CONTRACT()).setControlAddress(
+            bytes(hex"92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c"),
+            address(delegation)
+        );
+
+        delegation.migrate(
+            bytes(hex"92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c")
+        );
+
+        vm.stopPrank();
+    }
+
     function deposit(
         BaseDelegation delegation,
         uint256 depositAmount,
@@ -142,7 +172,7 @@ abstract contract BaseDelegationTest is Test {
             vm.deal(owner, owner.balance + depositAmount);
             vm.startPrank(owner);
 
-            delegation.deposit{
+            delegation.depositFirst{
                 value: depositAmount
             }(
                 bytes(hex"92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c"),
@@ -172,7 +202,7 @@ abstract contract BaseDelegationTest is Test {
 
             vm.startPrank(owner);
 
-            delegation.deposit2(
+            delegation.depositLater(
                 bytes(hex"92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c"),
                 bytes(hex"002408011220d5ed74b09dcbe84d3b32a56c01ab721cf82809848b6604535212a219d35c412f"),
                 bytes(hex"b14832a866a49ddf8a3104f8ee379d29c136f29aeb8fccec9d7fb17180b99e8ed29bee2ada5ce390cb704bc6fd7f5ce814f914498376c4b8bc14841a57ae22279769ec8614e2673ba7f36edc5a4bf5733aa9d70af626279ee2b2cde939b4bd8a")

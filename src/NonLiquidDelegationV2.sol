@@ -114,9 +114,20 @@ contract NonLiquidDelegationV2 is BaseDelegation, INonLiquidDelegation {
 
     event RewardPaid(address indexed delegator, uint256 reward);
 
-    // called by the node's account that deployed this contract and is its owner
-    // to request the node's activation as a validator using the delegated stake
-    function deposit2(
+    // called by the node's owner who deployed this contract
+    // to turn the already deposited validator node into a staking pool
+    function migrate(bytes calldata blsPubKey) public override onlyOwner {
+        _migrate(blsPubKey);
+        NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
+        require($.stakings.length == 0, "stake already delegated");
+        // the owner's deposit must also be recorded as staking otherwise
+        // the owner would not benefit from the rewards accrued by the deposit
+        _append(int256(getStake()));
+    }
+
+    // called by the node's owner who deployed this contract
+    // to deposit the node as a validator using the delegated stake
+    function depositLater(
         bytes calldata blsPubKey,
         bytes calldata peerId,
         bytes calldata signature
@@ -129,10 +140,10 @@ contract NonLiquidDelegationV2 is BaseDelegation, INonLiquidDelegation {
         );
     }
 
-    // called by the node's account that deployed this contract and is its owner
-    // with at least the minimum stake to request the node's activation as a validator
-    // before any stake is delegated to it
-    function deposit(
+    // called by the node's owner who deployed this contract
+    // with at least the minimum stake to deposit the node
+    // as a validator before any stake is delegated to it
+    function depositFirst(
         bytes calldata blsPubKey,
         bytes calldata peerId,
         bytes calldata signature

@@ -100,6 +100,19 @@ abstract contract BaseDelegation is Delegation, PausableUpgradeable, Ownable2Ste
 
     function _authorizeUpgrade(address newImplementation) internal onlyOwner virtual override {}
 
+    function _migrate(bytes calldata blsPubKey) internal onlyOwner virtual {
+        BaseDelegationStorage storage $ = _getBaseDelegationStorage();
+        require(!_isActivated() && address(this).balance == 0, "validator can not be migrated");
+        $.blsPubKey = blsPubKey;
+        (bool success, bytes memory data) = DEPOSIT_CONTRACT.call(abi.encodeWithSignature("getPeerId(bytes)", blsPubKey));
+        require(success, "peer id could not be retrieved");
+        $.peerId = data;
+        (success, ) = DEPOSIT_CONTRACT.call(abi.encodeWithSignature("setRewardAddress(bytes,address)", blsPubKey, address(this)));
+        require(success, "reward address could not be changed");
+    }
+
+    function migrate(bytes calldata blsPubKey) public virtual;
+
     function _deposit(
         bytes calldata blsPubKey,
         bytes calldata peerId,
@@ -123,13 +136,13 @@ abstract contract BaseDelegation is Delegation, PausableUpgradeable, Ownable2Ste
         require(success, "deposit failed");
     }
 
-    function deposit(
+    function depositFirst(
         bytes calldata blsPubKey,
         bytes calldata peerId,
         bytes calldata signature
     ) public virtual payable;
 
-    function deposit2(
+    function depositLater(
         bytes calldata blsPubKey,
         bytes calldata peerId,
         bytes calldata signature
