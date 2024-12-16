@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 pragma solidity ^0.8.26;
 
-import "src/BaseDelegation.sol";
-import "src/LiquidDelegation.sol";
-import "src/NonRebasingLST.sol";
+import {BaseDelegation} from "src/BaseDelegation.sol";
+import {ILiquidDelegation} from "src/LiquidDelegation.sol";
+import {NonRebasingLST} from "src/NonRebasingLST.sol";
 
 // the contract is supposed to be deployed with the node's signer account
 contract LiquidDelegationV2 is BaseDelegation, ILiquidDelegation {
@@ -15,6 +15,7 @@ contract LiquidDelegationV2 is BaseDelegation, ILiquidDelegation {
     }
 
     // keccak256(abi.encode(uint256(keccak256("zilliqa.storage.LiquidDelegation")) - 1)) & ~bytes32(uint256(0xff))
+    // solhint-disable const-name-snakecase
     bytes32 private constant LiquidDelegationStorageLocation = 0xfa57cbed4b267d0bc9f2cbdae86b4d1d23ca818308f873af9c968a23afadfd00;
 
     function _getLiquidDelegationStorage() private pure returns (LiquidDelegationStorage storage $) {
@@ -34,12 +35,12 @@ contract LiquidDelegationV2 is BaseDelegation, ILiquidDelegation {
     // it won't be possible to identify the actual version of the
     // source file without a hardcoded version number, but storing
     // the file versions in separate folders would help
-    function reinitialize() reinitializer(version() + 1) public {
+    function reinitialize() public reinitializer(version() + 1) {
     }
 
     // called when stake withdrawn from the deposit contract is claimed
     // but not called when rewards are assigned to the reward address
-    receive() payable external {
+    receive() external payable {
         LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
         // do not deduct commission from the withdrawn stake
         $.taxedRewards += msg.value;

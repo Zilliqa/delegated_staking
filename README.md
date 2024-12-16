@@ -57,13 +57,13 @@ Before running the deployment script, set the `PRIVATE_KEY` environment variable
 
 To deploy `LiquidDelegation` run
 ```bash
-forge script script/deploy_Delegation.s.sol --rpc-url http://localhost:4201 --broadcast --legacy --sig "run(string,string,string)" LiquidDelegation Name Symbol
+forge script script/Deploy.s.sol --rpc-url http://localhost:4201 --broadcast --legacy --sig "run(string,string,string)" LiquidDelegation Name Symbol
 ```
 using the `Name` and the `Symbol` of your LST.
 
 To deploy ``NonLiquidDelegation` run
 ```bash
-forge script script/deploy_Delegation.s.sol --rpc-url http://localhost:4201 --broadcast --legacy --sig "run(string,string,string)" NonLiquidDelegation "" ""
+forge script script/Deploy.s.sol --rpc-url http://localhost:4201 --broadcast --legacy --sig "run(string,string,string)" NonLiquidDelegation "" ""
 ```
 
 You will see an output like this:
@@ -77,13 +77,13 @@ You will see an output like this:
 
 You and your delegators will need the proxy address from the above output in all commands below. If you know the address of a proxy contract but don't know which variant of staking it supports, run
 ```bash
-forge script script/variant_Delegation.s.sol --rpc-url http://localhost:4201 --sig "run(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2
+forge script script/CheckVariant.s.sol --rpc-url http://localhost:4201 --sig "run(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2
 ```
 The output will be `ILiquidStaking`, `INonLiquidStaking` or none of them if the address is not a valid delegation contract.
 
 To use the delegation contract, upgrade it to the latest version of `LiquidDelegationV2` or `NonLiquidDelegationV2` depending on the staking model it implements, by running
 ```bash
-forge script script/upgrade_Delegation.s.sol --rpc-url http://localhost:4201 --broadcast --legacy --sig "run(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2
+forge script script/Upgrade.s.sol --rpc-url http://localhost:4201 --broadcast --legacy --sig "run(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2
 ```
 
 The output will look like this:
@@ -102,7 +102,7 @@ To adapt the contract to your needs, create your own copy of `LiquidDelegationV2
 
 Now or at a later time you can set the commission on the rewards the validator earns to e.g. 10% as follows:
 ```bash
-forge script script/commission_Delegation.s.sol --rpc-url http://localhost:4201 --broadcast --legacy --sig "run(address payable, string, bool)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 1000 false
+forge script script/ManageCommission.s.sol --rpc-url http://localhost:4201 --broadcast --legacy --sig "run(address payable, string, bool)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 1000 false
 ```
 
 The output will contain the following information:
@@ -119,7 +119,7 @@ cast call 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 "DENOMINATOR()(uint256)" --
 
 Once the validator is activated and starts earning rewards, commissions are transferred automatically to the validator node's account. Commissions of a non-liquid staking validator are deducted when delegators withdraw rewards. In case of the liquid staking variant, commissions are deducted each time delegators stake, unstake or claim what they unstaked, or when the node requests the outstanding commissions that haven't been transferred yet. To collect them, run
 ```bash
-forge script script/commission_Delegation.s.sol --rpc-url http://localhost:4201 --broadcast --legacy --sig "run(address payable, string, bool)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 same true
+forge script script/ManageCommission.s.sol --rpc-url http://localhost:4201 --broadcast --legacy --sig "run(address payable, string, bool)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 same true
 ```
 using `same` for the second argument to leave the commission percentage unchanged and `true` for the third argument. Replacing the second argument with `same` and the third argument with `false` only displays the current commission rate.
 
@@ -168,7 +168,7 @@ Note that the deposit will not take effect and the node will not start earning r
 ## Staking and Unstaking
 Once the delegation contract has been deployed and upgraded to the latest version, your node can accept delegations. In order to stake e.g. 200 ZIL, your delegators must run
 ```bash
-forge script script/stake_Delegation.s.sol --rpc-url http://localhost:4201 --broadcast --legacy --sig "run(address payable, uint256)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 200000000000000000000 --private-key 0x...
+forge script script/Stake.s.sol --rpc-url http://localhost:4201 --broadcast --legacy --sig "run(address payable, uint256)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 200000000000000000000 --private-key 0x...
 ```
 with the private key of their account. It's important to make sure the account's balance can cover the transaction fees plus the 200 ZIL to be delegated.
 
@@ -204,7 +204,7 @@ cast to-unit $(cast call 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 "getPrice()(
 
 To unstake e.g. 100 LST (liquid variant) or 100 ZIL (non-liquid variant), run
 ```bash
-forge script script/unstake_Delegation.s.sol --rpc-url http://localhost:4201 --broadcast --legacy --sig "run(address payable, uint256)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 100000000000000000000 --private-key 0x...
+forge script script/Unstake.s.sol --rpc-url http://localhost:4201 --broadcast --legacy --sig "run(address payable, uint256)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 100000000000000000000 --private-key 0x...
 ```
 using the private key of an account that holds some LST in case of the liquid variant or using the private key of the delegator account in case of the non-liquid variant.
 
@@ -228,7 +228,7 @@ and like this for the non-liquid variant:
 
 The ZIL balance hasn't increased because the unstaked amount can not be transferred immediately. To claim the amount that is available after the unbonding period, run
 ```bash
-forge script script/claim_Delegation.s.sol --rpc-url http://localhost:4201 --broadcast --legacy --sig "run(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 --private-key 0x...
+forge script script/Claim.s.sol --rpc-url http://localhost:4201 --broadcast --legacy --sig "run(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 --private-key 0x...
 ```
 with the private key of the account that unstaked in the previous step above.
 
@@ -249,7 +249,7 @@ with the user's address as an argument.
 ## Staking and Withdrawing Rewards
 In the liquid staking variant, only you as the node operator can stake the rewards accrued by the node. To do so, run
 ```bash
-forge script script/stakeRewards_Delegation.s.sol --rpc-url http://localhost:4201 --broadcast --legacy --sig "run(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 --private-key 0x...
+forge script script/StakeRewards.s.sol --rpc-url http://localhost:4201 --broadcast --legacy --sig "run(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 --private-key 0x...
 ```
 
 In the non-liquid variant of staking, your delegators can stake or withdraw their share of the rewards. To query the amount of rewards available, run
@@ -265,13 +265,13 @@ Note that `n` actually denotes the number of additional (un)stakings so that at 
 
 To withdraw e.g. 1 ZIL of rewards using `n = 100`, run
 ```bash
-forge script script/withdrawRewards_Delegation.s.sol --rpc-url http://localhost:4201 --broadcast --legacy --sig "run(address payable, string, string)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 1000000000000000000 100 --private-key 0x...
+forge script script/WithdrawRewards.s.sol --rpc-url http://localhost:4201 --broadcast --legacy --sig "run(address payable, string, string)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 1000000000000000000 100 --private-key 0x...
 ```
 with the private key of a delegator account. To withdraw as much as possible with the given value of `n` set the amount to `all`. To withdraw the chosen amount without setting `n` replace `n` with `all`. To withdraw all rewards replace both the amount and `n` with `all`.
 
 Last but not least, in order to stake rewards instead of withdrawing them, your delegators can run
 ```bash
-forge script script/stakeRewards_Delegation.s.sol --rpc-url http://localhost:4201 --broadcast --legacy --sig "run(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 --private-key 0x...
+forge script script/StakeRewards.s.sol --rpc-url http://localhost:4201 --broadcast --legacy --sig "run(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 --private-key 0x...
 ```
 using the private key of their account.
 

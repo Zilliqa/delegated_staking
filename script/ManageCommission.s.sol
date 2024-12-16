@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 pragma solidity ^0.8.26;
 
+/* solhint-disable no-console */
 import {Script} from "forge-std/Script.sol";
 import {BaseDelegation} from "src/BaseDelegation.sol";
 import {Console} from "src/Console.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
-import "forge-std/console.sol";
+import {console} from "forge-std/console.sol";
 
-contract Commission is Script {
+contract ManageCommission is Script {
     using Strings for string;
 
     function run(address payable proxy, string calldata commissionNumerator, bool collectCommission) external {

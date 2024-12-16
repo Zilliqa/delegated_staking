@@ -7,7 +7,7 @@ if [ $# -lt 2 ]; then
   exit 1
 fi
 
-temp=$(forge script script/variant_Delegation.s.sol --rpc-url $url --sig "run(address payable)" $1 | tail -n 1)
+temp=$(forge script script/CheckVariant.s.sol --rpc-url $url --sig "run(address payable)" $1 | tail -n 1)
 variant=$(sed -E 's/\s\s([a-zA-Z0-9]+)/\1/' <<< "$temp")
 if [[ "$variant" == "$temp" ]]; then
     echo Incompatible delegation contract at $1

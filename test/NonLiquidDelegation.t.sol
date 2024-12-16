@@ -1,22 +1,23 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 pragma solidity ^0.8.26;
 
-import {BaseDelegationTest, PopVerifyPrecompile} from "test/BaseDelegation.t.sol";
+/* solhint-disable no-console */
+import {BaseDelegationTest} from "test/BaseDelegation.t.sol";
 import {NonLiquidDelegation} from "src/NonLiquidDelegation.sol";
 import {NonLiquidDelegationV2} from "src/NonLiquidDelegationV2.sol";
-import {BaseDelegation, WithdrawalQueue} from "src/BaseDelegation.sol";
+import {BaseDelegation} from "src/BaseDelegation.sol";
+import {WithdrawalQueue} from "src/WithdrawalQueue.sol";
 import {Delegation} from "src/Delegation.sol";
 import {Deposit} from "@zilliqa/zq2/deposit_v2.sol";
 import {Console} from "src/Console.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
-import {Vm} from "forge-std/Test.sol";
-import "forge-std/console.sol";
+import {console} from "forge-std/console.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 contract NonLiquidDelegationTest is BaseDelegationTest {
     using SafeCast for int256;
 
-    NonLiquidDelegationV2 delegation;
+    NonLiquidDelegationV2 internal delegation;
 
     constructor() BaseDelegationTest() {
         oldImplementation = address(new NonLiquidDelegation());
@@ -94,7 +95,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
             uint256 withdrawnAfterLastStaking
         ) = delegation.getStakingData();
         Console.log("stakingIndices = [ %s]", stakingIndices);
-        console.log("firstStakingIndex = %s   lastWithdrawnRewardIndex = %s", uint(firstStakingIndex), uint(lastWithdrawnRewardIndex));
+        console.log("firstStakingIndex = %s   lastWithdrawnRewardIndex = %s", uint256(firstStakingIndex), uint256(lastWithdrawnRewardIndex));
         console.log("allWithdrawnRewards = %s   withdrawnAfterLastStaking = %s", allWithdrawnRewards, withdrawnAfterLastStaking);
     } 
 
@@ -645,7 +646,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         uint256 withdrawnAfterLastStaking
         ) = delegation.getStakingData();
         Console.log("stakingIndices = [ %s]", stakingIndices);
-        console.log("firstStakingIndex = %s   lastWithdrawnRewardIndex = %s", uint(firstStakingIndex), uint(lastWithdrawnRewardIndex));
+        console.log("firstStakingIndex = %s   lastWithdrawnRewardIndex = %s", uint256(firstStakingIndex), uint256(lastWithdrawnRewardIndex));
         console.log("allWithdrawnRewards = %s   withdrawnAfterLastStaking = %s", allWithdrawnRewards, withdrawnAfterLastStaking);
 
         vm.recordLogs();
@@ -670,7 +671,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         withdrawnAfterLastStaking
         ) = delegation.getStakingData();
         Console.log("stakingIndices = [ %s]", stakingIndices);
-        console.log("firstStakingIndex = %s   lastWithdrawnRewardIndex = %s", uint(firstStakingIndex), uint(lastWithdrawnRewardIndex));
+        console.log("firstStakingIndex = %s   lastWithdrawnRewardIndex = %s", uint256(firstStakingIndex), uint256(lastWithdrawnRewardIndex));
         console.log("allWithdrawnRewards = %s   withdrawnAfterLastStaking = %s", allWithdrawnRewards, withdrawnAfterLastStaking);
 
         Console.log("contract balance: %s.%s%s", address(delegation).balance);

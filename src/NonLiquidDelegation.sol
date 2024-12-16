@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 pragma solidity ^0.8.26;
 
-import "src/BaseDelegation.sol";
+import {BaseDelegation} from "src/BaseDelegation.sol";
 
 // do not change this interface, it will break the detection of
 // the staking variant of an already deployed delegation contract
@@ -20,6 +20,7 @@ contract NonLiquidDelegation is BaseDelegation, INonLiquidDelegation {
     */
 
     // keccak256(abi.encode(uint256(keccak256("zilliqa.storage.NonLiquidDelegation")) - 1)) & ~bytes32(uint256(0xff))
+    // solhint-disable const-name-snakecase
     bytes32 private constant NonLiquidDelegationStorageLocation = 0x66c8dc4f9c8663296597cb1e39500488e05713d82a9122d4f548b19a70fc2000;
 
     /* commented out because defining empty structs is disallowed
@@ -35,7 +36,7 @@ contract NonLiquidDelegation is BaseDelegation, INonLiquidDelegation {
         _disableInitializers();
     }
 
-    function initialize(address initialOwner) initializer public {
+    function initialize(address initialOwner) public initializer {
         __BaseDelegation_init(initialOwner);
     }
 

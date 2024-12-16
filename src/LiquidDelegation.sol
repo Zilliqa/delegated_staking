@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 pragma solidity ^0.8.26;
 
-import "src/BaseDelegation.sol";
-import "src/NonRebasingLST.sol";
+import {BaseDelegation} from "src/BaseDelegation.sol";
+import {NonRebasingLST} from "src/NonRebasingLST.sol";
 
 // do not change this interface, it will break the detection of
 // the staking variant of an already deployed delegation contract
@@ -20,6 +20,7 @@ contract LiquidDelegation is BaseDelegation, ILiquidDelegation {
     }
 
     // keccak256(abi.encode(uint256(keccak256("zilliqa.storage.LiquidDelegation")) - 1)) & ~bytes32(uint256(0xff))
+    // solhint-disable const-name-snakecase
     bytes32 private constant LiquidDelegationStorageLocation = 0xfa57cbed4b267d0bc9f2cbdae86b4d1d23ca818308f873af9c968a23afadfd00;
 
     function _getLiquidDelegationStorage() private pure returns (LiquidDelegationStorage storage $) {
@@ -33,7 +34,7 @@ contract LiquidDelegation is BaseDelegation, ILiquidDelegation {
         _disableInitializers();
     }
 
-    function initialize(address initialOwner, string calldata name, string calldata symbol) initializer public {
+    function initialize(address initialOwner, string calldata name, string calldata symbol) public initializer {
         __BaseDelegation_init(initialOwner);
         LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
         $.lst = address(new NonRebasingLST(address(this), name, symbol));

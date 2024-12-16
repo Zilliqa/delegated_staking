@@ -1,60 +1,12 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 pragma solidity ^0.8.26;
 
-import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165Upgradeable.sol";
-import "src/Delegation.sol";
-
-library WithdrawalQueue {
-
-    address public constant DEPOSIT_CONTRACT = address(0x5A494C4445504F53495450524F5859);
-
-    struct Item {
-        uint256 blockNumber;
-        uint256 amount;
-    }
-
-    struct Fifo {
-        uint256 first;
-        uint256 last;
-        mapping(uint256 => Item) items;
-    }
-
-    function unbondingPeriod() view internal returns(uint256) {
-        (bool success, bytes memory data) = DEPOSIT_CONTRACT.staticcall(
-            abi.encodeWithSignature("withdrawalPeriod()")
-        );
-        require(success, "unbonding period unknown");
-        return abi.decode(data, (uint256));
-    }
-
-    function enqueue(Fifo storage fifo, uint256 amount) internal {
-        fifo.items[fifo.last] = Item(block.number + unbondingPeriod(), amount);
-        fifo.last++;
-    }
-
-    function dequeue(Fifo storage fifo) internal returns(Item memory result) {
-        require(fifo.first < fifo.last, "queue empty");
-        result = fifo.items[fifo.first];
-        delete fifo.items[fifo.first];
-        fifo.first++;
-    }
-
-    function ready(Fifo storage fifo, uint256 index) internal view returns(bool) {
-        return index < fifo.last && fifo.items[index].blockNumber <= block.number;
-    }
-
-    function notReady(Fifo storage fifo, uint256 index) internal view returns(bool) {
-        return index < fifo.last && fifo.items[index].blockNumber > block.number;
-    }
-
-    function ready(Fifo storage fifo) internal view returns(bool) {
-        return ready(fifo, fifo.first);
-    }
-}
+import {Delegation} from "src/Delegation.sol";
+import {WithdrawalQueue} from "src/WithdrawalQueue.sol";
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
+import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {ERC165Upgradeable} from "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165Upgradeable.sol";
 
 abstract contract BaseDelegation is Delegation, PausableUpgradeable, Ownable2StepUpgradeable, UUPSUpgradeable, ERC165Upgradeable {
 
@@ -70,6 +22,7 @@ abstract contract BaseDelegation is Delegation, PausableUpgradeable, Ownable2Ste
     }
 
     // keccak256(abi.encode(uint256(keccak256("zilliqa.storage.BaseDelegation")) - 1)) & ~bytes32(uint256(0xff))
+    // solhint-disable const-name-snakecase
     bytes32 private constant BaseDelegationStorageLocation = 0xc8ff0e571ef581b660c1651f85bbac921a40f9489bd04631c07fa723c13c6000;
 
     function _getBaseDelegationStorage() private pure returns (BaseDelegationStorage storage $) {
@@ -86,6 +39,7 @@ abstract contract BaseDelegation is Delegation, PausableUpgradeable, Ownable2Ste
         return _getInitializedVersion();
     } 
 
+    // solhint-disable func-name-mixedcase
     function __BaseDelegation_init(address initialOwner) internal onlyInitializing {
         __Pausable_init_unchained();
         __Ownable2Step_init_unchained();

@@ -1,20 +1,22 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 pragma solidity ^0.8.26;
 
-import {BaseDelegationTest, PopVerifyPrecompile} from "test/BaseDelegation.t.sol";
+/* solhint-disable no-console */
+import {BaseDelegationTest} from "test/BaseDelegation.t.sol";
 import {LiquidDelegation} from "src/LiquidDelegation.sol";
 import {LiquidDelegationV2} from "src/LiquidDelegationV2.sol";
 import {NonRebasingLST} from "src/NonRebasingLST.sol";
-import {BaseDelegation, WithdrawalQueue} from "src/BaseDelegation.sol";
+import {BaseDelegation} from "src/BaseDelegation.sol";
+import {WithdrawalQueue} from "src/WithdrawalQueue.sol";
 import {Delegation} from "src/Delegation.sol";
 import {Deposit} from "@zilliqa/zq2/deposit_v2.sol";
 import {Console} from "src/Console.sol";
 import {Vm} from "forge-std/Test.sol";
-import "forge-std/console.sol";
+import {console} from "forge-std/console.sol";
 
 contract LiquidDelegationTest is BaseDelegationTest {
-    LiquidDelegationV2 delegation;
-    NonRebasingLST lst;
+    LiquidDelegationV2 internal delegation;
+    NonRebasingLST internal lst;
 
     constructor() BaseDelegationTest() {
         oldImplementation = address(new LiquidDelegation());

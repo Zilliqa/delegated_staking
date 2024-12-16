@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 pragma solidity ^0.8.26;
 
-import "src/BaseDelegation.sol";
-import "src/NonLiquidDelegation.sol";
+import {BaseDelegation} from "src/BaseDelegation.sol";
+import {INonLiquidDelegation} from "src/NonLiquidDelegation.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 contract NonLiquidDelegationV2 is BaseDelegation, INonLiquidDelegation {
@@ -50,6 +50,7 @@ contract NonLiquidDelegationV2 is BaseDelegation, INonLiquidDelegation {
     }
 
     // keccak256(abi.encode(uint256(keccak256("zilliqa.storage.NonLiquidDelegation")) - 1)) & ~bytes32(uint256(0xff))
+    // solhint-disable const-name-snakecase
     bytes32 private constant NonLiquidDelegationStorageLocation = 0x66c8dc4f9c8663296597cb1e39500488e05713d82a9122d4f548b19a70fc2000;
 
     function _getNonLiquidDelegationStorage() private pure returns (NonLiquidDelegationStorage storage $) {
@@ -69,12 +70,12 @@ contract NonLiquidDelegationV2 is BaseDelegation, INonLiquidDelegation {
     // it won't be possible to identify the actual version of the
     // source file without a hardcoded version number, but storing
     // the file versions in separate folders would help
-    function reinitialize() reinitializer(version() + 1) public {
+    function reinitialize() public reinitializer(version() + 1) {
     }
 
     // called when stake withdrawn from the deposit contract is claimed
     // but not called when rewards are assigned to the reward address
-    receive() payable external {
+    receive() external payable {
         NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
         // add the stake withdrawn from the deposit to the reward balance
         $.totalRewards += int256(msg.value);

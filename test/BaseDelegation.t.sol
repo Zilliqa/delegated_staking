@@ -1,28 +1,25 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 pragma solidity ^0.8.26;
 
-import {BaseDelegation, WithdrawalQueue} from "src/BaseDelegation.sol";
+/* solhint-disable no-console */
+import {PopVerifyPrecompile} from "test/PopVerifyPrecompile.t.sol";
+import {BaseDelegation} from "src/BaseDelegation.sol";
+import {WithdrawalQueue} from "src/WithdrawalQueue.sol";
 import {Delegation} from "src/Delegation.sol";
-import {Deposit, InitialStaker} from "@zilliqa/zq2/deposit_v2.sol";
-import {Console} from "src/Console.sol";
+import {Deposit} from "@zilliqa/zq2/deposit_v2.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {Test, Vm} from "forge-std/Test.sol";
-import "forge-std/console.sol";
+import {Test} from "forge-std/Test.sol";
+import {console} from "forge-std/console.sol";
 
-contract PopVerifyPrecompile {
-    function popVerify(bytes memory, bytes memory) public pure returns(bool) {
-        return true;
-    }
-}
-
+/* solhint-disable one-contract-per-file */
 abstract contract BaseDelegationTest is Test {
-    address payable proxy;
-    address oldImplementation;
-    bytes initializerCall;
-    address payable newImplementation;
-    bytes reinitializerCall;
-    address owner;
-    address[4] stakers = [
+    address payable internal proxy;
+    address internal oldImplementation;
+    bytes internal initializerCall;
+    address payable internal newImplementation;
+    bytes internal reinitializerCall;
+    address internal owner;
+    address[4] internal stakers = [
         0xd819fFcE7A58b1E835c25617Db7b46a00888B013,
         0x092E5E57955437876dA9Df998C96e2BE19341670,
         0xeA78aAE5Be606D2D152F00760662ac321aB8F017,
@@ -104,7 +101,6 @@ abstract contract BaseDelegationTest is Test {
         );
         //*/
 
-        InitialStaker[] memory initialStakers = new InitialStaker[](0);
         //vm.deployCodeTo("Deposit.sol", delegation.DEPOSIT_CONTRACT());
         vm.etch(
             delegation.DEPOSIT_CONTRACT(),
