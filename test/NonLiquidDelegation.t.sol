@@ -8,7 +8,7 @@ import {NonLiquidDelegationV2} from "src/NonLiquidDelegationV2.sol";
 import {BaseDelegation} from "src/BaseDelegation.sol";
 import {WithdrawalQueue} from "src/WithdrawalQueue.sol";
 import {Delegation} from "src/Delegation.sol";
-import {Deposit} from "@zilliqa/zq2/deposit_v2.sol";
+import {Deposit} from "@zilliqa/zq2/deposit_v3.sol";
 import {Console} from "src/Console.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {console} from "forge-std/console.sol";
@@ -122,8 +122,6 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         int256[] memory relativeAmountsAfterWithdrawals = abi.decode(_relativeAmountsAfterWithdrawals, (int256[]));
         require(stakerIndicesAfterWithdrawals.length == relativeAmountsAfterWithdrawals.length, "array length mismatch");
 
-        // TODO: remove the next line once https://github.com/Zilliqa/zq2/issues/2009 is fixed
-        if (mode == DepositMode.DepositThenMigrate) return;
         if (mode == DepositMode.DepositThenMigrate)
             migrate(BaseDelegation(delegation), depositAmount);
         else
@@ -558,8 +556,6 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         vm.stopPrank();
 
         vm.roll(block.number + WithdrawalQueue.unbondingPeriod());
-        //TODO: remove the next line once https://github.com/Zilliqa/zq2/issues/1761 is fixed
-        vm.warp(block.timestamp + WithdrawalQueue.unbondingPeriod());
 
         i = 1;
         vm.startPrank(stakers[i-1]);

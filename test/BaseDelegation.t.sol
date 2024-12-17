@@ -2,11 +2,11 @@
 pragma solidity ^0.8.26;
 
 /* solhint-disable no-console */
-import {PopVerifyPrecompile} from "test/PopVerifyPrecompile.t.sol";
+import {BlsVerifyPrecompile} from "test/BlsVerifyPrecompile.t.sol";
 import {BaseDelegation} from "src/BaseDelegation.sol";
 import {WithdrawalQueue} from "src/WithdrawalQueue.sol";
 import {Delegation} from "src/Delegation.sol";
-import {Deposit} from "@zilliqa/zq2/deposit_v2.sol";
+import {Deposit} from "@zilliqa/zq2/deposit_v3.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {Test} from "forge-std/Test.sol";
 import {console} from "forge-std/console.sol";
@@ -104,27 +104,19 @@ abstract contract BaseDelegationTest is Test {
         //vm.deployCodeTo("Deposit.sol", delegation.DEPOSIT_CONTRACT());
         vm.etch(
             delegation.DEPOSIT_CONTRACT(),
-            // since the deposit contract is upgradeable, the constructor has no parameters
-            //address(new Deposit(10_000_000 ether, 256, 10, initialStakers)).code
             address(new Deposit()).code
         );
         vm.store(delegation.DEPOSIT_CONTRACT(), bytes32(uint256(0x958a6cf6390bd7165e3519675caa670ab90f0161508a9ee714d3db7edc50740b)), bytes32(uint256(block.number / 10)));
         vm.store(delegation.DEPOSIT_CONTRACT(), bytes32(uint256(0x958a6cf6390bd7165e3519675caa670ab90f0161508a9ee714d3db7edc50740c)), bytes32(uint256(10_000_000 ether)));
         vm.store(delegation.DEPOSIT_CONTRACT(), bytes32(uint256(0x958a6cf6390bd7165e3519675caa670ab90f0161508a9ee714d3db7edc50740d)), bytes32(uint256(256)));
         vm.store(delegation.DEPOSIT_CONTRACT(), bytes32(uint256(0x958a6cf6390bd7165e3519675caa670ab90f0161508a9ee714d3db7edc50740e)), bytes32(uint256(10)));
-        /* since the deposit contract is upgradeable, the storage locations changed too
-        vm.store(delegation.DEPOSIT_CONTRACT(), bytes32(uint256(11)), bytes32(uint256(block.number / 10)));
-        vm.store(delegation.DEPOSIT_CONTRACT(), bytes32(uint256(12)), bytes32(uint256(10_000_000 ether)));
-        vm.store(delegation.DEPOSIT_CONTRACT(), bytes32(uint256(13)), bytes32(uint256(256)));
-        vm.store(delegation.DEPOSIT_CONTRACT(), bytes32(uint256(14)), bytes32(uint256(10)));
-        */
         /*
         console.log("Deposit.minimimStake() =", Deposit(delegation.DEPOSIT_CONTRACT()).minimumStake());
         console.log("Deposit.maximumStakers() =", Deposit(delegation.DEPOSIT_CONTRACT()).maximumStakers());
         console.log("Deposit.blocksPerEpoch() =", Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch());
         //*/
 
-        vm.etch(address(0x5a494c80), address(new PopVerifyPrecompile()).code);
+        vm.etch(address(0x5a494c81), address(new BlsVerifyPrecompile()).code);
 
         vm.stopPrank();
     }
@@ -144,6 +136,7 @@ abstract contract BaseDelegationTest is Test {
             bytes(hex"92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c"),
             bytes(hex"002408011220d5ed74b09dcbe84d3b32a56c01ab721cf82809848b6604535212a219d35c412f"),
             bytes(hex"b14832a866a49ddf8a3104f8ee379d29c136f29aeb8fccec9d7fb17180b99e8ed29bee2ada5ce390cb704bc6fd7f5ce814f914498376c4b8bc14841a57ae22279769ec8614e2673ba7f36edc5a4bf5733aa9d70af626279ee2b2cde939b4bd8a"),
+            address(0x0),
             address(0x0)
         );
 
@@ -288,8 +281,6 @@ abstract contract BaseDelegationTest is Test {
         assertEq(delegation.getClaimable() + totalPending, totalUnstaked, "claims must match unstaked amount");
 
         vm.roll(block.number + 100);
-        //TODO: remove the next line once https://github.com/Zilliqa/zq2/issues/1761 is fixed
-        vm.warp(block.timestamp + 100);
 
         console.log("--------------------------------------------------------------------");
         console.log("block number: %s", block.number);
@@ -304,8 +295,6 @@ abstract contract BaseDelegationTest is Test {
         assertEq(delegation.getClaimable() + totalPending, totalUnstaked, "claims must match unstaked amount");
 
         vm.roll(block.number + WithdrawalQueue.unbondingPeriod());
-        //TODO: remove the next line once https://github.com/Zilliqa/zq2/issues/1761 is fixed
-        vm.warp(block.timestamp + WithdrawalQueue.unbondingPeriod());
 
         console.log("--------------------------------------------------------------------");
         console.log("block number: %s", block.number);

@@ -9,7 +9,7 @@ import {NonRebasingLST} from "src/NonRebasingLST.sol";
 import {BaseDelegation} from "src/BaseDelegation.sol";
 import {WithdrawalQueue} from "src/WithdrawalQueue.sol";
 import {Delegation} from "src/Delegation.sol";
-import {Deposit} from "@zilliqa/zq2/deposit_v2.sol";
+import {Deposit} from "@zilliqa/zq2/deposit_v3.sol";
 import {Console} from "src/Console.sol";
 import {Vm} from "forge-std/Test.sol";
 import {console} from "forge-std/console.sol";
@@ -58,8 +58,6 @@ contract LiquidDelegationTest is BaseDelegationTest {
         delegation = LiquidDelegationV2(proxy);
         lst = NonRebasingLST(delegation.getLST());
 
-        // TODO: remove the next line once https://github.com/Zilliqa/zq2/issues/2009 is fixed
-        if (mode == DepositMode.DepositThenMigrate) return;
         if (mode == DepositMode.DepositThenMigrate)
             migrate(BaseDelegation(delegation), depositAmount);
         else
@@ -268,8 +266,6 @@ contract LiquidDelegationTest is BaseDelegationTest {
         );
 
         vm.roll(block.number + blocksUntil);
-        //TODO: remove the next line once https://github.com/Zilliqa/zq2/issues/1761 is fixed
-        vm.warp(block.timestamp + blocksUntil);
 
         vm.recordLogs();
 
@@ -885,134 +881,6 @@ contract LiquidDelegationTest is BaseDelegationTest {
             LiquidDelegationV2(proxy), //delegation
             20 //steps
         );
-    }
-
-    //TODO: remove the test once https://github.com/Zilliqa/zq2/issues/1761 is fixed
-    function test_DepositContract() public {
-        vm.deal(owner, 10_000_000 ether + 1_000_000 ether + 0 ether);
-        vm.deal(stakers[0], 0);
-        vm.startPrank(owner);
-        Deposit(delegation.DEPOSIT_CONTRACT()).deposit{
-            value: 10_000_000 ether
-        }(
-            bytes(hex"92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c"),
-            bytes(hex"002408011220d5ed74b09dcbe84d3b32a56c01ab721cf82809848b6604535212a219d35c412f"),
-            bytes(hex"b14832a866a49ddf8a3104f8ee379d29c136f29aeb8fccec9d7fb17180b99e8ed29bee2ada5ce390cb704bc6fd7f5ce814f914498376c4b8bc14841a57ae22279769ec8614e2673ba7f36edc5a4bf5733aa9d70af626279ee2b2cde939b4bd8a"),
-            address(stakers[0])
-        );
-        console.log("validator deposited");
-        console.log("validator stake: %s", Deposit(delegation.DEPOSIT_CONTRACT()).getStake(
-            bytes(hex"92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c")
-        ));
-        vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
-        console.log("validator stake: %s", Deposit(delegation.DEPOSIT_CONTRACT()).getStake(
-            bytes(hex"92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c")
-        ));
-        Deposit(delegation.DEPOSIT_CONTRACT()).depositTopup{
-            value: 1_000_000 ether
-        }();
-        console.log("validator staked");
-        console.log("validator stake: %s", Deposit(delegation.DEPOSIT_CONTRACT()).getStake(
-            bytes(hex"92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c")
-        ));
-        vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
-        console.log("validator stake: %s", Deposit(delegation.DEPOSIT_CONTRACT()).getStake(
-            bytes(hex"92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c")
-        ));
-        Deposit(delegation.DEPOSIT_CONTRACT()).unstake(
-            500_000 ether
-        );
-        console.log("validator unstaked");
-        console.log("validator stake: %s", Deposit(delegation.DEPOSIT_CONTRACT()).getStake(
-            bytes(hex"92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c")
-        ));
-        vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
-        console.log("validator stake: %s", Deposit(delegation.DEPOSIT_CONTRACT()).getStake(
-            bytes(hex"92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c")
-        ));
-        console.log("validator balance: %s", owner.balance);
-        Deposit(delegation.DEPOSIT_CONTRACT()).withdraw();
-        console.log("validator withdrew");
-        console.log("validator balance: %s", owner.balance);
-        //vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).withdrawalPeriod());
-        //TODO: remove the next line and uncomment the previous once https://github.com/Zilliqa/zq2/issues/1761 is fixed
-        vm.warp(block.timestamp + Deposit(delegation.DEPOSIT_CONTRACT()).withdrawalPeriod()); // skip(WithdrawalQueue.unbondingPeriod());
-        Deposit(delegation.DEPOSIT_CONTRACT()).withdraw();
-        console.log("validator withdrew again");
-        console.log("validator balance: %s", owner.balance);
-        vm.stopPrank();
-    }
-
-    /*
-    To compare the results of Foundry tests and a real network, use the bash scripts below
-    to stake, unstake and claim on the network your local node is connected to.
-
-    Before and after running the STAKING, UNSTAKING and CLAIMING scripts presented below,
-    always execute the STATE script to capture the values needed in the Foundry test below.
-
-    STATE:
-    chmod +x state.sh && ./state.sh <delegation_contract_address> <staker_address>
-
-    STAKING:
-    chmod +x stake.sh && ./stake.sh <delegation_contract_address> <staker_private_key> 10000000000000000000000
-
-    UNSTAKING:
-    chmod +x unstake.sh && ./unstake.sh <delegation_contract_address> <staker_private_key>
-
-    CLAIMING:
-    chmod +x claim.sh && ./claim.sh <delegation_contract_address> <staker_private_key>
-
-    Before running the test, replace the address on the first line with <staker_address>
-    */
-    //TODO: entirely remove or update the values based on the devnet and fix the failing test (typo intentional)
-    function est_DepositThenStake_ReproduceRealNetwork() public {
-        stakers[0] = 0xd819fFcE7A58b1E835c25617Db7b46a00888B013;
-        uint256 delegatedAmount = 10_000 ether;
-        // Insert the following values output by the STATE script below
-        uint256 rewardsBeforeStaking = 197818620596390326580;
-        uint256 taxedRewardsBeforeStaking = 166909461128204338052;
-        // Compare the taxedRewardsAfterStaking output by the STATE script
-        // with the value logged by the test below
-        uint256 taxedRewardsAfterStaking =
-            rewardsBeforeStaking - (rewardsBeforeStaking - taxedRewardsBeforeStaking) / uint256(10);
-        Console.log("Expected taxed rewards after staking: %s.%s%s ZIL", taxedRewardsAfterStaking);
-        // Insert the following value output by the UNSTAKING script
-        uint256 rewardsBeforeUnstaking = 233367080700403454378;
-        run(
-            10_000_000 ether,
-            rewardsBeforeStaking,
-            taxedRewardsBeforeStaking,
-            delegatedAmount,
-            1, // numberOfDelegations
-            0, // rewardsAccruedAfterEach
-            rewardsBeforeUnstaking,
-            WithdrawalQueue.unbondingPeriod(), // blocksUntil claiming
-            DepositMode.DepositThenStake
-        );
-        // Replace the values below in the same order with the values output by the STATE script
-        // run after the CLAIMING script or logged by the CLAIMING script itself
-        // the staker's ZIL balance in wei according to the STATE script after claiming
-        // the staker's ZIL balance in wei according to the STATE script before claiming
-        // the claiming transaction fee in wei output by the CLAIMING script
-        Console.log("Expected staker balance after claiming: %s.%s%s ZIL",
-            100_000 ether - delegatedAmount
-            + 100013.464887553198739807 ether - 90013.819919979031083499 ether + 0.3897714316896 ether
-        );
-        // Replace the values below in the same order with values output by the STATE script
-        // run before the STAKING and after the UNSTAKE scripts or logged by those script themselves
-        // the owner's ZIL balance in wei according to the STATE script after unstaking
-        // the owner's ZIL balance in wei according to the STATE script before staking
-        // the transaction fees in wei output by the STAKING and UNSTAKING scripts
-        Console.log("Actual owner commission: %s.%s%s ZIL",
-            uint256(
-                100032.696802178975738911 ether - 100025.741948627073967394 ether
-                + 0.6143714334864 ether + 0.8724381022176 ether
-            )
-        );
-        // Compare the value logged above with the sum of the following values
-        // you will see after running the test:
-        // Owner commission after staking
-        // Owner commission after unstaking
     }
 
 }
