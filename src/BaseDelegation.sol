@@ -192,7 +192,8 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         uint256 firstPending = index;
         claims = new uint256[2][](fifo.last - index);
         while (fifo.notReady(index)) {
-            claims[index - firstPending] = [fifo.items[index].blockNumber, fifo.items[index].amount];
+            WithdrawalQueue.Item storage item = fifo.items[index];
+            claims[index - firstPending] = [item.blockNumber, item.amount];
             index++;
         }
     }

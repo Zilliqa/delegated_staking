@@ -118,7 +118,7 @@ cast send --legacy --value 10000000ether --rpc-url http://localhost:4201 --priva
 ```
 with the BLS public key, the peer id and the BLS signature of your node. Note that the peer id must be converted from base58 to hexadecimal format and you must provide the delegation contract address when generating the BLS signature:
 ```bash
-echo '{"secret_key":"...", "chain_id":..., "address":"0x7a0b7e6d24ede78260c9ddbd98e828b0e11a8ea2"}' | cargo run --bin convert-key
+echo '{"secret_key":"...", "chain_id":..., "control_address":"0x7a0b7e6d24ede78260c9ddbd98e828b0e11a8ea2"}' | cargo run --bin convert-key
 ```
 Make sure your node is fully synced before you run the above command.
 
