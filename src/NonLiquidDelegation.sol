@@ -52,11 +52,11 @@ contract NonLiquidDelegation is BaseDelegation, INonLiquidDelegation {
         bytes calldata,
         bytes calldata,
         bytes calldata
-    ) public override {
+    ) public pure override {
         revert("not implemented");
     }
 
-    function migrate(bytes calldata) public override {
+    function migrate(bytes calldata) public pure override {
         revert("not implemented");
     }
 
@@ -64,52 +64,52 @@ contract NonLiquidDelegation is BaseDelegation, INonLiquidDelegation {
         revert("not implemented");
     }
 
-    function unstake(uint256) external override returns(uint256) {
+    function unstake(uint256) external pure override returns(uint256) {
         revert("not implemented");
     }
 
-    function claim() external override {
+    function claim() external pure override {
         revert("not implemented");
     }
 
-    function collectCommission() public override {
+    function collectCommission() public pure override {
         revert("not implemented");
     }
 
-    function stakeRewards() public override {
+    function stakeRewards() public pure override {
         revert("not implemented");
     }
 
-    function rewards() public view returns(uint256) {
+    function rewards() public pure returns(uint256) {
         revert("not implemented");
     }
 
-    function rewards(uint64) public view returns(uint256) {
+    function rewards(uint64) public pure returns(uint256) {
         revert("not implemented");
     }
 
-    function getDelegatedStake() public view returns(uint256) {
+    function getDelegatedStake() public pure returns(uint256) {
         revert("not implemented");
     }
 
-    function withdrawRewards(uint256, uint64) public returns(uint256) {
+    function withdrawRewards(uint256, uint64) public pure returns(uint256) {
         revert("not implemented");
     }
 
-    function withdrawRewards(uint256) public returns(uint256) {
+    function withdrawRewards(uint256) public pure returns(uint256) {
         revert("not implemented");
     }
 
-    function withdrawAllRewards(uint64) public returns(uint256) {
+    function withdrawAllRewards(uint64) public pure returns(uint256) {
         revert("not implemented");
     }
 
-    function withdrawAllRewards() public returns(uint256) {
+    function withdrawAllRewards() public pure returns(uint256) {
         revert("not implemented");
     }
 
-    function supportsInterface(bytes4 interfaceId) public view override returns (bool) {
-       return interfaceId == type(INonLiquidDelegation).interfaceId || super.supportsInterface(interfaceId);
+    function supportsInterface(bytes4 _interfaceId) public view override returns (bool) {
+       return _interfaceId == type(INonLiquidDelegation).interfaceId || super.supportsInterface(_interfaceId);
     }
 
     function interfaceId() public pure returns (bytes4) {

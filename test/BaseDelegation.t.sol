@@ -241,6 +241,9 @@ abstract contract BaseDelegationTest is Test {
         vm.deal(address(delegation), address(delegation).balance + 10_000 ether);
 
         uint256 totalUnstaked;
+        uint256 totalPending;
+        uint256[2][] memory claims;
+
         for (uint256 j = 0; j < steps; j++) {
             console.log("--------------------------------------------------------------------");
             vm.startPrank(stakers[i-1]);
@@ -251,12 +254,12 @@ abstract contract BaseDelegationTest is Test {
 
             //console.log("block number: %s", block.number);
             console.log("claimable: %s", delegation.getClaimable());
-            uint256[2][] memory claims = delegation.getPendingClaims();
+            claims = delegation.getPendingClaims();
             console.log("%s pending claims:", claims.length);
-            uint256 totalPending;
-            for (uint256 j = 0; j < claims.length; j++) {
-                console.log("%s can claim %s in block %s", stakers[i-1], claims[j][1], claims[j][0]);
-                totalPending += claims[j][1];
+            totalPending = 0;
+            for (uint256 k = 0; k < claims.length; k++) {
+                console.log("%s can claim %s in block %s", stakers[i-1], claims[k][1], claims[k][0]);
+                totalPending += claims[k][1];
             }
             assertEq(delegation.getClaimable() + totalPending, totalUnstaked, "claims must match unstaked amount");
 
@@ -271,9 +274,9 @@ abstract contract BaseDelegationTest is Test {
         console.log("--------------------------------------------------------------------");
         console.log("block number: %s", block.number);
         console.log("claimable: %s", delegation.getClaimable());
-        uint256[2][] memory claims = delegation.getPendingClaims();
+        claims = delegation.getPendingClaims();
         console.log("%s pending claims:", claims.length);
-        uint256 totalPending;
+        totalPending = 0;
         for (uint256 j = 0; j < claims.length; j++) {
             console.log("%s can claim %s in block %s", stakers[i-1], claims[j][1], claims[j][0]);
             totalPending += claims[j][1];

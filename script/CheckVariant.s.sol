@@ -11,7 +11,7 @@ import {console} from "forge-std/console.sol";
 contract CheckVariant is Script {
     using ERC165Checker for address;
 
-    function run(address proxy) external {
+    function run(address proxy) external view {
 
         if (proxy.supportsInterface(type(ILiquidDelegation).interfaceId))
             console.log("ILiquidDelegation");

@@ -210,8 +210,8 @@ contract LiquidDelegationV2 is BaseDelegation, ILiquidDelegation {
         return $.lst;
     }
 
-    function supportsInterface(bytes4 interfaceId) public view override returns (bool) {
-       return interfaceId == type(ILiquidDelegation).interfaceId || super.supportsInterface(interfaceId);
+    function supportsInterface(bytes4 _interfaceId) public view override returns (bool) {
+       return _interfaceId == type(ILiquidDelegation).interfaceId || super.supportsInterface(_interfaceId);
     }
 
     function interfaceId() public pure returns (bytes4) {

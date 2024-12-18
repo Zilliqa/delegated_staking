@@ -367,8 +367,8 @@ contract NonLiquidDelegationV2 is BaseDelegation, INonLiquidDelegation {
 
     function collectCommission() public override {}
 
-    function supportsInterface(bytes4 interfaceId) public view override returns (bool) {
-       return interfaceId == type(INonLiquidDelegation).interfaceId || super.supportsInterface(interfaceId);
+    function supportsInterface(bytes4 _interfaceId) public view override returns (bool) {
+       return _interfaceId == type(INonLiquidDelegation).interfaceId || super.supportsInterface(_interfaceId);
     }
 
     function interfaceId() public pure returns (bytes4) {

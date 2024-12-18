@@ -57,11 +57,11 @@ contract LiquidDelegation is BaseDelegation, ILiquidDelegation {
         bytes calldata,
         bytes calldata,
         bytes calldata
-    ) public override {
+    ) public pure override {
         revert("not implemented");
     }
 
-    function migrate(bytes calldata) public override {
+    function migrate(bytes calldata) public pure override {
         revert("not implemented");
     }
 
@@ -69,28 +69,28 @@ contract LiquidDelegation is BaseDelegation, ILiquidDelegation {
         revert("not implemented");
     }
 
-    function unstake(uint256) external override returns(uint256) {
+    function unstake(uint256) external pure override returns(uint256) {
         revert("not implemented");
     }
 
-    function claim() external override {
+    function claim() external pure override {
         revert("not implemented");
     }
 
-    function collectCommission() public override {
+    function collectCommission() public pure override {
         revert("not implemented");
     }
 
-    function stakeRewards() public override {
+    function stakeRewards() public pure override {
         revert("not implemented");
     }
 
-    function getPrice() public view returns(uint256) {
+    function getPrice() public pure returns(uint256) {
         revert("not implemented");
     }
 
-    function supportsInterface(bytes4 interfaceId) public view override returns (bool) {
-       return interfaceId == type(ILiquidDelegation).interfaceId || super.supportsInterface(interfaceId);
+    function supportsInterface(bytes4 _interfaceId) public view override returns (bool) {
+       return _interfaceId == type(ILiquidDelegation).interfaceId || super.supportsInterface(_interfaceId);
     }
 
     function interfaceId() public pure returns (bytes4) {
