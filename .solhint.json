@@ -1,0 +1,26 @@
+{
+  "extends": "solhint:recommended",
+  "plugins": [],
+  "rules": {
+    "no-inline-assembly": "off",
+    "avoid-low-level-calls": "off",
+    "reason-string": ["warn", {"maxLength": 70}],
+    "func-visibility": ["warn", {"ignoreConstructors": true}],
+    "gas-custom-errors": "off",
+    "no-empty-blocks": "off",
+    "no-complex-fallback": "off",
+    "interface-starts-with-i": "warn",
+    "func-param-name-mixedcase": "warn",
+    "modifier-name-mixedcase": "warn",
+    "gas-calldata-parameters": "warn",
+    "gas-indexed-events": "warn",
+    "gas-length-in-loops": "warn",
+    "comprehensive-interface": "warn",
+    "gas-increment-by-one": "off",
+    "private-vars-leading-underscore": ["off", {"strict": false}],
+    "named-parameters-mapping": "off",
+    "foundry-test-functions": ["off"],
+    "imports-order": "off",
+    "max-line-length": ["off", 120]
+  }
+}

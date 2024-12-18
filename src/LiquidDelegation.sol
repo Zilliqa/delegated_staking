@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 pragma solidity ^0.8.26;
 
-import "src/BaseDelegation.sol";
-import "src/NonRebasingLST.sol";
+import {BaseDelegation} from "src/BaseDelegation.sol";
+import {NonRebasingLST} from "src/NonRebasingLST.sol";
 
 // do not change this interface, it will break the detection of
 // the staking variant of an already deployed delegation contract
@@ -20,6 +20,7 @@ contract LiquidDelegation is BaseDelegation, ILiquidDelegation {
     }
 
     // keccak256(abi.encode(uint256(keccak256("zilliqa.storage.LiquidDelegation")) - 1)) & ~bytes32(uint256(0xff))
+    // solhint-disable const-name-snakecase
     bytes32 private constant LiquidDelegationStorageLocation = 0xfa57cbed4b267d0bc9f2cbdae86b4d1d23ca818308f873af9c968a23afadfd00;
 
     function _getLiquidDelegationStorage() private pure returns (LiquidDelegationStorage storage $) {
@@ -33,10 +34,10 @@ contract LiquidDelegation is BaseDelegation, ILiquidDelegation {
         _disableInitializers();
     }
 
-    function initialize(address initialOwner) initializer public {
+    function initialize(address initialOwner, string calldata name, string calldata symbol) public initializer {
         __BaseDelegation_init(initialOwner);
         LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
-        $.lst = address(new NonRebasingLST(address(this)));
+        $.lst = address(new NonRebasingLST(address(this), name, symbol));
     }
 
     function getLST() public view returns(address) {
@@ -44,19 +45,23 @@ contract LiquidDelegation is BaseDelegation, ILiquidDelegation {
         return $.lst;
     }
 
-    function deposit(
-        bytes calldata blsPubKey,
-        bytes calldata peerId,
-        bytes calldata signature
+    function depositFirst(
+        bytes calldata,
+        bytes calldata,
+        bytes calldata
     ) public override payable {
         revert("not implemented");
     }
 
-    function deposit2(
-        bytes calldata blsPubKey,
-        bytes calldata peerId,
-        bytes calldata signature
-    ) public override {
+    function depositLater(
+        bytes calldata,
+        bytes calldata,
+        bytes calldata
+    ) public pure override {
+        revert("not implemented");
+    }
+
+    function migrate(bytes calldata) public pure override {
         revert("not implemented");
     }
 
@@ -64,28 +69,28 @@ contract LiquidDelegation is BaseDelegation, ILiquidDelegation {
         revert("not implemented");
     }
 
-    function unstake(uint256) external override {
+    function unstake(uint256) external pure override returns(uint256) {
         revert("not implemented");
     }
 
-    function claim() external override {
+    function claim() external pure override {
         revert("not implemented");
     }
 
-    function collectCommission() public override {
+    function collectCommission() public pure override {
         revert("not implemented");
     }
 
-    function stakeRewards() public override {
+    function stakeRewards() public pure override {
         revert("not implemented");
     }
 
-    function getPrice() public view returns(uint256) {
+    function getPrice() public pure returns(uint256) {
         revert("not implemented");
     }
 
-    function supportsInterface(bytes4 interfaceId) public view override returns (bool) {
-       return interfaceId == type(ILiquidDelegation).interfaceId || super.supportsInterface(interfaceId);
+    function supportsInterface(bytes4 _interfaceId) public view override returns (bool) {
+       return _interfaceId == type(ILiquidDelegation).interfaceId || super.supportsInterface(_interfaceId);
     }
 
     function interfaceId() public pure returns (bytes4) {

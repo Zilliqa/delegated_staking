@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 pragma solidity ^0.8.26;
 
+/* solhint-disable no-console */
 import {Script} from "forge-std/Script.sol";
 import {NonLiquidDelegation} from "src/NonLiquidDelegation.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
-import "forge-std/console.sol";
+import {console} from "forge-std/console.sol";
 
 contract WithdrawRewards is Script {
     using Strings for string;

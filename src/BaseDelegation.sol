@@ -1,58 +1,14 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 pragma solidity ^0.8.26;
 
-import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165Upgradeable.sol";
-import "src/Delegation.sol";
+import {IDelegation} from "src/IDelegation.sol";
+import {WithdrawalQueue} from "src/WithdrawalQueue.sol";
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
+import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {ERC165Upgradeable} from "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165Upgradeable.sol";
 
-library WithdrawalQueue {
-
-    address public constant DEPOSIT_CONTRACT = address(0x5A494C4445504F53495450524F5859);
-
-    struct Item {
-        uint256 blockNumber;
-        uint256 amount;
-    }
-
-    struct Fifo {
-        uint256 first;
-        uint256 last;
-        mapping(uint256 => Item) items;
-    }
-
-    function unbondingPeriod() view internal returns(uint256) {
-        (bool success, bytes memory data) = DEPOSIT_CONTRACT.staticcall(
-            abi.encodeWithSignature("withdrawalPeriod()")
-        );
-        require(success, "unbonding period unknown");
-        return abi.decode(data, (uint256));
-    }
-
-    function enqueue(Fifo storage fifo, uint256 amount) internal {
-        fifo.items[fifo.last] = Item(block.number + unbondingPeriod(), amount);
-        fifo.last++;
-    }
-
-    function dequeue(Fifo storage fifo) internal returns(Item memory result) {
-        require(fifo.first < fifo.last, "queue empty");
-        result = fifo.items[fifo.first];
-        delete fifo.items[fifo.first];
-        fifo.first++;
-    }
-
-    function ready(Fifo storage fifo, uint256 index) internal view returns(bool) {
-        return index < fifo.last && fifo.items[index].blockNumber <= block.number;
-    }
-
-    function ready(Fifo storage fifo) internal view returns(bool) {
-        return ready(fifo, fifo.first);
-    }
-}
-
-abstract contract BaseDelegation is Delegation, PausableUpgradeable, Ownable2StepUpgradeable, UUPSUpgradeable, ERC165Upgradeable {
+abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2StepUpgradeable, UUPSUpgradeable, ERC165Upgradeable {
 
     using WithdrawalQueue for WithdrawalQueue.Fifo;
 
@@ -66,6 +22,7 @@ abstract contract BaseDelegation is Delegation, PausableUpgradeable, Ownable2Ste
     }
 
     // keccak256(abi.encode(uint256(keccak256("zilliqa.storage.BaseDelegation")) - 1)) & ~bytes32(uint256(0xff))
+    // solhint-disable const-name-snakecase
     bytes32 private constant BaseDelegationStorageLocation = 0xc8ff0e571ef581b660c1651f85bbac921a40f9489bd04631c07fa723c13c6000;
 
     function _getBaseDelegationStorage() private pure returns (BaseDelegationStorage storage $) {
@@ -82,6 +39,7 @@ abstract contract BaseDelegation is Delegation, PausableUpgradeable, Ownable2Ste
         return _getInitializedVersion();
     } 
 
+    // solhint-disable func-name-mixedcase
     function __BaseDelegation_init(address initialOwner) internal onlyInitializing {
         __Pausable_init_unchained();
         __Ownable2Step_init_unchained();
@@ -96,6 +54,19 @@ abstract contract BaseDelegation is Delegation, PausableUpgradeable, Ownable2Ste
 
     function _authorizeUpgrade(address newImplementation) internal onlyOwner virtual override {}
 
+    function _migrate(bytes calldata blsPubKey) internal onlyOwner virtual {
+        BaseDelegationStorage storage $ = _getBaseDelegationStorage();
+        require(!_isActivated() && address(this).balance == 0, "validator can not be migrated");
+        $.blsPubKey = blsPubKey;
+        (bool success, bytes memory data) = DEPOSIT_CONTRACT.call(abi.encodeWithSignature("getPeerId(bytes)", blsPubKey));
+        require(success, "peer id could not be retrieved");
+        $.peerId = data;
+        (success, ) = DEPOSIT_CONTRACT.call(abi.encodeWithSignature("setRewardAddress(bytes,address)", blsPubKey, address(this)));
+        require(success, "reward address could not be changed");
+    }
+
+    function migrate(bytes calldata blsPubKey) public virtual;
+
     function _deposit(
         bytes calldata blsPubKey,
         bytes calldata peerId,
@@ -109,23 +80,24 @@ abstract contract BaseDelegation is Delegation, PausableUpgradeable, Ownable2Ste
         (bool success, ) = DEPOSIT_CONTRACT.call{
             value: depositAmount
         }(
-            abi.encodeWithSignature("deposit(bytes,bytes,bytes,address)",
+            abi.encodeWithSignature("deposit(bytes,bytes,bytes,address,address)",
                 blsPubKey,
                 peerId,
                 signature,
-                address(this)
+                address(this),
+                owner()
             )
         );
         require(success, "deposit failed");
     }
 
-    function deposit(
+    function depositFirst(
         bytes calldata blsPubKey,
         bytes calldata peerId,
         bytes calldata signature
     ) public virtual payable;
 
-    function deposit2(
+    function depositLater(
         bytes calldata blsPubKey,
         bytes calldata peerId,
         bytes calldata signature
@@ -181,9 +153,19 @@ abstract contract BaseDelegation is Delegation, PausableUpgradeable, Ownable2Ste
         $.commissionNumerator = _commissionNumerator;
     }
 
+    function getCommission() public virtual view returns(uint256 numerator, uint256 denominator) {
+        BaseDelegationStorage storage $ = _getBaseDelegationStorage();
+        numerator = $.commissionNumerator;
+        denominator = DENOMINATOR;
+    }
+
+    function getMinDelegation() public virtual view returns(uint256) {
+        return MIN_DELEGATION;
+    }
+
     function stake() external virtual payable;
 
-    function unstake(uint256) external virtual;
+    function unstake(uint256) external virtual returns(uint256);
 
     function claim() external virtual;
 
@@ -197,6 +179,21 @@ abstract contract BaseDelegation is Delegation, PausableUpgradeable, Ownable2Ste
         uint256 index = fifo.first;
         while (fifo.ready(index)) {
             total += fifo.items[index].amount;
+            index++;
+        }
+    }
+
+    function getPendingClaims() public virtual view returns(uint256[2][] memory claims) {
+        BaseDelegationStorage storage $ = _getBaseDelegationStorage();
+        WithdrawalQueue.Fifo storage fifo = $.withdrawals[_msgSender()];
+        uint256 index = fifo.first;
+        while (fifo.ready(index))
+            index++;
+        uint256 firstPending = index;
+        claims = new uint256[2][](fifo.last - index);
+        while (fifo.notReady(index)) {
+            WithdrawalQueue.Item storage item = fifo.items[index];
+            claims[index - firstPending] = [item.blockNumber, item.amount];
             index++;
         }
     }

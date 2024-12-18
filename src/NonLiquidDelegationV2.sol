@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 pragma solidity ^0.8.26;
 
-import "src/BaseDelegation.sol";
-import "src/NonLiquidDelegation.sol";
+import {BaseDelegation} from "src/BaseDelegation.sol";
+import {INonLiquidDelegation} from "src/NonLiquidDelegation.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 contract NonLiquidDelegationV2 is BaseDelegation, INonLiquidDelegation {
@@ -50,6 +50,7 @@ contract NonLiquidDelegationV2 is BaseDelegation, INonLiquidDelegation {
     }
 
     // keccak256(abi.encode(uint256(keccak256("zilliqa.storage.NonLiquidDelegation")) - 1)) & ~bytes32(uint256(0xff))
+    // solhint-disable const-name-snakecase
     bytes32 private constant NonLiquidDelegationStorageLocation = 0x66c8dc4f9c8663296597cb1e39500488e05713d82a9122d4f548b19a70fc2000;
 
     function _getNonLiquidDelegationStorage() private pure returns (NonLiquidDelegationStorage storage $) {
@@ -69,12 +70,12 @@ contract NonLiquidDelegationV2 is BaseDelegation, INonLiquidDelegation {
     // it won't be possible to identify the actual version of the
     // source file without a hardcoded version number, but storing
     // the file versions in separate folders would help
-    function reinitialize() reinitializer(version() + 1) public {
+    function reinitialize() public reinitializer(version() + 1) {
     }
 
     // called when stake withdrawn from the deposit contract is claimed
     // but not called when rewards are assigned to the reward address
-    receive() payable external {
+    receive() external payable {
         NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
         // add the stake withdrawn from the deposit to the reward balance
         $.totalRewards += int256(msg.value);
@@ -112,11 +113,22 @@ contract NonLiquidDelegationV2 is BaseDelegation, INonLiquidDelegation {
             result = $.stakings[stakingIndices[stakingIndices.length - 1]].amount;
     }
 
-    event RewardPaid(address indexed owner, uint256 reward);
+    event RewardPaid(address indexed delegator, uint256 reward);
 
-    // called by the node's account that deployed this contract and is its owner
-    // to request the node's activation as a validator using the delegated stake
-    function deposit2(
+    // called by the node's owner who deployed this contract
+    // to turn the already deposited validator node into a staking pool
+    function migrate(bytes calldata blsPubKey) public override onlyOwner {
+        _migrate(blsPubKey);
+        NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
+        require($.stakings.length == 0, "stake already delegated");
+        // the owner's deposit must also be recorded as staking otherwise
+        // the owner would not benefit from the rewards accrued by the deposit
+        _append(int256(getStake()));
+    }
+
+    // called by the node's owner who deployed this contract
+    // to deposit the node as a validator using the delegated stake
+    function depositLater(
         bytes calldata blsPubKey,
         bytes calldata peerId,
         bytes calldata signature
@@ -129,10 +141,10 @@ contract NonLiquidDelegationV2 is BaseDelegation, INonLiquidDelegation {
         );
     }
 
-    // called by the node's account that deployed this contract and is its owner
-    // with at least the minimum stake to request the node's activation as a validator
-    // before any stake is delegated to it
-    function deposit(
+    // called by the node's owner who deployed this contract
+    // with at least the minimum stake to deposit the node
+    // as a validator before any stake is delegated to it
+    function depositFirst(
         bytes calldata blsPubKey,
         bytes calldata peerId,
         bytes calldata signature
@@ -171,11 +183,12 @@ contract NonLiquidDelegationV2 is BaseDelegation, INonLiquidDelegation {
         emit Staked(_msgSender(), msg.value, "");
     }
 
-    function unstake(uint256 value) public override whenNotPaused {
+    function unstake(uint256 value) public override whenNotPaused returns(uint256 amount) {
         _append(-int256(value));
         _decreaseDeposit(uint256(value));
         _enqueueWithdrawal(value);
         emit Unstaked(_msgSender(), value, "");
+        return value;
     }
 
     function _append(int256 value) internal {
@@ -354,8 +367,8 @@ contract NonLiquidDelegationV2 is BaseDelegation, INonLiquidDelegation {
 
     function collectCommission() public override {}
 
-    function supportsInterface(bytes4 interfaceId) public view override returns (bool) {
-       return interfaceId == type(INonLiquidDelegation).interfaceId || super.supportsInterface(interfaceId);
+    function supportsInterface(bytes4 _interfaceId) public view override returns (bool) {
+       return _interfaceId == type(INonLiquidDelegation).interfaceId || super.supportsInterface(_interfaceId);
     }
 
     function interfaceId() public pure returns (bytes4) {

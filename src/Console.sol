@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 pragma solidity ^0.8.26;
 
+/* solhint-disable no-console */
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
-import "forge-std/console.sol";
+import {console} from "forge-std/console.sol";
 
 library Console {
 
-    function convert(int256 amount, uint8 precision) pure internal returns (
+    function convert(int256 amount, uint8 precision) internal pure returns (
         int256 predecimal,
         string memory zeros,
         uint256 postdecimal
@@ -24,35 +25,35 @@ library Console {
             postdecimal /= 10;
     }
 
-    function toString(uint256 amount, uint8 precision) pure internal returns (string memory result) {
+    function toString(uint256 amount, uint8 precision) internal pure returns (string memory result) {
         return toString(int256(amount), precision);
     }
 
-    function toString(int256 amount, uint8 precision) pure internal returns (string memory result) {
+    function toString(int256 amount, uint8 precision) internal pure returns (string memory result) {
         (int256 predecimal, string memory zeros, uint256 postdecimal) = convert(amount, precision);
         result = string.concat(Strings.toStringSigned(predecimal), ".");
         result = string.concat(result, zeros);
         result = string.concat(result, Strings.toString(postdecimal));
     }
 
-    function log(string memory format, uint256 amount, uint8 precision) pure internal {
+    function log(string memory format, uint256 amount, uint8 precision) internal pure {
         log(format, int256(amount), precision);
     }
 
-    function log(string memory format, int256 amount, uint8 precision) pure internal {
+    function log(string memory format, int256 amount, uint8 precision) internal pure {
         (int256 predecimal, string memory zeros, uint256 postdecimal) = convert(amount, precision);
         console.log(format, Strings.toStringSigned(predecimal), zeros, postdecimal);
     }
 
-    function log(string memory format, uint256 amount) pure internal {
+    function log(string memory format, uint256 amount) internal pure {
         return log(format, amount, 18);
     }
 
-    function log(string memory format, int256 amount) pure internal {
+    function log(string memory format, int256 amount) internal pure {
         return log(format, amount, 18);
     }
 
-    function log(string memory format, uint64[] memory array) pure internal {
+    function log(string memory format, uint64[] memory array) internal pure {
         string memory s;
         for (uint256 i = 0; i < array.length; i++) {
             s = string.concat(s, Strings.toString(array[i]));
