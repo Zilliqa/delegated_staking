@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 pragma solidity ^0.8.26;
 
-import {Delegation} from "src/Delegation.sol";
+import {IDelegation} from "src/IDelegation.sol";
 import {WithdrawalQueue} from "src/WithdrawalQueue.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {ERC165Upgradeable} from "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165Upgradeable.sol";
 
-abstract contract BaseDelegation is Delegation, PausableUpgradeable, Ownable2StepUpgradeable, UUPSUpgradeable, ERC165Upgradeable {
+abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2StepUpgradeable, UUPSUpgradeable, ERC165Upgradeable {
 
     using WithdrawalQueue for WithdrawalQueue.Fifo;
 

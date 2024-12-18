@@ -5,7 +5,7 @@ pragma solidity ^0.8.26;
 import {BlsVerifyPrecompile} from "test/BlsVerifyPrecompile.t.sol";
 import {BaseDelegation} from "src/BaseDelegation.sol";
 import {WithdrawalQueue} from "src/WithdrawalQueue.sol";
-import {Delegation} from "src/Delegation.sol";
+import {IDelegation} from "src/IDelegation.sol";
 import {Deposit} from "@zilliqa/zq2/deposit_v3.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {Test} from "forge-std/Test.sol";
@@ -179,7 +179,7 @@ abstract contract BaseDelegationTest is Test {
                 false,
                 address(delegation)
             );
-            emit Delegation.Staked(
+            emit IDelegation.Staked(
                 stakers[0],
                 depositAmount,
                 ""
@@ -201,7 +201,7 @@ abstract contract BaseDelegationTest is Test {
         vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
     }
 
-    function claimsAfterManyUnstakings(BaseDelegation delegation, uint64 steps) public {
+    function claimsAfterManyUnstakings(BaseDelegation delegation, uint64 steps) internal {
         uint256 i;
         uint256 x;
 
@@ -229,7 +229,7 @@ abstract contract BaseDelegationTest is Test {
             false,
             address(delegation)
         );
-        emit Delegation.Staked(
+        emit IDelegation.Staked(
             stakers[i-1],
             steps * x * 1 ether,
             ""

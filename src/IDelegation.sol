@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 pragma solidity ^0.8.26;
 
-interface Delegation {
+interface IDelegation {
 
     // data can store additional information e.g. liquid staking tokens
     event Staked(address indexed delegator, uint256 amount, bytes data);

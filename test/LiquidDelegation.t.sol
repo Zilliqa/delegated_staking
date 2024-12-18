@@ -8,12 +8,13 @@ import {LiquidDelegationV2} from "src/LiquidDelegationV2.sol";
 import {NonRebasingLST} from "src/NonRebasingLST.sol";
 import {BaseDelegation} from "src/BaseDelegation.sol";
 import {WithdrawalQueue} from "src/WithdrawalQueue.sol";
-import {Delegation} from "src/Delegation.sol";
+import {IDelegation} from "src/IDelegation.sol";
 import {Deposit} from "@zilliqa/zq2/deposit_v3.sol";
 import {Console} from "src/Console.sol";
 import {Vm} from "forge-std/Test.sol";
 import {console} from "forge-std/console.sol";
 
+/* solhint-disable func-name-mixedcase */
 contract LiquidDelegationTest is BaseDelegationTest {
     LiquidDelegationV2 internal delegation;
     NonRebasingLST internal lst;
@@ -54,7 +55,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         uint256 rewardsBeforeUnstaking,
         uint256 blocksUntil,
         DepositMode mode
-    ) public {
+    ) internal {
         delegation = LiquidDelegationV2(proxy);
         lst = NonRebasingLST(delegation.getLST());
 
@@ -113,7 +114,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
                 false,
                 address(delegation)
             );
-            emit Delegation.Staked(
+            emit IDelegation.Staked(
                 stakers[0],
                 delegatedAmount,
                 abi.encode(lst.totalSupply() * delegatedAmount / (delegation.getStake() + delegation.getRewards()))
@@ -197,7 +198,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
             false,
             address(delegation)
         );
-        emit Delegation.Unstaked(
+        emit IDelegation.Unstaked(
             stakers[0],
             (delegation.getStake() + delegation.getRewards()) * lst.balanceOf(stakers[0]) / lst.totalSupply(),
             abi.encode(lst.balanceOf(stakers[0]))
@@ -279,7 +280,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
             false,
             address(delegation)
         );
-        emit Delegation.Claimed(
+        emit IDelegation.Claimed(
             stakers[0],
             unstakedAmount,
             ""

@@ -7,13 +7,14 @@ import {NonLiquidDelegation} from "src/NonLiquidDelegation.sol";
 import {NonLiquidDelegationV2} from "src/NonLiquidDelegationV2.sol";
 import {BaseDelegation} from "src/BaseDelegation.sol";
 import {WithdrawalQueue} from "src/WithdrawalQueue.sol";
-import {Delegation} from "src/Delegation.sol";
+import {IDelegation} from "src/IDelegation.sol";
 import {Deposit} from "@zilliqa/zq2/deposit_v3.sol";
 import {Console} from "src/Console.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {console} from "forge-std/console.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
+/* solhint-disable func-name-mixedcase */
 contract NonLiquidDelegationTest is BaseDelegationTest {
     using SafeCast for int256;
 
@@ -113,7 +114,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         uint256 rewardsBeforeStaking,
         uint256 rewardsAccruedAfterEach,
         DepositMode mode
-    ) public {
+    ) internal {
         uint64 steps = withdrawalInSteps;
         uint256[] memory stakerIndicesBeforeWithdrawals = abi.decode(_stakerIndicesBeforeWithdrawals, (uint256[]));
         int256[] memory relativeAmountsBeforeWithdrawals = abi.decode(_relativeAmountsBeforeWithdrawals, (int256[]));
@@ -500,7 +501,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
                     false,
                     address(delegation)
                 );
-                emit Delegation.Staked(
+                emit IDelegation.Staked(
                     stakers[i-1],
                     x * 1 ether,
                     ""
@@ -522,7 +523,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
                     false,
                     address(delegation)
                 );
-                emit Delegation.Unstaked(
+                emit IDelegation.Unstaked(
                     stakers[i-1],
                     x * 1 ether,
                     ""
@@ -567,7 +568,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
             false,
             address(delegation)
         );
-        emit Delegation.Claimed(
+        emit IDelegation.Claimed(
             stakers[i-1],
             steps / 8 * x * 1 ether,
             ""
@@ -613,7 +614,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
             false,
             address(delegation)
         );
-        emit Delegation.Staked(
+        emit IDelegation.Staked(
             stakers[i-1],
             x * 1 ether,
             ""
