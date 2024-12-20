@@ -1,6 +1,6 @@
 #!/bin/bash
 
-url=http://localhost:4201
+url=$RPC_URL
 
 if [ $# -lt 2 ]; then
     echo "Provide the delegation contract address and the validator or staker private key."

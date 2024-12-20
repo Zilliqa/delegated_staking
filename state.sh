@@ -1,6 +1,6 @@
 #!/bin/bash
 
-url=http://localhost:4201
+url=$RPC_URL
 
 if [ $# -lt 2 ]; then
   echo "Provide the delegation contract address, a staker address and optionally, a block number as arguments."
