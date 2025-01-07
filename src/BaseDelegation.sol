@@ -32,7 +32,7 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     }
 
     uint256 public constant MIN_DELEGATION = 100 ether;
-    address public constant DEPOSIT_CONTRACT = WithdrawalQueue.DEPOSIT_CONTRACT;
+address public constant DEPOSIT_CONTRACT = WithdrawalQueue.DEPOSIT_CONTRACT;
     uint256 public constant DENOMINATOR = 10_000;
 
     function version() public view returns(uint64) {
@@ -104,22 +104,27 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     ) public virtual;
 
     function _increaseDeposit(uint256 amount) internal virtual {
+        BaseDelegationStorage storage $ = _getBaseDelegationStorage();
         // topup the deposit only if already activated as a validator
         if (_isActivated()) {
             (bool success, ) = DEPOSIT_CONTRACT.call{
                 value: amount
             }(
-                abi.encodeWithSignature("depositTopup()")
+                abi.encodeWithSignature("depositTopup(bytes)", 
+                    $.blsPubKey
+                )
             );
             require(success, "deposit increase failed");
         }
     }
 
     function _decreaseDeposit(uint256 amount) internal virtual {
+        BaseDelegationStorage storage $ = _getBaseDelegationStorage();
         // unstake the deposit only if already activated as a validator
         if (_isActivated()) {
             (bool success, ) = DEPOSIT_CONTRACT.call(
-                abi.encodeWithSignature("unstake(uint256)",
+                abi.encodeWithSignature("unstake(bytes,uint256)",
+                    $.blsPubKey,
                     amount
                 )
             );
@@ -128,10 +133,13 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     }
 
     function _withdrawDeposit() internal virtual {
+        BaseDelegationStorage storage $ = _getBaseDelegationStorage();
         // withdraw the unstaked deposit only if already activated as a validator
         if (_isActivated()) {
             (bool success, ) = DEPOSIT_CONTRACT.call(
-                abi.encodeWithSignature("withdraw()")
+                abi.encodeWithSignature("withdraw(bytes)",
+                    $.blsPubKey
+                )
             );
             require(success, "deposit withdrawal failed");
         }
