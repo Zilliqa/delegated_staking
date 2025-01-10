@@ -44,8 +44,8 @@ contract NonLiquidDelegationV2 is BaseDelegation, INonLiquidDelegation {
         // the amount that has already been withdrawn from the
         // constantly growing rewards accrued since the last staking
         mapping(address => uint256) withdrawnAfterLastStaking;
-        // balance of the reward address minus the
-        // rewards accrued since the last staking
+        // the balance of the reward address without the rewards
+        // accrued since the last staking
         int256 totalRewards;
     }
 
@@ -116,14 +116,18 @@ contract NonLiquidDelegationV2 is BaseDelegation, INonLiquidDelegation {
     event RewardPaid(address indexed delegator, uint256 reward);
 
     // called by the node's owner who deployed this contract
-    // to turn the already deposited validator node into a staking pool
+    // to add an already deposited validator node to the staking pool
+//TODO: rename to join() and adjust the readme
     function migrate(bytes calldata blsPubKey) public override onlyOwner {
         _migrate(blsPubKey);
-        NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
-        require($.stakings.length == 0, "stake already delegated");
-        // the owner's deposit must also be recorded as staking otherwise
-        // the owner would not benefit from the rewards accrued by the deposit
-        _append(int256(getStake()));
+
+//TODO: uncomment or remove the next 2 lines depending on whether migration works without it
+        //NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
+        //require($.stakings.length == 0, "stake already delegated");
+
+        // the node's deposit must also be recorded as staking otherwise
+        // its owner would not benefit from the rewards accrued due to that deposit
+        _append(int256(getStake(blsPubKey)));
     }
 
     // called by the node's owner who deployed this contract

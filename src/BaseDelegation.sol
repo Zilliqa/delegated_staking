@@ -12,13 +12,20 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
 
     using WithdrawalQueue for WithdrawalQueue.Fifo;
 
+    struct Validator {
+        bytes blsPubKey;
+        uint256 futureStake;
+        address rewardAddress;
+        address controlAddress;
+    }
+
     /// @custom:storage-location erc7201:zilliqa.storage.BaseDelegation
     struct BaseDelegationStorage {
-        bytes blsPubKey;
-        bytes peerId;
+        Validator[] validators;
         uint256 commissionNumerator;
         mapping(address => WithdrawalQueue.Fifo) withdrawals;
         uint256 totalWithdrawals;
+        bool activated;
     }
 
     // keccak256(abi.encode(uint256(keccak256("zilliqa.storage.BaseDelegation")) - 1)) & ~bytes32(uint256(0xff))
@@ -54,15 +61,71 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
 
     function _authorizeUpgrade(address newImplementation) internal onlyOwner virtual override {}
 
-    function _migrate(bytes calldata blsPubKey) internal onlyOwner virtual {
+    function _join(bytes calldata blsPubKey, address controlAddress) internal onlyOwner virtual {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
-        require(!_isActivated() && address(this).balance == 0, "validator can not be migrated");
-        $.blsPubKey = blsPubKey;
-        (bool success, bytes memory data) = DEPOSIT_CONTRACT.call(abi.encodeWithSignature("getPeerId(bytes)", blsPubKey));
-        require(success, "peer id could not be retrieved");
-        $.peerId = data;
+//TODO: remove next line if _join() works for the initial migration too, otherwise uncomment
+        //require(_isActivated(), "there is no other validator yet");
+//TODO: check that there is no validator with the same blsPubKey already
+
+        (bool success, bytes memory data) = DEPOSIT_CONTRACT.call(abi.encodeWithSignature("getFutureStake(bytes)", blsPubKey));
+        require(success, "future stake could not be retrieved");
+        uint256 futureStake = abi.decode(data, (uint256));
+
+        (success, data) = DEPOSIT_CONTRACT.call(abi.encodeWithSignature("getRewardAddress(bytes)", blsPubKey));
+        require(success, "reward address could not be retrieved");
+        address rewardAddress = abi.decode(data, (address));
+
+        // the control address should have been set to this contract
+        // by the original control address otherwise the call will fail
         (success, ) = DEPOSIT_CONTRACT.call(abi.encodeWithSignature("setRewardAddress(bytes,address)", blsPubKey, address(this)));
         require(success, "reward address could not be changed");
+
+        $.validators.push(Validator(
+            blsPubKey,
+            futureStake,
+            rewardAddress,
+            controlAddress
+        ));
+    }
+    
+    function leave(bytes calldata blsPubKey) public virtual {
+        BaseDelegationStorage storage $ = _getBaseDelegationStorage();
+        for (uint256 i = 0; i < $.validators.length; i++)
+            if (keccak256($.validators[i].blsPubKey) == keccak256(blsPubKey)) {
+                require(msg.sender == $.validators[i].controlAddress, "only the control address can initiate leaving");
+//TODO: call the deposit contract's setRewardAddress() function to restore $.validators[i].rewardAddress
+//TODO: call the deposit contract's setControlAddress() function to restore $.validators[i].controlAddress
+                if (i < $.validators.length - 1)
+                    $.validators[i] = $.validators[$.validators.length - 1];
+                delete $.validators[$.validators.length - 1];
+            }
+    }
+
+    function validators() public view returns(Validator[] memory) {
+        BaseDelegationStorage storage $ = _getBaseDelegationStorage();
+        return $.validators;
+    }
+
+    function _migrate(bytes calldata blsPubKey) internal onlyOwner virtual {
+        BaseDelegationStorage storage $ = _getBaseDelegationStorage();
+
+//TODO: why is this check necessary? if it's not, we could simple use join for the first
+//      migration too (after removing the requirement isActivated there)
+//
+//      if it was already activated then it would most likely have non-zero balance due to the rewards accrued
+//      then it's the case of joining anyway
+//
+//      if it was not yet activated but had a non-zero balance then 
+//      this balance would be seen as new rewards in _rewards()
+//      therefore we need to set
+//      $.totalRewards = int256(getRewards());
+//      instead of requiring it to be zero
+//
+        require(!_isActivated() && address(this).balance == 0, "validator can not be migrated");
+        $.activated = true;
+
+//TODO: replace address(0) with the original control address
+        _join(blsPubKey, address(0));
     }
 
     function migrate(bytes calldata blsPubKey) public virtual;
@@ -74,9 +137,14 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         uint256 depositAmount
     ) internal virtual {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
-        require($.blsPubKey.length == 0, "deposit already performed");
-        $.blsPubKey = blsPubKey;
-        $.peerId = peerId;
+        require(!_isActivated(), "deposit already performed");
+        $.activated = true;
+        $.validators.push(Validator(
+            blsPubKey,
+            depositAmount,
+            owner(),
+            owner()
+        ));
         (bool success, ) = DEPOSIT_CONTRACT.call{
             value: depositAmount
         }(
@@ -106,6 +174,10 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     function _increaseDeposit(uint256 amount) internal virtual {
         // topup the deposit only if already activated as a validator
         if (_isActivated()) {
+            BaseDelegationStorage storage $ = _getBaseDelegationStorage();
+            //TODO: increase all validators' deposit proportionally once https://github.com/Zilliqa/zq2/issues/2057 is fixed
+            //      until then we increase only the last validator's deposit
+            $.validators[$.validators.length - 1].futureStake += amount;
             (bool success, ) = DEPOSIT_CONTRACT.call{
                 value: amount
             }(
@@ -118,6 +190,11 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     function _decreaseDeposit(uint256 amount) internal virtual {
         // unstake the deposit only if already activated as a validator
         if (_isActivated()) {
+            BaseDelegationStorage storage $ = _getBaseDelegationStorage();
+            //TODO: decrease all validators' deposit proportionally once https://github.com/Zilliqa/zq2/issues/2057 is fixed
+            //      until then we decrease only the last validator's deposit
+            $.validators[$.validators.length - 1].futureStake -= amount;
+//TODO: if the validator's futureStake is zero then force it to leave
             (bool success, ) = DEPOSIT_CONTRACT.call(
                 abi.encodeWithSignature("unstake(uint256)",
                     amount
@@ -130,6 +207,8 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     function _withdrawDeposit() internal virtual {
         // withdraw the unstaked deposit only if already activated as a validator
         if (_isActivated()) {
+            //TODO: withdraw all validators' unstaked deposits once https://github.com/Zilliqa/zq2/issues/2057 is fixed
+            //      until then we withdraw only the last validator's unstaked deposit
             (bool success, ) = DEPOSIT_CONTRACT.call(
                 abi.encodeWithSignature("withdraw()")
             );
@@ -137,9 +216,11 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         }
     }
 
+    // return if the first validator has been deposited already
+    // otherwise we are supposed to be in the fundraising phase
     function _isActivated() internal virtual view returns(bool) {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
-        return $.blsPubKey.length > 0;
+        return $.activated;
     }
 
     function getCommissionNumerator() public virtual view returns(uint256) {
@@ -216,24 +297,37 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         return $.totalWithdrawals;
     }
 
-    function getRewards() public virtual view returns(uint256) {
-        BaseDelegationStorage storage $ = _getBaseDelegationStorage();
+    function getRewards() public virtual view returns(uint256 total) {
         if (!_isActivated())
             return 0;
-        (bool success, bytes memory data) = DEPOSIT_CONTRACT.staticcall(
-            abi.encodeWithSignature("getRewardAddress(bytes)", $.blsPubKey)
-        );
-        require(success, "could not retrieve reward address");
-        address rewardAddress = abi.decode(data, (address));
-        return rewardAddress.balance;
+        // currently all validators have the same reward address,
+        // which is the address of this delegation contract
+        total = address(this).balance;
+        /* if the validators had separate vault contracts as reward address
+        BaseDelegationStorage storage $ = _getBaseDelegationStorage();
+        for (uint256 i = 0; i < $.validators.length; i++) {
+            (bool success, bytes memory data) = DEPOSIT_CONTRACT.staticcall(
+                abi.encodeWithSignature("getRewardAddress(bytes)", $.validators[i].blsPubKey)
+            );
+            require(success, "could not retrieve reward address");
+            address rewardAddress = abi.decode(data, (address));
+            //TODO: only if no other validator had the same reward address otherwise we add its balance twice
+            total += rewardAddress.balance;
+        }
+        */
     }
 
-    function getStake() public virtual view returns(uint256) {
-        BaseDelegationStorage storage $ = _getBaseDelegationStorage();
+    function getStake() public virtual view returns(uint256 total) {
         if (!_isActivated())
             return address(this).balance;
+        BaseDelegationStorage storage $ = _getBaseDelegationStorage();
+        for (uint256 i = 0; i < $.validators.length; i++)
+            total += $.validators[i].futureStake;
+    }
+
+    function getStake(bytes calldata blsPubKey) public virtual view returns(uint256) {
         (bool success, bytes memory data) = DEPOSIT_CONTRACT.staticcall(
-            abi.encodeWithSignature("getFutureStake(bytes)", $.blsPubKey)
+            abi.encodeWithSignature("getFutureStake(bytes)", blsPubKey)
         );
         require(success, "could not retrieve staked amount");
         return abi.decode(data, (uint256));
