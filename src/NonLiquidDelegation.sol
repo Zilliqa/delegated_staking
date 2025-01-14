@@ -52,7 +52,7 @@ contract NonLiquidDelegation is BaseDelegation, INonLiquidDelegation {
         bytes calldata,
         bytes calldata,
         bytes calldata
-    ) public pure override {
+    ) public override payable {
         revert("not implemented");
     }
 

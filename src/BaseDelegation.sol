@@ -169,7 +169,7 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         bytes calldata blsPubKey,
         bytes calldata peerId,
         bytes calldata signature
-    ) public virtual;
+    ) public virtual payable;
 
     function _increaseDeposit(uint256 amount) internal virtual {
         // topup the deposit only if already activated as a validator

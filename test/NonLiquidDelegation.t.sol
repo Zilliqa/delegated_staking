@@ -42,7 +42,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         for (uint256 i = 0; i < stakers.length; i++)
             if (stakers[i] == a)
                 return i;
-        revert("staker not found");
+        revert(string.concat("staker not found ", Strings.toHexString(a)));
     }  
 
     function snapshot(string memory s, uint256 i, uint256 x) internal view returns(uint256 calculatedRewards) {
@@ -100,7 +100,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         console.log("allWithdrawnRewards = %s   withdrawnAfterLastStaking = %s", allWithdrawnRewards, withdrawnAfterLastStaking);
     } 
 
-    function run (
+    function run(
         bytes memory _stakerIndicesBeforeWithdrawals,
         // each element in the interval (-100, 100)
         // if element negative, unstake -depositAmount * element / 10
@@ -123,14 +123,15 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         int256[] memory relativeAmountsAfterWithdrawals = abi.decode(_relativeAmountsAfterWithdrawals, (int256[]));
         require(stakerIndicesAfterWithdrawals.length == relativeAmountsAfterWithdrawals.length, "array length mismatch");
 
+//TODO: remove
+//        if (mode != DepositMode.StakeThenDeposit)
+        // otherwise findStaker() doesn't find the staker and reverts
+        stakers[0] = owner;
+
         if (mode == DepositMode.DepositThenMigrate)
             migrate(BaseDelegation(delegation), depositAmount);
         else
             deposit(BaseDelegation(delegation), depositAmount, mode == DepositMode.DepositThenStake);
-
-        if (mode != DepositMode.StakeThenDeposit)
-            // otherwise snapshot() doesn't find the staker and reverts
-            stakers[0] = owner;
 
         for (uint256 i = 0; i < stakers.length; i++) {
             vm.deal(stakers[i], 10 * depositAmount);
@@ -481,7 +482,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
 
         for (i = 0; i < 4; i++) {
-            vm.deal(stakers[i], 100_000 ether);
+            vm.deal(stakers[i], 200_000 ether);
             console.log("staker %s: %s", i+1, stakers[i]);
         }
 
@@ -489,7 +490,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
 
         // rewards accrued so far
         vm.deal(address(delegation), 50_000 ether);
-        x = 50;
+        x = 100;
         for (uint256 j = 0; j < steps / 8; j++) {
             for (i = 1; i <= 4; i++) {
                 vm.startPrank(stakers[i-1]);
@@ -603,7 +604,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
 
         // rewards accrued so far
         vm.deal(address(delegation), 50_000 ether);
-        x = 50;
+        x = 100;
         i = 2;
         vm.startPrank(stakers[i-1]);
         vm.recordLogs();

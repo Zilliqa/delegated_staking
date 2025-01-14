@@ -47,7 +47,7 @@ contract LiquidDelegationV2 is BaseDelegation, ILiquidDelegation {
     }
 
     // called by the node's owner who deployed this contract
-    // to turn the already deposited validator node into a staking pool
+    // to add an already deposited validator to the staking pool
 //TODO: rename to join() and adjust the readme
     function migrate(bytes calldata blsPubKey) public override onlyOwner {
         _migrate(blsPubKey);
@@ -68,11 +68,14 @@ contract LiquidDelegationV2 is BaseDelegation, ILiquidDelegation {
 
     // called by the node's owner who deployed this contract
     // to deposit the node as a validator using the delegated stake
+//TODO: remove
     function depositLater(
         bytes calldata blsPubKey,
         bytes calldata peerId,
         bytes calldata signature
-    ) public override onlyOwner {
+    ) public override payable onlyOwner {
+        if (msg.value > 0)
+            _stake(msg.value);
         _deposit(
             blsPubKey,
             peerId,
@@ -82,16 +85,17 @@ contract LiquidDelegationV2 is BaseDelegation, ILiquidDelegation {
     }
 
     // called by the node's owner who deployed this contract
-    // with at least the minimum stake to deposit a node
-    // as a validator before any stake is delegated to it
+    // to turn a node into a validator
+//TODO: rename to deposit()
     function depositFirst(
         bytes calldata blsPubKey,
         bytes calldata peerId,
         bytes calldata signature
     ) public override payable onlyOwner {
+        if (msg.value > 0)
 //TODO: test what happens if this is called when the lst supply is non-zero
 //      i.e. this is not the first staking
-        _stake(msg.value);
+            _stake(msg.value);
 /*TODO: remove
         LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
         require(NonRebasingLST($.lst).totalSupply() == 0, "stake already delegated");
@@ -101,7 +105,7 @@ contract LiquidDelegationV2 is BaseDelegation, ILiquidDelegation {
             blsPubKey,
             peerId,
             signature,
-            msg.value
+            address(this).balance
         );
     } 
 
@@ -126,6 +130,12 @@ contract LiquidDelegationV2 is BaseDelegation, ILiquidDelegation {
         uint256 shares;
         LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
         uint256 depositedStake = getStake();
+        if (!_isActivated())
+            //TODO: in no validator has been activated yet, the depositedStake equals the
+            //      balance that contains all delegations including the current one unlike
+            //      the depositedStake after the first validator activation, which is the stake
+            //      sent to the deposit contract i.e. it does not include the current delegation
+            depositedStake -= value;
         if (NonRebasingLST($.lst).totalSupply() == 0)
             // if no validator deposited yet the formula for calculating the shares would divide by zero, hence
             shares = value;

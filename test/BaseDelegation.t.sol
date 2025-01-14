@@ -169,33 +169,38 @@ abstract contract BaseDelegationTest is Test {
                 bytes(hex"b14832a866a49ddf8a3104f8ee379d29c136f29aeb8fccec9d7fb17180b99e8ed29bee2ada5ce390cb704bc6fd7f5ce814f914498376c4b8bc14841a57ae22279769ec8614e2673ba7f36edc5a4bf5733aa9d70af626279ee2b2cde939b4bd8a")
             );
         } else {
-            vm.deal(stakers[0], stakers[0].balance + depositAmount);
-            vm.startPrank(stakers[0]);
+            uint256 preStaked = depositAmount / 10;
+            for (uint256 i = 1; i <= 2; i++) {
+                vm.deal(stakers[i], stakers[i].balance + preStaked);
+                vm.startPrank(stakers[i]);
+                vm.expectEmit(
+                    true,
+                    false,
+                    false,
+                    false,
+                    address(delegation)
+                );
+                emit IDelegation.Staked(
+                    stakers[i],
+                    preStaked,
+                    ""
+                );
+                delegation.stake{
+                    value: preStaked
+                }();
+                vm.stopPrank();
+            }
 
-            vm.expectEmit(
-                true,
-                false,
-                false,
-                false,
-                address(delegation)
-            );
-            emit IDelegation.Staked(
-                stakers[0],
-                depositAmount,
-                ""
-            );
-
-            delegation.stake{
-                value: depositAmount
-            }();
-
+            vm.deal(owner, owner.balance + depositAmount - 2 * preStaked);
             vm.startPrank(owner);
-
-            delegation.depositLater(
+            delegation.depositLater{
+                value: depositAmount - 2 * preStaked
+            }(
                 bytes(hex"92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c"),
                 bytes(hex"002408011220d5ed74b09dcbe84d3b32a56c01ab721cf82809848b6604535212a219d35c412f"),
                 bytes(hex"b14832a866a49ddf8a3104f8ee379d29c136f29aeb8fccec9d7fb17180b99e8ed29bee2ada5ce390cb704bc6fd7f5ce814f914498376c4b8bc14841a57ae22279769ec8614e2673ba7f36edc5a4bf5733aa9d70af626279ee2b2cde939b4bd8a")
             );
+            vm.stopPrank();
         }
         // wait 2 epochs for the change to the deposit to take affect
         vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);

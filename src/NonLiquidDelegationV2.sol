@@ -116,7 +116,7 @@ contract NonLiquidDelegationV2 is BaseDelegation, INonLiquidDelegation {
     event RewardPaid(address indexed delegator, uint256 reward);
 
     // called by the node's owner who deployed this contract
-    // to add an already deposited validator node to the staking pool
+    // to add an already deposited validator to the staking pool
 //TODO: rename to join() and adjust the readme
     function migrate(bytes calldata blsPubKey) public override onlyOwner {
         _migrate(blsPubKey);
@@ -132,22 +132,25 @@ contract NonLiquidDelegationV2 is BaseDelegation, INonLiquidDelegation {
 
     // called by the node's owner who deployed this contract
     // to deposit the node as a validator using the delegated stake
+//TODO: remove
     function depositLater(
         bytes calldata blsPubKey,
         bytes calldata peerId,
         bytes calldata signature
-    ) public override onlyOwner {
+    ) public payable override onlyOwner {
         _deposit(
             blsPubKey,
             peerId,
             signature,
             address(this).balance
         );
+        if (msg.value > 0)
+            _append(int256(msg.value));
     }
 
     // called by the node's owner who deployed this contract
-    // with at least the minimum stake to deposit the node
-    // as a validator before any stake is delegated to it
+    // to turn a node into a validator
+//TODO: rename to deposit()
     function depositFirst(
         bytes calldata blsPubKey,
         bytes calldata peerId,
@@ -157,13 +160,16 @@ contract NonLiquidDelegationV2 is BaseDelegation, INonLiquidDelegation {
             blsPubKey,
             peerId,
             signature,
-            msg.value
+            address(this).balance
         );
+/*TODO: test if it works if it's not the first staking
         NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
         require($.stakings.length == 0, "stake already delegated");
+*/
         // the owner's deposit must also be recorded as staking otherwise
         // the owner would not benefit from the rewards accrued by the deposit
-        _append(int256(msg.value));
+        if (msg.value > 0)
+            _append(int256(msg.value));
     }
 
     function claim() public override whenNotPaused {
@@ -196,6 +202,8 @@ contract NonLiquidDelegationV2 is BaseDelegation, INonLiquidDelegation {
     }
 
     function _append(int256 value) internal {
+        if (value > 0)
+            require(uint256(value) >= MIN_DELEGATION, "delegated amount too low");
         NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
         int256 amount = value;
         if ($.stakingIndices[_msgSender()].length > 0)

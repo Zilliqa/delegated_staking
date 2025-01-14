@@ -57,7 +57,7 @@ contract LiquidDelegation is BaseDelegation, ILiquidDelegation {
         bytes calldata,
         bytes calldata,
         bytes calldata
-    ) public pure override {
+    ) public override payable {
         revert("not implemented");
     }
 

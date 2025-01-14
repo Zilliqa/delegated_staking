@@ -207,7 +207,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         uint256[2] memory stakerLST = [lst.balanceOf(stakers[0]), 0];
         ownerZIL[0] = delegation.owner().balance;
 
-        uint256 shares = mode != DepositMode.StakeThenDeposit ? lst.balanceOf(stakers[0]) : lst.balanceOf(stakers[0]) - depositAmount;
+        uint256 shares = mode != DepositMode.StakeThenDeposit ? lst.balanceOf(stakers[0]) : lst.balanceOf(stakers[0]) - depositAmount / 10;
         assertEq(totalShares, shares, "staked shares balance mismatch");
 
         delegation.unstake(
