@@ -28,7 +28,7 @@ contract NonLiquidDelegationV2 is BaseDelegation, INonLiquidDelegation {
     struct NonLiquidDelegationStorage {
         // the history of all stakings and unstakings
         Staking[] stakings;
-        // indices of the stakings by the respective staker
+        // indices of (un)stakings by the respective staker
         mapping(address => uint64[]) stakingIndices;
         // the first among the stakingIndices of the respective staker
         // based on which new rewards can be withdrawn
@@ -64,18 +64,14 @@ contract NonLiquidDelegationV2 is BaseDelegation, INonLiquidDelegation {
         _disableInitializers();
     }
 
-    // automatically incrementing the version number allows for
-    // upgrading the contract without manually specifying the next
-    // version number in the source file - use with caution since
-    // it won't be possible to identify the actual version of the
-    // source file without a hardcoded version number, but storing
-    // the file versions in separate folders would help
+    //TODO: use a hardcoded version number instead
     function reinitialize() public reinitializer(version() + 1) {
     }
 
     // called when stake withdrawn from the deposit contract is claimed
     // but not called when rewards are assigned to the reward address
     receive() external payable {
+        require(_msgSender() == DEPOSIT_CONTRACT, "sender must be the deposit contract");
         NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
         // add the stake withdrawn from the deposit to the reward balance
         $.totalRewards += int256(msg.value);
@@ -115,25 +111,26 @@ contract NonLiquidDelegationV2 is BaseDelegation, INonLiquidDelegation {
 
     event RewardPaid(address indexed delegator, uint256 reward);
 
-    // called by the node's owner who deployed this contract
-    // to add an already deposited validator to the staking pool
-//TODO: rename to join() and adjust the readme
-    function migrate(bytes calldata blsPubKey) public override onlyOwner {
-        _migrate(blsPubKey);
+    // called by the contract owner to add an already deposited validator to the staking pool
+    function join(bytes calldata blsPubKey, address controlAddress) public override onlyOwner {
+        _join(blsPubKey, controlAddress);
 
-//TODO: uncomment or remove the next 2 lines depending on whether migration works without it
-        //NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
-        //require($.stakings.length == 0, "stake already delegated");
-
-        // the node's deposit must also be recorded as staking otherwise
-        // its owner would not benefit from the rewards accrued due to that deposit
-        _append(int256(getStake(blsPubKey)));
+        // the node's deposit must also be recorded in the staking history otherwise
+        // its owner would not benefit from the rewards accrued due to the deposit
+        _append(int256(getStake(blsPubKey)), controlAddress);
     }
 
-    // called by the node's owner who deployed this contract
-    // to deposit the node as a validator using the delegated stake
-//TODO: remove
-    function depositLater(
+    // called by the validator node's original control address to remove the validator from
+    // the staking pool, reducing the pool's total stake by the validator's current deposit
+    function leave(bytes calldata blsPubKey) public override {
+        // retrieve the validator's stake as long as it's deposited and record the unstaking
+        _append(-int256(getStake(blsPubKey)), _msgSender());
+        _leave(blsPubKey);
+    }
+
+    // called by the contract owner to turn the staking pool's first node into a validator
+    // by depositing the value sent with this transaction and the amounts delegated before 
+    function deposit(
         bytes calldata blsPubKey,
         bytes calldata peerId,
         bytes calldata signature
@@ -144,32 +141,12 @@ contract NonLiquidDelegationV2 is BaseDelegation, INonLiquidDelegation {
             signature,
             address(this).balance
         );
-        if (msg.value > 0)
-            _append(int256(msg.value));
-    }
+        // TODO: replace address(this).balance everywhere with getRewards()?
 
-    // called by the node's owner who deployed this contract
-    // to turn a node into a validator
-//TODO: rename to deposit()
-    function depositFirst(
-        bytes calldata blsPubKey,
-        bytes calldata peerId,
-        bytes calldata signature
-    ) public payable override onlyOwner {
-        _deposit(
-            blsPubKey,
-            peerId,
-            signature,
-            address(this).balance
-        );
-/*TODO: test if it works if it's not the first staking
-        NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
-        require($.stakings.length == 0, "stake already delegated");
-*/
         // the owner's deposit must also be recorded as staking otherwise
         // the owner would not benefit from the rewards accrued by the deposit
         if (msg.value > 0)
-            _append(int256(msg.value));
+            _append(int256(msg.value), _msgSender());
     }
 
     function claim() public override whenNotPaused {
@@ -189,25 +166,25 @@ contract NonLiquidDelegationV2 is BaseDelegation, INonLiquidDelegation {
 
     function stake() public override payable whenNotPaused {
         _increaseDeposit(msg.value);
-        _append(int256(msg.value));
+        _append(int256(msg.value), _msgSender());
         emit Staked(_msgSender(), msg.value, "");
     }
 
     function unstake(uint256 value) public override whenNotPaused returns(uint256 amount) {
-        _append(-int256(value));
+        _append(-int256(value), _msgSender());
         _decreaseDeposit(uint256(value));
         _enqueueWithdrawal(value);
         emit Unstaked(_msgSender(), value, "");
         return value;
     }
 
-    function _append(int256 value) internal {
+    function _append(int256 value, address staker) internal {
         if (value > 0)
             require(uint256(value) >= MIN_DELEGATION, "delegated amount too low");
         NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
         int256 amount = value;
-        if ($.stakingIndices[_msgSender()].length > 0)
-            amount += int256($.stakings[$.stakingIndices[_msgSender()][$.stakingIndices[_msgSender()].length - 1]].amount);
+        if ($.stakingIndices[staker].length > 0)
+            amount += int256($.stakings[$.stakingIndices[staker][$.stakingIndices[staker].length - 1]].amount);
         require(amount >= 0, "can not unstake more than staked before");
         uint256 newRewards; // no rewards before the first staker is added
         if ($.stakings.length > 0) {
@@ -217,8 +194,8 @@ contract NonLiquidDelegationV2 is BaseDelegation, INonLiquidDelegation {
         $.totalRewards = int256(getRewards());
         //$.stakings.push(Staking(uint256(amount), uint256(value), newRewards));
         //TODO: just for testing purposes, otherwise replace with the previous line
-        $.stakings.push(Staking(_msgSender(), uint256(amount), uint256(value), newRewards));
-        $.stakingIndices[_msgSender()].push(uint64($.stakings.length - 1));
+        $.stakings.push(Staking(staker, uint256(amount), uint256(value), newRewards));
+        $.stakingIndices[staker].push(uint64($.stakings.length - 1));
     }
 
     function rewards(uint64 additionalSteps) public view returns(uint256) {
@@ -272,7 +249,7 @@ contract NonLiquidDelegationV2 is BaseDelegation, INonLiquidDelegation {
     function stakeRewards() public override {
         (uint256 amount, ) = _useRewards(type(uint256).max, type(uint64).max);
         _increaseDeposit(amount);
-        _append(int256(amount));
+        _append(int256(amount), _msgSender());
         emit Staked(_msgSender(), amount, "");
     }
 
@@ -354,15 +331,8 @@ contract NonLiquidDelegationV2 is BaseDelegation, INonLiquidDelegation {
                 if (nextStakingIndex - firstStakingIndex > additionalSteps)
                     return (resultInTotal, resultAfterLastStaking, posInStakingIndices, nextStakingIndex);
             }
-            // all rewards recorded in the stakings were taken into account
+            // all rewards recorded in the staking history were taken into account
             if (nextStakingIndex == $.stakings.length) {
-                // ensure that the next time we call withdrawRewards() the last nextStakingIndex
-                // representing the rewards accrued since the last staking are not
-                // included in the result any more - however, what if there have
-                // been no stakings i.e. the last nextStakingIndex remains the same, but there
-                // have been additional rewards - how can we determine the amount of
-                // rewards added since we called withdrawRewards() last time?
-                // nextStakingIndex++;
                 // the last step is to add the rewards accrued since the last staking
                 if (total > 0) {
                     resultAfterLastStaking = (int256(getRewards()) - $.totalRewards).toUint256() * amount / total;

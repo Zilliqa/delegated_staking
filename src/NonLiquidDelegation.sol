@@ -40,7 +40,7 @@ contract NonLiquidDelegation is BaseDelegation, INonLiquidDelegation {
         __BaseDelegation_init(initialOwner);
     }
 
-    function depositFirst(
+    function deposit(
         bytes calldata,
         bytes calldata,
         bytes calldata
@@ -48,15 +48,11 @@ contract NonLiquidDelegation is BaseDelegation, INonLiquidDelegation {
         revert("not implemented");
     }
 
-    function depositLater(
-        bytes calldata,
-        bytes calldata,
-        bytes calldata
-    ) public override payable {
+    function join(bytes calldata, address) public pure override {
         revert("not implemented");
     }
 
-    function migrate(bytes calldata) public pure override {
+    function leave(bytes calldata) public pure override {
         revert("not implemented");
     }
 

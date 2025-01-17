@@ -8,7 +8,7 @@ import {NonLiquidDelegationV2} from "src/NonLiquidDelegationV2.sol";
 import {BaseDelegation} from "src/BaseDelegation.sol";
 import {WithdrawalQueue} from "src/WithdrawalQueue.sol";
 import {IDelegation} from "src/IDelegation.sol";
-import {Deposit} from "@zilliqa/zq2/deposit_v3.sol";
+import {Deposit} from "@zilliqa/zq2/deposit_v4.sol";
 import {Console} from "src/Console.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {console} from "forge-std/console.sol";
@@ -18,6 +18,7 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 contract NonLiquidDelegationTest is BaseDelegationTest {
     using SafeCast for int256;
 
+    NonLiquidDelegationV2[] internal delegations;
     NonLiquidDelegationV2 internal delegation;
 
     constructor() BaseDelegationTest() {
@@ -36,9 +37,12 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         delegation = NonLiquidDelegationV2(
             proxy
         );
+        delegations.push(delegation);
     }
 
     function findStaker(address a) internal view returns(uint256) {
+        if (a == owner)
+            return stakers.length;        
         for (uint256 i = 0; i < stakers.length; i++)
             if (stakers[i] == a)
                 return i;
@@ -48,17 +52,18 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
     function snapshot(string memory s, uint256 i, uint256 x) internal view returns(uint256 calculatedRewards) {
         console.log("-----------------------------------------------");
         console.log(s, i, x);
-        uint256[] memory shares = new uint256[](stakers.length);
+        uint256[] memory shares = new uint256[](stakers.length + 1);
         NonLiquidDelegationV2.Staking[] memory stakings = delegation.getStakingHistory();
-        for (uint256 k = 0; k < stakings.length; k++)
-        //k = stakings.length - 1;
-        {
+        for (uint256 k = 0; k < stakings.length; k++) {
             uint256 stakerIndex = findStaker(stakings[k].staker);
             shares[stakerIndex] = stakings[k].amount;
             s = string.concat("index: ", Strings.toString(k));
-            s = string.concat(s, "\tstaker ");
-            assertEq(stakings[k].staker, stakers[stakerIndex], "found staker mismatch");
-            s = string.concat(s, Strings.toString(stakerIndex + 1));
+            if (stakerIndex == stakers.length)
+                s = string.concat(s, "\t   owner");
+            else {
+                s = string.concat(s, "\tstaker ");
+                s = string.concat(s, Strings.toString(stakerIndex + 1));
+            }
             s = string.concat(s, ": ");
             s = string.concat(s, Strings.toHexString(stakings[k].staker));
             s = string.concat(s, "   amount: ");
@@ -69,8 +74,6 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
                 s = string.concat(s, "\t");
             s = string.concat(s, "\trewards: ");
             s = string.concat(s, Strings.toString(stakings[k].rewards / 1 ether));
-            if (stakings[k].rewards < 10_000 ether)
-                s = string.concat(s, "\t");
             s = string.concat(s, "\t\tshares:\t");
             for (uint256 j = 0; j < shares.length; j++)
                 if (stakings[k].total != 0) {
@@ -103,42 +106,36 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
     function run(
         bytes memory _stakerIndicesBeforeWithdrawals,
         // each element in the interval (-100, 100)
-        // if element negative, unstake -depositAmount * element / 10
+        // if element negative, unstake - depositAmount * element / 10
         // otherwise stake depositAmount * element / 10
         bytes memory _relativeAmountsBeforeWithdrawals,
         bytes memory _stakerIndicesAfterWithdrawals,
         bytes memory _relativeAmountsAfterWithdrawals,
         // 123_456_789 means always withdraw all rewards
-        uint64 withdrawalInSteps,
+        uint64 steps, //withdrawalInSteps
         uint256 depositAmount,
         uint256 rewardsBeforeStaking,
-        uint256 rewardsAccruedAfterEach,
-        DepositMode mode
-    ) internal {
-        uint64 steps = withdrawalInSteps;
-        uint256[] memory stakerIndicesBeforeWithdrawals = abi.decode(_stakerIndicesBeforeWithdrawals, (uint256[]));
-        int256[] memory relativeAmountsBeforeWithdrawals = abi.decode(_relativeAmountsBeforeWithdrawals, (int256[]));
+        uint256 rewardsAccruedAfterEach
+    ) internal returns(
+        uint256[] memory stakerIndicesBeforeWithdrawals,
+        int256[] memory relativeAmountsBeforeWithdrawals,
+        uint256[] memory stakerIndicesAfterWithdrawals,
+        int256[] memory relativeAmountsAfterWithdrawals,
+        uint256[] memory calculatedRewards,
+        uint256[] memory availableRewards,
+        uint256[] memory withdrawnRewards
+    ) {
+        stakerIndicesBeforeWithdrawals = abi.decode(_stakerIndicesBeforeWithdrawals, (uint256[]));
+        relativeAmountsBeforeWithdrawals = abi.decode(_relativeAmountsBeforeWithdrawals, (int256[]));
         require(stakerIndicesBeforeWithdrawals.length == relativeAmountsBeforeWithdrawals.length, "array length mismatch");
-        uint256[] memory stakerIndicesAfterWithdrawals = abi.decode(_stakerIndicesAfterWithdrawals, (uint256[]));
-        int256[] memory relativeAmountsAfterWithdrawals = abi.decode(_relativeAmountsAfterWithdrawals, (int256[]));
+        stakerIndicesAfterWithdrawals = abi.decode(_stakerIndicesAfterWithdrawals, (uint256[]));
+        relativeAmountsAfterWithdrawals = abi.decode(_relativeAmountsAfterWithdrawals, (int256[]));
         require(stakerIndicesAfterWithdrawals.length == relativeAmountsAfterWithdrawals.length, "array length mismatch");
-
-//TODO: remove
-//        if (mode != DepositMode.StakeThenDeposit)
-        // otherwise findStaker() doesn't find the staker and reverts
-        stakers[0] = owner;
-
-        if (mode == DepositMode.DepositThenMigrate)
-            migrate(BaseDelegation(delegation), depositAmount);
-        else
-            deposit(BaseDelegation(delegation), depositAmount, mode == DepositMode.DepositThenStake);
 
         for (uint256 i = 0; i < stakers.length; i++) {
             vm.deal(stakers[i], 10 * depositAmount);
             console.log("staker %s: %s", i+1, stakers[i]);
         } 
-
-        delegation = NonLiquidDelegationV2(proxy);
 
         // rewards accrued so far
         vm.deal(address(delegation), rewardsBeforeStaking - rewardsAccruedAfterEach);
@@ -159,12 +156,12 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
             vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
         }
 
-        //no rewards if we withdraw in the same block as the last staking
+        // no rewards if we withdraw in the same block as the last staking
         //vm.deal(address(delegation), address(delegation).balance + rewardsAccruedAfterEach);
 
-        uint256[] memory calculatedRewards = new uint256[](stakers.length);
-        uint256[] memory availableRewards = new uint256[](stakers.length);
-        uint256[] memory withdrawnRewards = new uint256[](stakers.length);
+        calculatedRewards = new uint256[](stakers.length);
+        availableRewards = new uint256[](stakers.length);
+        withdrawnRewards = new uint256[](stakers.length);
         for (uint256 i = 1; i <= 2; i++) {
             vm.startPrank(stakers[i-1]);
             calculatedRewards[i-1] =
@@ -224,8 +221,10 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
                     snapshot("staker %s withdrawing 1+%s times", i, steps);
                 int256 temp = int256(calculatedRewards[i-1]) - int256(withdrawnRewards[i-1] * delegation.DENOMINATOR() / (delegation.DENOMINATOR() - delegation.getCommissionNumerator()));
                 calculatedRewards[i-1] = (temp > 0 ? temp : -temp).toUint256();
-                Console.log("rewards accrued until last staking: %s.%s%s", delegation.getTotalRewards());
-                Console.log("delegation contract balance: %s.%s%s", address(delegation).balance);
+                int256 totalRewardsBefore = int256(delegation.getTotalRewards());
+                int256 delegationBalanceBefore = int256(address(delegation).balance);
+                Console.log("rewards accrued until last staking: %s.%s%s", totalRewardsBefore);
+                Console.log("delegation contract balance: %s.%s%s", delegationBalanceBefore);
                 //Console.log("staker balance: %s.%s%s", stakers[i-1].balance);
                 Console.log("calculated rewards: %s.%s%s", calculatedRewards[i-1] * (delegation.DENOMINATOR() - delegation.getCommissionNumerator()) / delegation.DENOMINATOR());
                 availableRewards[i-1] = delegation.rewards();
@@ -244,226 +243,254 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
                     "rewards differ from calculated value"
                 );
                 //TODO: add a test that withdraws a fixed amount < delegation.rewards(step)
-                Console.log("rewards accrued until last staking: %s.%s%s", delegation.getTotalRewards());
-                Console.log("delegation contract balance: %s.%s%s", address(delegation).balance);
+                int256 totalRewardsAfter = int256(delegation.getTotalRewards());
+                int256 delegationBalanceAfter = int256(address(delegation).balance);
+                Console.log("rewards accrued until last staking: %s.%s%s", totalRewardsAfter);
+                Console.log("delegation contract balance: %s.%s%s", delegationBalanceAfter);
+                assertEq(
+                    delegationBalanceBefore - totalRewardsBefore,
+                    delegationBalanceAfter - totalRewardsAfter,
+                    "total rewards mismatch"
+                );
                 //Console.log("staker balance: %s.%s%s", stakers[i-1].balance);
                 vm.stopPrank();
             }
     }
 
+    //TODO: add tests that compare scenarios
+
+//TODO: add tests for joining and leaving of additional validators
+
+    //TODO: add test cases where stakers[0] == owner i.e. everything gets unstaked
+
     // Test cases of depositing first and staking afterwards start here
 
-    function test_DepositThenStake_withdrawAllRewards() public {
+    function test_Bootstrapping_withdrawAllRewards() public {
+        uint256 depositAmount = 10_000_000 ether;
+        deposit(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
         run(
             abi.encode([uint256(0x20), 5, 1, 2, 3, 1, 2]), //bytes -> uint256[] memory stakerIndicesBeforeWithdrawals,
             abi.encode([int256(0x20), 5, 50, 50, 25, 35, -35]), //bytes -> int256[] memory relativeAmountsBeforeWithdrawals,
             abi.encode([uint256(0x20), 1, 4]), //bytes -> uint256[] memory stakerIndicesAfterWithdrawals,
             abi.encode([int256(0x20), 1, 40]), //bytes -> int256[] memory relativeAmountsAfterWithdrawals,
             123_456_789, //uint256 withdrawalInSteps,
-            10_000_000 ether, //uint256 depositAmount,
+            depositAmount,
             50_000 ether, //uint256 rewardsBeforeStaking,
-            10_000 ether, //uint256 rewardsAccruedAfterEach,
-            DepositMode.DepositThenStake
+            10_000 ether //uint256 rewardsAccruedAfterEach
         );
     }
 
-    function test_DepositThenStake_withdraw1Plus0Rewards () public {
+    function test_Bootstrapping_withdraw1Plus0Rewards () public {
+        uint256 depositAmount = 10_000_000 ether;
+        deposit(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
         run(
             abi.encode([uint256(0x20), 5, 1, 2, 3, 1, 2]), //bytes -> uint256[] memory stakerIndicesBeforeWithdrawals,
             abi.encode([int256(0x20), 5, 50, 50, 25, 35, -35]), //bytes -> int256[] memory relativeAmountsBeforeWithdrawals,
             abi.encode([uint256(0x20), 1, 4]), //bytes -> uint256[] memory stakerIndicesAfterWithdrawals,
             abi.encode([int256(0x20), 1, 40]), //bytes -> int256[] memory relativeAmountsAfterWithdrawals,
             0, //uint256 withdrawalInSteps,
-            10_000_000 ether, //uint256 depositAmount,
+            depositAmount,
             50_000 ether, //uint256 rewardsBeforeStaking,
-            10_000 ether, //uint256 rewardsAccruedAfterEach,
-            DepositMode.DepositThenStake
+            10_000 ether //uint256 rewardsAccruedAfterEach
         );
     }
 
-    function test_DepositThenStake_withdraw1Plus1Rewards () public {
+    function test_Bootstrapping_withdraw1Plus1Rewards () public {
+        uint256 depositAmount = 10_000_000 ether;
+        deposit(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
         run(
             abi.encode([uint256(0x20), 5, 1, 2, 3, 1, 2]), //bytes -> uint256[] memory stakerIndicesBeforeWithdrawals,
             abi.encode([int256(0x20), 5, 50, 50, 25, 35, -35]), //bytes -> int256[] memory relativeAmountsBeforeWithdrawals,
             abi.encode([uint256(0x20), 1, 4]), //bytes -> uint256[] memory stakerIndicesAfterWithdrawals,
             abi.encode([int256(0x20), 1, 40]), //bytes -> int256[] memory relativeAmountsAfterWithdrawals,
             1, //uint256 withdrawalInSteps,
-            10_000_000 ether, //uint256 depositAmount,
+            depositAmount,
             50_000 ether, //uint256 rewardsBeforeStaking,
-            10_000 ether, //uint256 rewardsAccruedAfterEach,
-            DepositMode.DepositThenStake
+            10_000 ether //uint256 rewardsAccruedAfterEach
         );
     }
 
-    function test_DepositThenStake_withdraw1Plus2Rewards () public {
+    function test_Bootstrapping_withdraw1Plus2Rewards () public {
+        uint256 depositAmount = 10_000_000 ether;
+        deposit(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
         run(
             abi.encode([uint256(0x20), 5, 1, 2, 3, 1, 2]), //bytes -> uint256[] memory stakerIndicesBeforeWithdrawals,
             abi.encode([int256(0x20), 5, 50, 50, 25, 35, -35]), //bytes -> int256[] memory relativeAmountsBeforeWithdrawals,
             abi.encode([uint256(0x20), 1, 4]), //bytes -> uint256[] memory stakerIndicesAfterWithdrawals,
             abi.encode([int256(0x20), 1, 40]), //bytes -> int256[] memory relativeAmountsAfterWithdrawals,
             2, //uint256 withdrawalInSteps,
-            10_000_000 ether, //uint256 depositAmount,
+            depositAmount,
             50_000 ether, //uint256 rewardsBeforeStaking,
-            10_000 ether, //uint256 rewardsAccruedAfterEach,
-            DepositMode.DepositThenStake
+            10_000 ether //uint256 rewardsAccruedAfterEach
         );
     }
 
-    function test_DepositThenStake_withdraw1Plus3Rewards () public {
+    function test_Bootstrapping_withdraw1Plus3Rewards () public {
+        uint256 depositAmount = 10_000_000 ether;
+        deposit(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
         run(
             abi.encode([uint256(0x20), 5, 1, 2, 3, 1, 2]), //bytes -> uint256[] memory stakerIndicesBeforeWithdrawals,
             abi.encode([int256(0x20), 5, 50, 50, 25, 35, -35]), //bytes -> int256[] memory relativeAmountsBeforeWithdrawals,
             abi.encode([uint256(0x20), 1, 4]), //bytes -> uint256[] memory stakerIndicesAfterWithdrawals,
             abi.encode([int256(0x20), 1, 40]), //bytes -> int256[] memory relativeAmountsAfterWithdrawals,
             3, //uint256 withdrawalInSteps,
-            10_000_000 ether, //uint256 depositAmount,
+            depositAmount,
             50_000 ether, //uint256 rewardsBeforeStaking,
-            10_000 ether, //uint256 rewardsAccruedAfterEach,
-            DepositMode.DepositThenStake
+            10_000 ether //uint256 rewardsAccruedAfterEach
         );
     }
 
-    // Test cases of migrating a solo staker to a staking pool start here
+    // Test cases of turning a solo staker into a staking pool start here
 
-    function test_DepositThenMigrate_withdrawAllRewards() public {
+    function test_Transforming_withdrawAllRewards() public {
+        uint256 depositAmount = 10_000_000 ether;
+        deposit(BaseDelegation(delegation), depositAmount, DepositMode.Transforming);
         run(
             abi.encode([uint256(0x20), 5, 1, 2, 3, 1, 2]), //bytes -> uint256[] memory stakerIndicesBeforeWithdrawals,
             abi.encode([int256(0x20), 5, 50, 50, 25, 35, -35]), //bytes -> int256[] memory relativeAmountsBeforeWithdrawals,
             abi.encode([uint256(0x20), 1, 4]), //bytes -> uint256[] memory stakerIndicesAfterWithdrawals,
             abi.encode([int256(0x20), 1, 40]), //bytes -> int256[] memory relativeAmountsAfterWithdrawals,
             123_456_789, //uint256 withdrawalInSteps,
-            10_000_000 ether, //uint256 depositAmount,
+            depositAmount,
             50_000 ether, //uint256 rewardsBeforeStaking,
-            10_000 ether, //uint256 rewardsAccruedAfterEach,
-            DepositMode.DepositThenMigrate
+            10_000 ether //uint256 rewardsAccruedAfterEach
         );
     }
 
-    function test_DepositThenMigrate_withdraw1Plus0Rewards () public {
+    function test_Transforming_withdraw1Plus0Rewards () public {
+        uint256 depositAmount = 10_000_000 ether;
+        deposit(BaseDelegation(delegation), depositAmount, DepositMode.Transforming);
         run(
             abi.encode([uint256(0x20), 5, 1, 2, 3, 1, 2]), //bytes -> uint256[] memory stakerIndicesBeforeWithdrawals,
             abi.encode([int256(0x20), 5, 50, 50, 25, 35, -35]), //bytes -> int256[] memory relativeAmountsBeforeWithdrawals,
             abi.encode([uint256(0x20), 1, 4]), //bytes -> uint256[] memory stakerIndicesAfterWithdrawals,
             abi.encode([int256(0x20), 1, 40]), //bytes -> int256[] memory relativeAmountsAfterWithdrawals,
             0, //uint256 withdrawalInSteps,
-            10_000_000 ether, //uint256 depositAmount,
+            depositAmount,
             50_000 ether, //uint256 rewardsBeforeStaking,
-            10_000 ether, //uint256 rewardsAccruedAfterEach,
-            DepositMode.DepositThenMigrate
+            10_000 ether //uint256 rewardsAccruedAfterEach
         );
     }
 
-    function test_DepositThenMigrate_withdraw1Plus1Rewards () public {
+    function test_Transforming_withdraw1Plus1Rewards () public {
+        uint256 depositAmount = 10_000_000 ether;
+        deposit(BaseDelegation(delegation), depositAmount, DepositMode.Transforming);
         run(
             abi.encode([uint256(0x20), 5, 1, 2, 3, 1, 2]), //bytes -> uint256[] memory stakerIndicesBeforeWithdrawals,
             abi.encode([int256(0x20), 5, 50, 50, 25, 35, -35]), //bytes -> int256[] memory relativeAmountsBeforeWithdrawals,
             abi.encode([uint256(0x20), 1, 4]), //bytes -> uint256[] memory stakerIndicesAfterWithdrawals,
             abi.encode([int256(0x20), 1, 40]), //bytes -> int256[] memory relativeAmountsAfterWithdrawals,
             1, //uint256 withdrawalInSteps,
-            10_000_000 ether, //uint256 depositAmount,
+            depositAmount,
             50_000 ether, //uint256 rewardsBeforeStaking,
-            10_000 ether, //uint256 rewardsAccruedAfterEach,
-            DepositMode.DepositThenMigrate
+            10_000 ether //uint256 rewardsAccruedAfterEach
         );
     }
 
-    function test_DepositThenMigrate_withdraw1Plus2Rewards () public {
+    function test_Transforming_withdraw1Plus2Rewards () public {
+        uint256 depositAmount = 10_000_000 ether;
+        deposit(BaseDelegation(delegation), depositAmount, DepositMode.Transforming);
         run(
             abi.encode([uint256(0x20), 5, 1, 2, 3, 1, 2]), //bytes -> uint256[] memory stakerIndicesBeforeWithdrawals,
             abi.encode([int256(0x20), 5, 50, 50, 25, 35, -35]), //bytes -> int256[] memory relativeAmountsBeforeWithdrawals,
             abi.encode([uint256(0x20), 1, 4]), //bytes -> uint256[] memory stakerIndicesAfterWithdrawals,
             abi.encode([int256(0x20), 1, 40]), //bytes -> int256[] memory relativeAmountsAfterWithdrawals,
             2, //uint256 withdrawalInSteps,
-            10_000_000 ether, //uint256 depositAmount,
+            depositAmount,
             50_000 ether, //uint256 rewardsBeforeStaking,
-            10_000 ether, //uint256 rewardsAccruedAfterEach,
-            DepositMode.DepositThenMigrate
+            10_000 ether //uint256 rewardsAccruedAfterEach
         );
     }
 
-    function test_DepositThenMigrate_withdraw1Plus3Rewards () public {
+    function test_Transforming_withdraw1Plus3Rewards () public {
+        uint256 depositAmount = 10_000_000 ether;
+        deposit(BaseDelegation(delegation), depositAmount, DepositMode.Transforming);
         run(
             abi.encode([uint256(0x20), 5, 1, 2, 3, 1, 2]), //bytes -> uint256[] memory stakerIndicesBeforeWithdrawals,
             abi.encode([int256(0x20), 5, 50, 50, 25, 35, -35]), //bytes -> int256[] memory relativeAmountsBeforeWithdrawals,
             abi.encode([uint256(0x20), 1, 4]), //bytes -> uint256[] memory stakerIndicesAfterWithdrawals,
             abi.encode([int256(0x20), 1, 40]), //bytes -> int256[] memory relativeAmountsAfterWithdrawals,
             3, //uint256 withdrawalInSteps,
-            10_000_000 ether, //uint256 depositAmount,
+            depositAmount,
             50_000 ether, //uint256 rewardsBeforeStaking,
-            10_000 ether, //uint256 rewardsAccruedAfterEach,
-            DepositMode.DepositThenMigrate
+            10_000 ether //uint256 rewardsAccruedAfterEach
         );
     }
 
     // Test cases of staking first and depositing later start here
 
-    function test_StakeThenDeposit_withdrawAllRewards() public {
+    function test_Fundraising_withdrawAllRewards() public {
+        uint256 depositAmount = 10_000_000 ether;
+        deposit(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
         run(
             abi.encode([uint256(0x20), 5, 1, 2, 3, 1, 2]), //bytes -> uint256[] memory stakerIndicesBeforeWithdrawals,
             abi.encode([int256(0x20), 5, 50, 50, 25, 35, -35]), //bytes -> int256[] memory relativeAmountsBeforeWithdrawals,
             abi.encode([uint256(0x20), 1, 4]), //bytes -> uint256[] memory stakerIndicesAfterWithdrawals,
             abi.encode([int256(0x20), 1, 40]), //bytes -> int256[] memory relativeAmountsAfterWithdrawals,
             123_456_789, //uint256 withdrawalInSteps,
-            10_000_000 ether, //uint256 depositAmount,
+            depositAmount,
             50_000 ether, //uint256 rewardsBeforeStaking,
-            10_000 ether, //uint256 rewardsAccruedAfterEach,
-            DepositMode.StakeThenDeposit
+            10_000 ether //uint256 rewardsAccruedAfterEach
         );
     }
 
-    function test_StakeThenDeposit_withdraw1Plus0Rewards () public {
+    function test_Fundraising_withdraw1Plus0Rewards () public {
+        uint256 depositAmount = 10_000_000 ether;
+        deposit(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
         run(
             abi.encode([uint256(0x20), 5, 1, 2, 3, 1, 2]), //bytes -> uint256[] memory stakerIndicesBeforeWithdrawals,
             abi.encode([int256(0x20), 5, 50, 50, 25, 35, -35]), //bytes -> int256[] memory relativeAmountsBeforeWithdrawals,
             abi.encode([uint256(0x20), 1, 4]), //bytes -> uint256[] memory stakerIndicesAfterWithdrawals,
             abi.encode([int256(0x20), 1, 40]), //bytes -> int256[] memory relativeAmountsAfterWithdrawals,
             0, //uint256 withdrawalInSteps,
-            10_000_000 ether, //uint256 depositAmount,
+            depositAmount,
             50_000 ether, //uint256 rewardsBeforeStaking,
-            10_000 ether, //uint256 rewardsAccruedAfterEach,
-            DepositMode.StakeThenDeposit
+            10_000 ether //uint256 rewardsAccruedAfterEach
         );
     }
 
-    function test_StakeThenDeposit_withdraw1Plus1Rewards () public {
+    function test_Fundraising_withdraw1Plus1Rewards () public {
+        uint256 depositAmount = 10_000_000 ether;
+        deposit(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
         run(
             abi.encode([uint256(0x20), 5, 1, 2, 3, 1, 2]), //bytes -> uint256[] memory stakerIndicesBeforeWithdrawals,
             abi.encode([int256(0x20), 5, 50, 50, 25, 35, -35]), //bytes -> int256[] memory relativeAmountsBeforeWithdrawals,
             abi.encode([uint256(0x20), 1, 4]), //bytes -> uint256[] memory stakerIndicesAfterWithdrawals,
             abi.encode([int256(0x20), 1, 40]), //bytes -> int256[] memory relativeAmountsAfterWithdrawals,
             1, //uint256 withdrawalInSteps,
-            10_000_000 ether, //uint256 depositAmount,
+            depositAmount,
             50_000 ether, //uint256 rewardsBeforeStaking,
-            10_000 ether, //uint256 rewardsAccruedAfterEach,
-            DepositMode.StakeThenDeposit
+            10_000 ether //uint256 rewardsAccruedAfterEach
         );
     }
 
-    function test_StakeThenDeposit_withdraw1Plus2Rewards () public {
+    function test_Fundraising_withdraw1Plus2Rewards () public {
+        uint256 depositAmount = 10_000_000 ether;
+        deposit(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
         run(
             abi.encode([uint256(0x20), 5, 1, 2, 3, 1, 2]), //bytes -> uint256[] memory stakerIndicesBeforeWithdrawals,
             abi.encode([int256(0x20), 5, 50, 50, 25, 35, -35]), //bytes -> int256[] memory relativeAmountsBeforeWithdrawals,
             abi.encode([uint256(0x20), 1, 4]), //bytes -> uint256[] memory stakerIndicesAfterWithdrawals,
             abi.encode([int256(0x20), 1, 40]), //bytes -> int256[] memory relativeAmountsAfterWithdrawals,
             2, //uint256 withdrawalInSteps,
-            10_000_000 ether, //uint256 depositAmount,
+            depositAmount,
             50_000 ether, //uint256 rewardsBeforeStaking,
-            10_000 ether, //uint256 rewardsAccruedAfterEach,
-            DepositMode.StakeThenDeposit
+            10_000 ether //uint256 rewardsAccruedAfterEach
         );
     }
 
-    function test_StakeThenDeposit_withdraw1Plus3Rewards_DelegatedDeposit () public {
+    function test_Fundraising_withdraw1Plus3Rewards_DelegatedDeposit () public {
+        uint256 depositAmount = 10_000_000 ether;
+        deposit(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
         run(
             abi.encode([uint256(0x20), 5, 1, 2, 3, 1, 2]), //bytes -> uint256[] memory stakerIndicesBeforeWithdrawals,
             abi.encode([int256(0x20), 5, 50, 50, 25, 35, -35]), //bytes -> int256[] memory relativeAmountsBeforeWithdrawals,
             abi.encode([uint256(0x20), 1, 4]), //bytes -> uint256[] memory stakerIndicesAfterWithdrawals,
             abi.encode([int256(0x20), 1, 40]), //bytes -> int256[] memory relativeAmountsAfterWithdrawals,
             3, //uint256 withdrawalInSteps,
-            10_000_000 ether, //uint256 depositAmount,
+            depositAmount,
             50_000 ether, //uint256 rewardsBeforeStaking,
-            10_000 ether, //uint256 rewardsAccruedAfterEach,
-            DepositMode.StakeThenDeposit
+            10_000 ether //uint256 rewardsAccruedAfterEach
         );
     }
 
@@ -476,7 +503,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         uint256 x;
         uint64 steps = 11_000;
 
-        deposit(BaseDelegation(delegation), 10_000_000 ether, true);
+        deposit(BaseDelegation(delegation), 10_000_000 ether, DepositMode.Bootstrapping);
 
         // wait 2 epochs for the change to the deposit to take affect
         vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
@@ -589,9 +616,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         uint256 i;
         uint256 x;
 
-        // otherwise snapshot() doesn't find the staker and reverts
-        stakers[0] = owner;
-        deposit(BaseDelegation(delegation), 10_000_000 ether, true);
+        deposit(BaseDelegation(delegation), 10_000_000 ether, DepositMode.Bootstrapping);
 
         // wait 2 epochs for the change to the deposit to take affect
         vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
@@ -679,17 +704,18 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         vm.stopPrank();
     }
 
-    function test_StakeThenDeposit_withdrawAllRewardsThenNoMoreStakings() public {
+    function test_Fundraising_withdrawAllRewardsThenNoMoreStakings() public {
+        uint256 depositAmount = 10_000_000 ether;
+        deposit(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
         run(
             abi.encode([uint256(0x20), 5, 1, 2, 3, 1, 2]), //bytes -> uint256[] memory stakerIndicesBeforeWithdrawals,
             abi.encode([int256(0x20), 5, 50, 50, 25, 35, -35]), //bytes -> int256[] memory relativeAmountsBeforeWithdrawals,
             abi.encode([uint256(0x20), 0]), //bytes -> uint256[] memory stakerIndicesAfterWithdrawals,
             abi.encode([int256(0x20), 0]), //bytes -> int256[] memory relativeAmountsAfterWithdrawals,
             123_456_789, //uint256 withdrawalInSteps,
-            10_000_000 ether, //uint256 depositAmount,
+            depositAmount,
             50_000 ether, //uint256 rewardsBeforeStaking,
-            10_000 ether, //uint256 rewardsAccruedAfterEach,
-            DepositMode.StakeThenDeposit
+            10_000 ether //uint256 rewardsAccruedAfterEach
         );
     }
 

@@ -47,7 +47,7 @@ contract Upgrade is Script {
         );
 
         bytes memory reinitializerCall = abi.encodeWithSignature(
-            "reinitialize()"
+            oldDelegation.version() > 2 ? "migrateFromV2()" : "reinitialize()"
         );
 
         oldDelegation.upgradeToAndCall(
