@@ -120,13 +120,11 @@ cast send --legacy --rpc-url $RPC_URL --private-key 0x... \
 0x7a0b7e6d24ede78260c9ddbd98e828b0e11a8ea2 "leave(bytes)" \
 0x92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c
 ```
-using the private key that you used to deposit your node, the BLS public key of your node and the address of the staking pool's delegation contract. After leaving the pool, your node will remain a validator.
+using the private key that you used to deposit your node, the BLS public key of your node and the address of the staking pool's delegation contract. Note that your validator can't leave the staking pool as long as it has pending unstaked deposit, but it can be excluded from future stakings and unstakings so that it can leave after the ongoing unbonding period. After leaving the pool, your node will remain a validator.
 
-Note that if your node's entire deposit is unstaked, it gets automatically removed from the validator set and the staking pool as well.
-
-If you don't have an activated validator node yet, but have already deployed a delegation contract, it can start accepting delegated stake, and as soon as the funds collected plus your balance as the contract owner can cover the required minimum stake, you can make a fully synced node the first validator of your staking pool by submitting a transaction with e.g. additional 5 million ZIL through
+If you don't have an activated validator node yet, but have already deployed a delegation contract and your balance as the contract owner cover the required minimum stake, you can make a fully synced node the first validator of your staking pool by submitting a transaction with e.g. 10 million ZIL through
 ```bash
-cast send --legacy --value 5000000ether --rpc-url $RPC_URL --private-key $PRIVATE_KEY \
+cast send --legacy --value 10000000ether --rpc-url $RPC_URL --private-key $PRIVATE_KEY \
 0x7a0b7e6d24ede78260c9ddbd98e828b0e11a8ea2 "deposit(bytes,bytes,bytes)" \
 0x92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c \
 0x002408011220d5ed74b09dcbe84d3b32a56c01ab721cf82809848b6604535212a219d35c412f \
@@ -135,6 +133,15 @@ cast send --legacy --value 5000000ether --rpc-url $RPC_URL --private-key $PRIVAT
 with the BLS public key, the peer id and the BLS signature of the node. Note that the peer id must be converted from base58 to hexadecimal format and you must provide the delegation contract address when generating the BLS signature:
 ```bash
 echo '{"secret_key":"...", "chain_id":..., "control_address":"0x7a0b7e6d24ede78260c9ddbd98e828b0e11a8ea2"}' | cargo run --bin convert-key
+```
+
+Even if you don't own the required minimum stake to deposit a validator, your delegation contract can start collecting delegated stake and as soon as its funds plus your balance cover the required minimum stake, you can activate a fully synced node as your first validator by providing e.g. 5 million ZIL in addition to your delegation contract's funds in the command introduced above:
+```bash
+cast send --legacy --value 5000000ether --rpc-url $RPC_URL --private-key $PRIVATE_KEY \
+0x7a0b7e6d24ede78260c9ddbd98e828b0e11a8ea2 "deposit(bytes,bytes,bytes)" \
+0x92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c \
+0x002408011220d5ed74b09dcbe84d3b32a56c01ab721cf82809848b6604535212a219d35c412f \
+0xb14832a866a49ddf8a3104f8ee379d29c136f29aeb8fccec9d7fb17180b99e8ed29bee2ada5ce390cb704bc6fd7f5ce814f914498376c4b8bc14841a57ae22279769ec8614e2673ba7f36edc5a4bf5733aa9d70af626279ee2b2cde939b4bd8a
 ```
 
 Note that the reward address registered for the validator node will be the address of the delegation contract (the proxy contract to be more precise), but the deposit will not take effect and the node will not start to earn rewards until the epoch after next.
@@ -221,7 +228,7 @@ cast to-unit $(cast call 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 "getClaimabl
 ```
 with the address of the account that unstaked above as an argument.
 
-Note that an unstaking transaction will fail if any validator's deposit falls below the minimum stake required of validators. If you used stake delegated to your contract instead of your own funds to deposit your first validator node, you should increase your stake as soon as possible to ensure that your delegators are able to unstake. 
+Note that if a delegation contract represents a staking pool with multiple validators, each staking and unstaking will increase and decrease all validators' deposit proportionally to their current deposit. In case an unstaking would reduce a validator's deposit below the required minimum, the validator will be forced to leave the staking pool as soon as its pending unstaked deposit is withdrawn by the delegation contract.
 
 Of course, delegators will not be using the CLI to stake, unstake and claim their funds. To enable delegators to access your staking pool through the staking portal maintained by the Zilliqa team, get in touch and provide your delegation contract address once you have set up the validator node and delegation contract. If you want to integrate staking into your dapp, see the [Development and Testing](#development-and-testing) section below.
 
@@ -238,13 +245,13 @@ In the non-liquid variant of staking, delegators can stake or withdraw their sha
 cast to-unit $(cast call 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 "rewards()(uint256)" --from 0xd819fFcE7A58b1E835c25617Db7b46a00888B013 --block latest --rpc-url $RPC_URL | sed 's/\[[^]]*\]//g') ether
 ```
 
-In case you haven't withdrawn rewards for a long time during which many delegators staked or unstaked, the gas used by the above function might hit the block limit. In this case rewards can be withdrawn from the period between the (un)staking until which they were withdrawn last time and the `n`th subsequent (un)staking. This can be repeated several times to withdraw all rewards using multiple transactions. To calculate the rewards that can be withdrawn in the next transaction, choose a number `0 <= n <= 11000` e.g. `100` and run
+If a delegator hasn't withdrawn rewards while thousands of delegators staked or unstaked, the gas used by the above function might hit the block limit. In this case it's possible to withdraw only the rewards accrued during the next `n` subsequent stakings or unstaking that have not been withdrawn yet. This can be repeated several times to withdraw all rewards using multiple transactions. To calculate the rewards that can be withdrawn in the next transaction, choose a number `0 <= n <= 11000` e.g. `100` and run
 ```bash
 cast to-unit $(cast call 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 "rewards(uint64)(uint256)" 100 --from 0xd819fFcE7A58b1E835c25617Db7b46a00888B013 --block latest --rpc-url $RPC_URL | sed 's/\[[^]]*\]//g') ether
 ```
-Note that `n` actually denotes the number of additional (un)stakings so that at least one is always reflected in the result, even if you specified `n = 0`.
+Note that `n` actually denotes the number of additional stakings or unstakings so that at least one is always reflected in the result, even if you specify `n = 0`.
 
-To withdraw e.g. 1 ZIL of rewards using `n = 100`, run
+You can also specify the exact amount you want to withdraw. To withdraw e.g. 1 ZIL using `n = 100`, run
 ```bash
 forge script script/WithdrawRewards.s.sol --rpc-url $RPC_URL --broadcast --legacy --sig "run(address payable, string, string)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 1000000000000000000 100 --private-key 0x...
 ```

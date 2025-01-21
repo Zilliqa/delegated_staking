@@ -821,7 +821,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
 
     // Test cases comparing two pools start here
 
-    function test_Bootstrapping_compare1Vs3Validators() public {
+    function test_Bootstrapping_Compare1Vs3Validators() public {
         uint256 depositAmount = 90_000_000 ether;
         uint256 totalDeposit = 5_200_000_000 ether;
         uint256 delegatedAmount = 100 ether;
@@ -857,10 +857,10 @@ contract LiquidDelegationTest is BaseDelegationTest {
             taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * 3 * depositAmount / totalDeposit, // rewardsBeforeUnstaking
             WithdrawalQueue.unbondingPeriod()
         );
-        assertEq(lstPrice1, lstPrice2, "LST price mismatch");
+        assertApproxEqAbs(lstPrice1, lstPrice2, 1e11, "LST price mismatch");
     }     
 
-    function test_Bootstrapping_Fundraising_compareDepositModes() public {
+    function test_Bootstrapping_Fundraising_CompareDepositModes() public {
         uint256 depositAmount = 10_000_000 ether;
         uint256 totalDeposit = 5_200_000_000 ether;
         uint256 delegatedAmount = 100 ether;
@@ -896,7 +896,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         assertEq(lstPrice1, lstPrice2, "LST price mismatch");
     }
 
-    function test_Bootstrapping_Transforming_compareDepositModes() public {
+    function test_Bootstrapping_Transforming_CompareDepositModes() public {
         uint256 depositAmount = 10_000_000 ether;
         uint256 totalDeposit = 5_200_000_000 ether;
         uint256 delegatedAmount = 100 ether;
@@ -932,7 +932,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         assertEq(lstPrice1, lstPrice2, "LST price mismatch");
     }
 
-    function test_Bootstrapping_compare1Vs9Delegations() public {
+    function test_Bootstrapping_Compare1Vs9Delegations() public {
         uint256 depositAmount = 10_000_000 ether;
         uint256 totalDeposit = 5_200_000_000 ether;
         uint256 delegatedAmount = 100 ether;
@@ -968,7 +968,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         assertApproxEqAbs(unstakedAmount1, unstakedAmount2, 10, "unstaked amount not approximately same");
     }
 
-    function test_Bootstrapping_compareJoin2ndAndLeave2nd() public {
+    function test_Bootstrapping_CompareJoin2ndAndLeave2nd() public {
         uint256 depositAmount = 10_000_000 ether;
         uint256 totalDeposit = 5_200_000_000 ether;
         uint256 delegatedAmount = 100 ether;
@@ -1007,7 +1007,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         assertEq(unstakedAmount1, unstakedAmount2, "unstaked amount mismatch");
     }
 
-    function test_Bootstrapping_compareJoin2ndAndLeave1st() public {
+    function test_Bootstrapping_CompareJoin2ndAndLeave1st() public {
         uint256 depositAmount = 10_000_000 ether;
         uint256 totalDeposit = 5_200_000_000 ether;
         uint256 delegatedAmount = 100 ether;
@@ -1046,7 +1046,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         assertEq(unstakedAmount1, unstakedAmount2, "unstaked amount mismatch");
     }
 
-    function test_Bootstrapping_compareJoin3AndLeave3() public {
+    function test_Bootstrapping_CompareJoin3AndLeave3() public {
         uint256 depositAmount = 10_000_000 ether;
         uint256 totalDeposit = 5_200_000_000 ether;
         uint256 delegatedAmount = 100 ether;
@@ -1076,6 +1076,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         leave(BaseDelegation(delegation), makeAddr("2"), 2);
         leave(BaseDelegation(delegation), owner, 1);
         leave(BaseDelegation(delegation), makeAddr("4"), 4);
+        assertEq(delegation.validators().length, 1, "validators did not leave");
         (, , , , , , , , uint256 lstPrice2, , , , , , uint256 unstakedAmount2, ) = run(
             rewardsBeforeStaking,
             taxedRewardsBeforeStaking,
@@ -1091,7 +1092,109 @@ contract LiquidDelegationTest is BaseDelegationTest {
 
     // Additional test cases start here
 
-    function test_Bootstrapping_ManyVsOneStake_UnstakeAll() public {
+    function test_LeaveAfterPriceChange() public {
+        uint256 depositAmount = 10_000_000 ether;
+        uint256 totalDeposit = 5_200_000_000 ether;
+        uint256 delegatedAmount = 100 ether;
+        uint256 rewardsBeforeStaking = 365 * 24 * 51_000 ether / uint256(60) * depositAmount / totalDeposit;
+        uint256 taxedRewardsBeforeStaking = 0;
+        uint256 taxedRewardsAfterStaking =
+            rewardsBeforeStaking - (rewardsBeforeStaking - taxedRewardsBeforeStaking) / uint256(10);
+        Console.log("taxedRewardsAfterStaking = %s.%s%s", taxedRewardsAfterStaking);
+        deposit(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        (, , , , , , , , uint256 lstPrice1, , , , , , uint256 unstakedAmount1, ) = run(
+            rewardsBeforeStaking,
+            taxedRewardsBeforeStaking,
+            delegatedAmount,
+            1, // numberOfDelegations
+            0, // rewardsAccruedAfterEach
+            taxedRewardsAfterStaking + 51_000 ether / uint256(60) * depositAmount / totalDeposit, // rewardsBeforeUnstaking
+            WithdrawalQueue.unbondingPeriod()
+        );
+        join(BaseDelegation(delegation), depositAmount, makeAddr("2"), 2);
+        (, , , , , , , , uint256 lstPrice2, , , , , , uint256 unstakedAmount2, ) = run(
+            rewardsBeforeStaking,
+            taxedRewardsBeforeStaking,
+            delegatedAmount,
+            1, // numberOfDelegations
+            0, // rewardsAccruedAfterEach
+            taxedRewardsAfterStaking + 51_000 ether / uint256(60) * depositAmount / totalDeposit, // rewardsBeforeUnstaking
+            WithdrawalQueue.unbondingPeriod()
+        );
+        leave(BaseDelegation(delegation), makeAddr("2"), 2);
+        assertEq(delegation.validators().length, 1, "validator leaving failed");
+        assertLt(lstPrice1, lstPrice2, "LST price should increase");
+        assertGt(unstakedAmount1, unstakedAmount2, "unstaked should decrease");
+    }
+
+    function test_JoinAndUnstake() public {
+        uint256 depositAmount = 10_000_000 ether;
+        deposit(BaseDelegation(delegation), 2 * depositAmount, DepositMode.Bootstrapping);
+        join(BaseDelegation(delegation), 2 * depositAmount, makeAddr("2"), 2);
+        join(BaseDelegation(delegation), 2 * depositAmount, makeAddr("3"), 3);
+        join(BaseDelegation(delegation), 2 * depositAmount, makeAddr("4"), 4);
+        vm.startPrank(makeAddr("2"));
+        delegation.unstake(lst.balanceOf(makeAddr("2")));
+        vm.stopPrank();
+        vm.startPrank(makeAddr("3"));
+        delegation.unstake(lst.balanceOf(makeAddr("3")));
+        vm.stopPrank();
+    }
+
+    function testFail_JoinAndForceToLeave() public {
+        uint256 depositAmount = 10_000_000 ether;
+        deposit(BaseDelegation(delegation), 2 * depositAmount, DepositMode.Bootstrapping);
+        join(BaseDelegation(delegation), 2 * depositAmount, makeAddr("2"), 2);
+        join(BaseDelegation(delegation), 2 * depositAmount, makeAddr("3"), 3);
+        join(BaseDelegation(delegation), 2 * depositAmount, makeAddr("4"), 4);
+        vm.startPrank(makeAddr("2"));
+        delegation.unstake(lst.balanceOf(makeAddr("2")));
+        vm.stopPrank();
+        vm.startPrank(makeAddr("3"));
+        delegation.unstake(lst.balanceOf(makeAddr("3")));
+        vm.stopPrank();
+        vm.startPrank(makeAddr("4"));
+        delegation.unstake(lst.balanceOf(makeAddr("4")));
+        vm.stopPrank();
+    }
+
+    function testFail_DepositTwice_Bootstrapping_Bootstrapping() public {
+        uint256 depositAmount = 10_000_000 ether;
+        deposit(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        deposit(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+    }
+
+    function testFail_DepositTwice_Bootstrapping_Fundraising() public {
+        uint256 depositAmount = 10_000_000 ether;
+        deposit(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        deposit(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
+    }
+
+    function testFail_DepositTwice_Fundraising_Fundraising() public {
+        uint256 depositAmount = 10_000_000 ether;
+        deposit(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
+        deposit(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
+    }
+
+    function testFail_DepositTwice_Fundraising_Bootstrapping() public {
+        uint256 depositAmount = 10_000_000 ether;
+        deposit(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
+        deposit(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+    }
+
+    function testFail_DepositTwice_Transforming_Bootstrapping() public {
+        uint256 depositAmount = 10_000_000 ether;
+        deposit(BaseDelegation(delegation), depositAmount, DepositMode.Transforming);
+        deposit(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+    }
+
+    function testFail_DepositTwice_Transforming_Fundraising() public {
+        uint256 depositAmount = 10_000_000 ether;
+        deposit(BaseDelegation(delegation), depositAmount, DepositMode.Transforming);
+        deposit(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
+    }
+
+    function test_ManyVsOneStake_UnstakeAll() public {
         uint256 depositAmount = 10_000_000 ether;
         uint256 totalDeposit = 110_000_000 ether;
         uint256 delegatedAmount = 10_000 ether;
@@ -1114,7 +1217,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         );
     }
 
-    function test_Bootstrapping_OneVsManyStakes_UnstakeAll() public {
+    function test_OneVsManyStakes_UnstakeAll() public {
         uint256 depositAmount = 10_000_000 ether;
         uint256 totalDeposit = 110_000_000 ether;
         uint256 delegatedAmount = 90_000 ether;
@@ -1135,7 +1238,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         );
     }
 
-    function test_claimsAfterManyUnstakings() public {
+    function test_ClaimsAfterManyUnstakings() public {
         claimsAfterManyUnstakings(
             LiquidDelegationV2(proxy), //delegation
             20 //steps

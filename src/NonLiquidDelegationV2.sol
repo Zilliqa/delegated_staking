@@ -9,7 +9,6 @@ contract NonLiquidDelegationV2 is BaseDelegation, INonLiquidDelegation {
     using SafeCast for int256;
 
     struct Staking {
-        //TODO: just for testing purposes, can be removed
         address staker;
         // the currently staked amount of the staker
         // after the staking/unstaking
@@ -139,9 +138,10 @@ contract NonLiquidDelegationV2 is BaseDelegation, INonLiquidDelegation {
             blsPubKey,
             peerId,
             signature,
-            address(this).balance
+            getStake()
+//TODO: remove
+//            address(this).balance
         );
-        // TODO: replace address(this).balance everywhere with getRewards()?
 
         // the owner's deposit must also be recorded as staking otherwise
         // the owner would not benefit from the rewards accrued by the deposit
@@ -192,8 +192,6 @@ contract NonLiquidDelegationV2 is BaseDelegation, INonLiquidDelegation {
             newRewards = (int256(getRewards()) - $.totalRewards).toUint256();
         }
         $.totalRewards = int256(getRewards());
-        //$.stakings.push(Staking(uint256(amount), uint256(value), newRewards));
-        //TODO: just for testing purposes, otherwise replace with the previous line
         $.stakings.push(Staking(staker, uint256(amount), uint256(value), newRewards));
         $.stakingIndices[staker].push(uint64($.stakings.length - 1));
     }

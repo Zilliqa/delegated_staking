@@ -257,15 +257,15 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
             }
     }
 
-    //TODO: add tests that compare scenarios
+//TODO: add tests that compare scenarios
 
 //TODO: add tests for joining and leaving of additional validators
 
-    //TODO: add test cases where stakers[0] == owner i.e. everything gets unstaked
+//TODO: add test cases where stakers[0] == owner i.e. everything gets unstaked
 
     // Test cases of depositing first and staking afterwards start here
 
-    function test_Bootstrapping_withdrawAllRewards() public {
+    function test_Bootstrapping_WithdrawAllRewards() public {
         uint256 depositAmount = 10_000_000 ether;
         deposit(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
         run(
@@ -280,7 +280,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         );
     }
 
-    function test_Bootstrapping_withdraw1Plus0Rewards () public {
+    function test_Bootstrapping_Withdraw1Plus0Rewards () public {
         uint256 depositAmount = 10_000_000 ether;
         deposit(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
         run(
@@ -295,7 +295,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         );
     }
 
-    function test_Bootstrapping_withdraw1Plus1Rewards () public {
+    function test_Bootstrapping_Withdraw1Plus1Rewards () public {
         uint256 depositAmount = 10_000_000 ether;
         deposit(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
         run(
@@ -310,7 +310,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         );
     }
 
-    function test_Bootstrapping_withdraw1Plus2Rewards () public {
+    function test_Bootstrapping_Withdraw1Plus2Rewards () public {
         uint256 depositAmount = 10_000_000 ether;
         deposit(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
         run(
@@ -325,7 +325,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         );
     }
 
-    function test_Bootstrapping_withdraw1Plus3Rewards () public {
+    function test_Bootstrapping_Withdraw1Plus3Rewards () public {
         uint256 depositAmount = 10_000_000 ether;
         deposit(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
         run(
@@ -342,7 +342,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
 
     // Test cases of turning a solo staker into a staking pool start here
 
-    function test_Transforming_withdrawAllRewards() public {
+    function test_Transforming_WithdrawAllRewards() public {
         uint256 depositAmount = 10_000_000 ether;
         deposit(BaseDelegation(delegation), depositAmount, DepositMode.Transforming);
         run(
@@ -357,7 +357,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         );
     }
 
-    function test_Transforming_withdraw1Plus0Rewards () public {
+    function test_Transforming_Withdraw1Plus0Rewards () public {
         uint256 depositAmount = 10_000_000 ether;
         deposit(BaseDelegation(delegation), depositAmount, DepositMode.Transforming);
         run(
@@ -372,7 +372,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         );
     }
 
-    function test_Transforming_withdraw1Plus1Rewards () public {
+    function test_Transforming_Withdraw1Plus1Rewards () public {
         uint256 depositAmount = 10_000_000 ether;
         deposit(BaseDelegation(delegation), depositAmount, DepositMode.Transforming);
         run(
@@ -387,7 +387,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         );
     }
 
-    function test_Transforming_withdraw1Plus2Rewards () public {
+    function test_Transforming_Withdraw1Plus2Rewards () public {
         uint256 depositAmount = 10_000_000 ether;
         deposit(BaseDelegation(delegation), depositAmount, DepositMode.Transforming);
         run(
@@ -402,7 +402,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         );
     }
 
-    function test_Transforming_withdraw1Plus3Rewards () public {
+    function test_Transforming_Withdraw1Plus3Rewards () public {
         uint256 depositAmount = 10_000_000 ether;
         deposit(BaseDelegation(delegation), depositAmount, DepositMode.Transforming);
         run(
@@ -419,7 +419,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
 
     // Test cases of staking first and depositing later start here
 
-    function test_Fundraising_withdrawAllRewards() public {
+    function test_Fundraising_WithdrawAllRewards() public {
         uint256 depositAmount = 10_000_000 ether;
         deposit(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
         run(
@@ -434,7 +434,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         );
     }
 
-    function test_Fundraising_withdraw1Plus0Rewards () public {
+    function test_Fundraising_Withdraw1Plus0Rewards () public {
         uint256 depositAmount = 10_000_000 ether;
         deposit(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
         run(
@@ -449,7 +449,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         );
     }
 
-    function test_Fundraising_withdraw1Plus1Rewards () public {
+    function test_Fundraising_Withdraw1Plus1Rewards () public {
         uint256 depositAmount = 10_000_000 ether;
         deposit(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
         run(
@@ -464,7 +464,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         );
     }
 
-    function test_Fundraising_withdraw1Plus2Rewards () public {
+    function test_Fundraising_Withdraw1Plus2Rewards () public {
         uint256 depositAmount = 10_000_000 ether;
         deposit(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
         run(
@@ -479,7 +479,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         );
     }
 
-    function test_Fundraising_withdraw1Plus3Rewards_DelegatedDeposit () public {
+    function test_Fundraising_Withdraw1Plus3Rewards_DelegatedDeposit () public {
         uint256 depositAmount = 10_000_000 ether;
         deposit(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
         run(
@@ -498,7 +498,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
 
     // run with
     // forge test -vv --via-ir --gas-report --gas-limit 10000000000 --block-gas-limit 10000000000 --match-test AfterMany
-    function test_withdrawAfterManyStakings() public {
+    function test_WithdrawAfterManyStakings() public {
         uint256 i;
         uint256 x;
         uint64 steps = 11_000;
@@ -605,14 +605,14 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         vm.stopPrank();
     }
 
-    function test_claimsAfterManyUnstakings() public {
+    function test_ClaimsAfterManyUnstakings() public {
         claimsAfterManyUnstakings(
             NonLiquidDelegationV2(proxy), //delegation
             20 //steps
         );
     }
 
-    function test_rewardsAfterWithdrawalLessThanBeforeWithdrawal() public {
+    function test_RewardsAfterWithdrawalLessThanBeforeWithdrawal() public {
         uint256 i;
         uint256 x;
 
@@ -704,7 +704,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         vm.stopPrank();
     }
 
-    function test_Fundraising_withdrawAllRewardsThenNoMoreStakings() public {
+    function test_Fundraising_WithdrawAllRewardsThenNoMoreStakings() public {
         uint256 depositAmount = 10_000_000 ether;
         deposit(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
         run(

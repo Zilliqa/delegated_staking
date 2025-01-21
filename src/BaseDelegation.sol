@@ -17,6 +17,8 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         uint256 futureStake;
         address rewardAddress;
         address controlAddress;
+        uint256 pendingWithdrawals;
+        bool expectedToLeave;
     }
 
     /// @custom:storage-location erc7201:zilliqa.storage.BaseDelegation
@@ -45,6 +47,7 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
 
     event ValidatorJoined(bytes blsPubKey);
     event ValidatorLeft(bytes blsPubKey);
+    event ValidatorExpectedToLeave(bytes blsPubKey);
 
     function version() public view returns(uint64) {
         return _getInitializedVersion();
@@ -81,7 +84,9 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
             $.deprecatedBlsPubKey,
             futureStake,
             owner(),
-            owner()
+            owner(),
+            0,
+            false
         ));
 
         $.deprecatedBlsPubKey = "";
@@ -113,28 +118,53 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
             blsPubKey,
             futureStake,
             rewardAddress,
-            controlAddress
+            controlAddress,
+            0,
+            false
         ));
         emit ValidatorJoined(blsPubKey);
     }
+
+/*TODO: remove
+    function _remove(uint256 i) internal virtual {
+        BaseDelegationStorage storage $ = _getBaseDelegationStorage();
     
+        (bool success, ) = DEPOSIT_CONTRACT.call(abi.encodeWithSignature("setRewardAddress(bytes,address)", $.validators[i].blsPubKey, $.validators[i].rewardAddress));
+        require(success, "reward address could not be changed");
+
+        (success, ) = DEPOSIT_CONTRACT.call(abi.encodeWithSignature("setControlAddress(bytes,address)", $.validators[i].blsPubKey, $.validators[i].controlAddress));
+        require(success, "control address could not be changed");
+
+        emit ValidatorLeft($.validators[i].blsPubKey);
+
+        if (i < $.validators.length - 1)
+            $.validators[i] = $.validators[$.validators.length - 1];
+        $.validators.pop();
+    }
+*/
     function _leave(bytes calldata blsPubKey) internal virtual {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
+
         for (uint256 i = 0; i < $.validators.length; i++)
             if (keccak256($.validators[i].blsPubKey) == keccak256(blsPubKey)) {
                 require(_msgSender() == $.validators[i].controlAddress, "only the control address can initiate leaving");
-            
-                (bool success, ) = DEPOSIT_CONTRACT.call(abi.encodeWithSignature("setRewardAddress(bytes,address)", blsPubKey, $.validators[i].rewardAddress));
-                require(success, "reward address could not be changed");
+                if ($.validators[i].pendingWithdrawals > 0) {
+                    $.validators[i].expectedToLeave = true;
+                    emit ValidatorExpectedToLeave($.validators[i].blsPubKey);
+                } else {
+//TODO: remove                    _remove(i);
+                    (bool success, ) = DEPOSIT_CONTRACT.call(abi.encodeWithSignature("setRewardAddress(bytes,address)", $.validators[i].blsPubKey, $.validators[i].rewardAddress));
+                    require(success, "reward address could not be changed");
 
-                (success, ) = DEPOSIT_CONTRACT.call(abi.encodeWithSignature("setControlAddress(bytes,address)", blsPubKey, $.validators[i].controlAddress));
-                require(success, "control address could not be changed");
+                    (success, ) = DEPOSIT_CONTRACT.call(abi.encodeWithSignature("setControlAddress(bytes,address)", $.validators[i].blsPubKey, $.validators[i].controlAddress));
+                    require(success, "control address could not be changed");
 
-                if (i < $.validators.length - 1)
-                    $.validators[i] = $.validators[$.validators.length - 1];
-                $.validators.pop();
+                    emit ValidatorLeft($.validators[i].blsPubKey);
 
-                emit ValidatorLeft(blsPubKey);
+                    if (i < $.validators.length - 1)
+                        $.validators[i] = $.validators[$.validators.length - 1];
+                    $.validators.pop();
+                }
                 return;
             }
         revert("validator with provided bls key not found");
@@ -158,7 +188,9 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
             blsPubKey,
             depositAmount,
             owner(),
-            owner()
+            owner(),
+            0,
+            false
         ));
         (bool success, ) = DEPOSIT_CONTRACT.call{
             value: depositAmount
@@ -185,54 +217,104 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         bytes calldata signature
     ) public virtual payable;
 
+    // topup the deposits proportionally to the validators' current stake
+    //TODO: alternative strategy: always increase the smallest validator's deposit
     function _increaseDeposit(uint256 amount) internal virtual {
         // topup the deposit only if already activated as a validator
         if (_isActivated()) {
             BaseDelegationStorage storage $ = _getBaseDelegationStorage();
-//TODO: increase all validators' deposit proportionally, currently we increase only the last validator's deposit
-            $.validators[$.validators.length - 1].futureStake += amount;
-            //TODO: alternatively, increase the smallest validator's deposit
-            (bool success, ) = DEPOSIT_CONTRACT.call{
-                value: amount
-            }(
-                abi.encodeWithSignature("depositTopup(bytes)", 
-                    $.validators[$.validators.length - 1].blsPubKey
-                )
-            );
-            require(success, "deposit increase failed");
+            bool[] memory partake = new bool[]($.validators.length);
+            uint256 totalStake;
+            for (uint256 i = 0; i < $.validators.length; i++)
+                if (!$.validators[i].expectedToLeave) {
+                    totalStake += $.validators[i].futureStake;
+                    partake[i] = true;
+                }
+            require(totalStake > 0, "no validator's deposit can be increased");
+            for (uint256 i = 0; i < $.validators.length; i++)
+                if (partake[i]) {
+                    uint256 value = amount * $.validators[i].futureStake / totalStake;
+                    $.validators[i].futureStake += value;
+                    (bool success, ) = DEPOSIT_CONTRACT.call{
+                        value: value
+                    }(
+                        abi.encodeWithSignature("depositTopup(bytes)", 
+                            $.validators[i].blsPubKey
+                        )
+                    );
+                    require(success, "deposit increase failed");
+                }
         }
     }
 
+    // unstake from the deposits proportionally to the validators' current stake
+    //TODO: alternative strategy: always decrease the largest validator's deposit
     function _decreaseDeposit(uint256 amount) internal virtual {
         // unstake the deposit only if already activated as a validator
         if (_isActivated()) {
             BaseDelegationStorage storage $ = _getBaseDelegationStorage();
-//TODO: decrease all validators' deposit proportionally, currently we decrease only the last validator's deposit
-            //TODO: alternatively, decrease the largest validator's deposit or at least
-            //      ensure the no validator's deposit falls below the minimum stake
-            $.validators[$.validators.length - 1].futureStake -= amount;
-//TODO: if the validator's futureStake becomes zero then force it to leave
-            (bool success, ) = DEPOSIT_CONTRACT.call(
-                abi.encodeWithSignature("unstake(bytes,uint256)",
-                    $.validators[$.validators.length - 1].blsPubKey,
-                    amount
-                )
+            bool[] memory partake = new bool[]($.validators.length);
+            uint256 totalStake;
+            for (uint256 i = 0; i < $.validators.length; i++)
+                if (!$.validators[i].expectedToLeave) {
+                    totalStake += $.validators[i].futureStake;
+                    partake[i] = true;
+                }
+            require(totalStake > 0, "no validator's deposit can be decreased");
+            (bool success, bytes memory data) = DEPOSIT_CONTRACT.call(
+                abi.encodeWithSignature("minimumStake()")
             );
-            require(success, "deposit decrease failed");
+            require(success, "minimum deposit unknown");
+            uint256 minimumDeposit = abi.decode(data, (uint256));
+            for (uint256 i = 0; i < $.validators.length; i++)
+                if (partake[i])
+                    if ($.validators[i].futureStake < minimumDeposit + amount) {
+                        $.validators[i].expectedToLeave = true;
+                        emit ValidatorExpectedToLeave($.validators[i].blsPubKey);
+                    } else {
+                        uint256 value = amount * $.validators[i].futureStake / totalStake;
+                        $.validators[i].futureStake -= value;
+                        $.validators[i].pendingWithdrawals += value;
+                        (success, ) = DEPOSIT_CONTRACT.call(
+                            abi.encodeWithSignature("unstake(bytes,uint256)",
+                                $.validators[i].blsPubKey,
+                                value
+                            )
+                        );
+                        require(success, "deposit decrease failed");
+                    }
+/*TODO: remove
+            // if the validator's stake becomes zero it's removed from the committee
+            // hence it must be removed from the staking pool too otherwise the next
+            // attempt to increase or decrease its deposit will fail
+            if ($.validators[$.validators.length - 1].futureStake == 0)
+                _remove($.validators.length - 1);
+*/
         }
     }
 
+    // withdraw the pending unstaked deposits of all validators
+    //TODO: measure how much gas it costs if there is nothing to withdraw yet
     function _withdrawDeposit() internal virtual {
         // withdraw the unstaked deposit only if already activated as a validator
         if (_isActivated()) {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
-//TODO: withdraw all validators' unstaked deposits, currently we withdraw only the last validator's unstaked deposit
-            (bool success, ) = DEPOSIT_CONTRACT.call(
-                abi.encodeWithSignature("withdraw(bytes)",
-                    $.validators[$.validators.length - 1].blsPubKey
-                )
-            );
-            require(success, "deposit withdrawal failed");
+            for (uint256 i = 0; i < $.validators.length; i++)
+                if ($.validators[i].pendingWithdrawals > 0) {
+                    // currently all validators have the same reward address,
+                    // which is the address of this delegation contract
+                    uint256 amount = address(this).balance;
+                    (bool success, ) = DEPOSIT_CONTRACT.call(
+                        abi.encodeWithSignature("withdraw(bytes)",
+                            $.validators[i].blsPubKey
+                        )
+                    );
+                    require(success, "deposit withdrawal failed");
+                    // currently all validators have the same reward address,
+                    // which is the address of this delegation contract
+                    amount = address(this).balance - amount;
+                    $.validators[i].pendingWithdrawals -= amount;
+                }
         }
     }
 

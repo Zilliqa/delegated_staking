@@ -60,8 +60,12 @@ contract LiquidDelegationV2 is BaseDelegation, ILiquidDelegation {
         taxRewards();
 
         // retrieve the validator's stake as long as it's deposited and calculate the shares
+/*TODO: remove
         uint256 shares = 1 ether * getStake(blsPubKey) / getPrice();
         uint256 amount = _unstake(shares, _msgSender());
+*/
+        LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
+        uint256 amount = _unstake(NonRebasingLST($.lst).balanceOf(_msgSender()), _msgSender());
         require(amount == getStake(blsPubKey), "unstaked amount does not match the deposit");
 
         _leave(blsPubKey);
@@ -81,9 +85,10 @@ contract LiquidDelegationV2 is BaseDelegation, ILiquidDelegation {
             blsPubKey,
             peerId,
             signature,
-            address(this).balance
+            getStake()
+//TODO: remove
+//            address(this).balance
         );
-        // TODO: replace address(this).balance everywhere with getRewards()?
     } 
 
     function stake() public override payable whenNotPaused {
@@ -204,11 +209,14 @@ contract LiquidDelegationV2 is BaseDelegation, ILiquidDelegation {
         // they will not be taxed when they are unstaked
         taxRewards();
         // we must not deposit the funds we need to pay out the claims
-        if (address(this).balance > getTotalWithdrawals()) {
+        uint256 amount = getRewards();
+//TODO: remove
+//        uint256 amount = address(this).balance;
+        if (amount > getTotalWithdrawals()) {
             // not only the rewards (balance) must be reduced
             // by the deposit topup but also the taxed rewards
-            $.taxedRewards -= address(this).balance - getTotalWithdrawals();
-            _increaseDeposit(address(this).balance - getTotalWithdrawals());
+            $.taxedRewards -= amount - getTotalWithdrawals();
+            _increaseDeposit(amount - getTotalWithdrawals());
         }
     }
 
