@@ -89,7 +89,7 @@ Note that the commission rate is specified as an integer to be divided by the `D
 cast call 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 "DENOMINATOR()(uint256)" --rpc-url $RPC_URL  | sed 's/\[[^]]*\]//g'
 ```
 
-Once the validator is activated and starts earning rewards, commissions are transferred automatically to the owner account. Commissions of a non-liquid staking validator are deducted when delegators withdraw rewards. In case of the liquid staking variant, commissions are deducted each time delegators stake, unstake or claim what they unstaked, or when the contract owner requests the outstanding commissions that haven't been transferred yet. To collect them, run
+Once the validator is activated and starts earning rewards, commissions are transferred automatically to the owner account. Commissions of a non-liquid staking validator are deducted when delegators withdraw or stake rewards. In case of the liquid staking variant, commissions are deducted each time delegators stake, unstake or claim what they unstaked, or when the contract owner requests the outstanding commissions that haven't been transferred yet. To collect them, run
 ```bash
 forge script script/ManageCommission.s.sol --rpc-url $RPC_URL --broadcast --legacy --sig "run(address payable, string, bool)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 same true
 ```

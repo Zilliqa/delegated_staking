@@ -63,8 +63,9 @@ contract NonLiquidDelegationV2 is BaseDelegation, INonLiquidDelegation {
         _disableInitializers();
     }
 
-    //TODO: use a hardcoded version number instead
-    function reinitialize() public reinitializer(version() + 1) {
+//TODO: use a hardcoded version number instead
+    function reinitialize(uint64 fromVersion) public reinitializer(version() + 1) {
+        migrate(fromVersion);
     }
 
     // called when stake withdrawn from the deposit contract is claimed
@@ -139,8 +140,6 @@ contract NonLiquidDelegationV2 is BaseDelegation, INonLiquidDelegation {
             peerId,
             signature,
             getStake()
-//TODO: remove
-//            address(this).balance
         );
 
         // the owner's deposit must also be recorded as staking otherwise
@@ -304,23 +303,25 @@ contract NonLiquidDelegationV2 is BaseDelegation, INonLiquidDelegation {
     ) {
         NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
         uint64 firstStakingIndex;
+        uint256 amount;
+        uint256 total;
         for (
             posInStakingIndices = $.firstStakingIndex[_msgSender()];
             posInStakingIndices < $.stakingIndices[_msgSender()].length;
             posInStakingIndices++
         ) {
             nextStakingIndex = $.stakingIndices[_msgSender()][posInStakingIndices];
-            uint256 amount = $.stakings[nextStakingIndex].amount;
+            amount = $.stakings[nextStakingIndex].amount;
             if (nextStakingIndex < $.lastWithdrawnStakingIndex[_msgSender()])
                 nextStakingIndex = $.lastWithdrawnStakingIndex[_msgSender()];
-            uint256 total = $.stakings[nextStakingIndex].total;
+            total = $.stakings[nextStakingIndex].total;
             nextStakingIndex++;
             if (firstStakingIndex == 0)
                 firstStakingIndex = nextStakingIndex;
             while (
                 posInStakingIndices == $.stakingIndices[_msgSender()].length - 1 ?
                 nextStakingIndex < $.stakings.length :
-                nextStakingIndex <= $.stakingIndices[_msgSender()][posInStakingIndices+1]
+                nextStakingIndex <= $.stakingIndices[_msgSender()][posInStakingIndices + 1]
             ) {
                 if (total > 0)
                     resultInTotal += $.stakings[nextStakingIndex].rewards * amount / total;
@@ -328,16 +329,18 @@ contract NonLiquidDelegationV2 is BaseDelegation, INonLiquidDelegation {
                 nextStakingIndex++;
                 if (nextStakingIndex - firstStakingIndex > additionalSteps)
                     return (resultInTotal, resultAfterLastStaking, posInStakingIndices, nextStakingIndex);
-            }
-            // all rewards recorded in the staking history were taken into account
-            if (nextStakingIndex == $.stakings.length) {
-                // the last step is to add the rewards accrued since the last staking
-                if (total > 0) {
-                    resultAfterLastStaking = (int256(getRewards()) - $.totalRewards).toUint256() * amount / total;
-                    resultInTotal += resultAfterLastStaking;
-                }
+            }    
+        }
+
+        // all rewards recorded in the staking history have been taken into account
+        if (nextStakingIndex == $.stakings.length) {
+            // the last step is to add the rewards accrued since the last staking
+            if (total > 0) {
+                resultAfterLastStaking = (int256(getRewards()) - $.totalRewards).toUint256() * amount / total;
+                resultInTotal += resultAfterLastStaking;
             }
         }
+
         // ensure that the next time the function is called the initial value of posInStakingIndices
         // refers to the last amount and total among the stakingIndices of the staker that already
         // existed during the current call of the function so that we can continue from there

@@ -29,8 +29,9 @@ contract LiquidDelegationV2 is BaseDelegation, ILiquidDelegation {
         _disableInitializers();
     }
 
-    //TODO: use a hardcoded version number instead
-    function reinitialize() public reinitializer(version() + 1) {
+//TODO: use a hardcoded version number instead
+    function reinitialize(uint64 fromVersion) public reinitializer(version() + 1) {
+        migrate(fromVersion);
     }
 
     // called when stake withdrawn from the deposit contract is claimed
@@ -86,8 +87,6 @@ contract LiquidDelegationV2 is BaseDelegation, ILiquidDelegation {
             peerId,
             signature,
             getStake()
-//TODO: remove
-//            address(this).balance
         );
     } 
 
@@ -210,8 +209,6 @@ contract LiquidDelegationV2 is BaseDelegation, ILiquidDelegation {
         taxRewards();
         // we must not deposit the funds we need to pay out the claims
         uint256 amount = getRewards();
-//TODO: remove
-//        uint256 amount = address(this).balance;
         if (amount > getTotalWithdrawals()) {
             // not only the rewards (balance) must be reduced
             // by the deposit topup but also the taxed rewards

@@ -20,7 +20,7 @@ abstract contract BaseDelegationTest is Test {
     bytes internal reinitializerCall;
     bytes1 internal currentDeploymentId;
     address internal owner = 0x15fc323DFE5D5DCfbeEdc25CEcbf57f676634d77;
-    address[4] internal stakers = [
+    address[] internal stakers = [
         0xd819fFcE7A58b1E835c25617Db7b46a00888B013,
         0x092E5E57955437876dA9Df998C96e2BE19341670,
         0xeA78aAE5Be606D2D152F00760662ac321aB8F017,

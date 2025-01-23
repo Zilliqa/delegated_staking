@@ -23,7 +23,8 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
 
     /// @custom:storage-location erc7201:zilliqa.storage.BaseDelegation
     struct BaseDelegationStorage {
-        bytes deprecatedBlsPubKey;
+//TODO: blsPubKey can't be removed, its slot must be occupied 
+        bytes blsPubKey;
         bool activated;
         uint256 commissionNumerator;
         mapping(address => WithdrawalQueue.Fifo) withdrawals;
@@ -66,22 +67,41 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     function __BaseDelegation_init_unchained() internal onlyInitializing {
     }
 
-    // this re-initializer is to be called when upgrading from the old V2
-    function migrateFromOldV2() public reinitializer(version() + 1) {
-        BaseDelegationStorage storage $ = _getBaseDelegationStorage();
+    struct DeprecatedStorage {
+        bytes blsPubKey;
+        bytes peerId;
+    }
 
-        if ($.deprecatedBlsPubKey.length == 0)
-            // there is nothing to migrate since no bls pub key is stored
+    function migrate(uint64 fromVersion) internal {
+        // the contract has been deployed but not upgraded yet
+        if (fromVersion == 1)
             return;
 
-        $.activated = true;
+        BaseDelegationStorage storage $ = _getBaseDelegationStorage();
 
-        (bool success, bytes memory data) = DEPOSIT_CONTRACT.call(abi.encodeWithSignature("getFutureStake(bytes)", $.deprecatedBlsPubKey));
+//TODO: remove
+//        if ($.blsPubKey.length == 0)
+        // the contract has been upgraded but the length of the peerId is zero
+        if (!$.activated)
+            return;
+
+        DeprecatedStorage storage temp;
+        uint256 peerIdLength;
+        assembly {
+            temp.slot := BaseDelegationStorageLocation
+            peerIdLength := sload(add(BaseDelegationStorageLocation, 0x20))
+        }
+
+        // the upgraded contract has already been migrated since the peerId storage slot contains boolean true
+        if (peerIdLength == 1)
+            return;
+
+        (bool success, bytes memory data) = DEPOSIT_CONTRACT.call(abi.encodeWithSignature("getFutureStake(bytes)", temp.blsPubKey));
         require(success, "future stake could not be retrieved");
         uint256 futureStake = abi.decode(data, (uint256));
 
         $.validators.push(Validator(
-            $.deprecatedBlsPubKey,
+            temp.blsPubKey,
             futureStake,
             owner(),
             owner(),
@@ -89,7 +109,9 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
             false
         ));
 
-        $.deprecatedBlsPubKey = "";
+        $.activated = true;
+//TODO: remove
+//        $.blsPubKey = "";
     }
 
     function _authorizeUpgrade(address newImplementation) internal onlyOwner virtual override {}
@@ -125,23 +147,6 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         emit ValidatorJoined(blsPubKey);
     }
 
-/*TODO: remove
-    function _remove(uint256 i) internal virtual {
-        BaseDelegationStorage storage $ = _getBaseDelegationStorage();
-    
-        (bool success, ) = DEPOSIT_CONTRACT.call(abi.encodeWithSignature("setRewardAddress(bytes,address)", $.validators[i].blsPubKey, $.validators[i].rewardAddress));
-        require(success, "reward address could not be changed");
-
-        (success, ) = DEPOSIT_CONTRACT.call(abi.encodeWithSignature("setControlAddress(bytes,address)", $.validators[i].blsPubKey, $.validators[i].controlAddress));
-        require(success, "control address could not be changed");
-
-        emit ValidatorLeft($.validators[i].blsPubKey);
-
-        if (i < $.validators.length - 1)
-            $.validators[i] = $.validators[$.validators.length - 1];
-        $.validators.pop();
-    }
-*/
     function _leave(bytes calldata blsPubKey) internal virtual {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
 
@@ -152,7 +157,6 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
                     $.validators[i].expectedToLeave = true;
                     emit ValidatorExpectedToLeave($.validators[i].blsPubKey);
                 } else {
-//TODO: remove                    _remove(i);
                     (bool success, ) = DEPOSIT_CONTRACT.call(abi.encodeWithSignature("setRewardAddress(bytes,address)", $.validators[i].blsPubKey, $.validators[i].rewardAddress));
                     require(success, "reward address could not be changed");
 

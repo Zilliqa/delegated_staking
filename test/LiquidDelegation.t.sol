@@ -932,7 +932,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         assertEq(lstPrice1, lstPrice2, "LST price mismatch");
     }
 
-    function test_Bootstrapping_Compare1Vs9Delegations() public {
+    function test_Bootstrapping_CompareOneVsMoreDelegations() public {
         uint256 depositAmount = 10_000_000 ether;
         uint256 totalDeposit = 5_200_000_000 ether;
         uint256 delegatedAmount = 100 ether;
@@ -1046,7 +1046,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         assertEq(unstakedAmount1, unstakedAmount2, "unstaked amount mismatch");
     }
 
-    function test_Bootstrapping_CompareJoin3AndLeave3() public {
+    function test_Bootstrapping_CompareJoin3MoreAndLeave3() public {
         uint256 depositAmount = 10_000_000 ether;
         uint256 totalDeposit = 5_200_000_000 ether;
         uint256 delegatedAmount = 100 ether;
@@ -1092,7 +1092,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
 
     // Additional test cases start here
 
-    function test_LeaveAfterPriceChange() public {
+    function test_LeaveAfterOthersStaked() public {
         uint256 depositAmount = 10_000_000 ether;
         uint256 totalDeposit = 5_200_000_000 ether;
         uint256 delegatedAmount = 100 ether;
@@ -1124,10 +1124,10 @@ contract LiquidDelegationTest is BaseDelegationTest {
         leave(BaseDelegation(delegation), makeAddr("2"), 2);
         assertEq(delegation.validators().length, 1, "validator leaving failed");
         assertLt(lstPrice1, lstPrice2, "LST price should increase");
-        assertGt(unstakedAmount1, unstakedAmount2, "unstaked should decrease");
+        assertGt(unstakedAmount1, unstakedAmount2, "unstaked amount should decrease");
     }
 
-    function test_JoinAndUnstake() public {
+    function test_UnstakeNotTooMuch() public {
         uint256 depositAmount = 10_000_000 ether;
         deposit(BaseDelegation(delegation), 2 * depositAmount, DepositMode.Bootstrapping);
         join(BaseDelegation(delegation), 2 * depositAmount, makeAddr("2"), 2);
@@ -1141,7 +1141,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         vm.stopPrank();
     }
 
-    function testFail_JoinAndForceToLeave() public {
+    function testFail_UnstakeTooMuch() public {
         uint256 depositAmount = 10_000_000 ether;
         deposit(BaseDelegation(delegation), 2 * depositAmount, DepositMode.Bootstrapping);
         join(BaseDelegation(delegation), 2 * depositAmount, makeAddr("2"), 2);
