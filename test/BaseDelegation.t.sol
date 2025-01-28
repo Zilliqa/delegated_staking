@@ -6,7 +6,7 @@ import {BlsVerifyPrecompile} from "test/BlsVerifyPrecompile.t.sol";
 import {BaseDelegation} from "src/BaseDelegation.sol";
 import {WithdrawalQueue} from "src/WithdrawalQueue.sol";
 import {IDelegation} from "src/IDelegation.sol";
-import {Deposit} from "@zilliqa/zq2/deposit_v3.sol";
+import {Deposit} from "@zilliqa/zq2/deposit_v4.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {Test} from "forge-std/Test.sol";
 import {console} from "forge-std/console.sol";
@@ -18,8 +18,9 @@ abstract contract BaseDelegationTest is Test {
     bytes internal initializerCall;
     address payable internal newImplementation;
     bytes internal reinitializerCall;
-    address internal owner;
-    address[4] internal stakers = [
+    bytes1 internal currentDeploymentId;
+    address internal owner = 0x15fc323DFE5D5DCfbeEdc25CEcbf57f676634d77;
+    address[] internal stakers = [
         0xd819fFcE7A58b1E835c25617Db7b46a00888B013,
         0x092E5E57955437876dA9Df998C96e2BE19341670,
         0xeA78aAE5Be606D2D152F00760662ac321aB8F017,
@@ -27,8 +28,6 @@ abstract contract BaseDelegationTest is Test {
     ];
 
     constructor() {
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-        owner = vm.addr(deployerPrivateKey);
         for (uint256 i = 0; i < stakers.length; i++)
             assertNotEq(owner, stakers[i], "owner and staker must be different");
         //console.log("Signer is %s", owner);
@@ -37,6 +36,11 @@ abstract contract BaseDelegationTest is Test {
     function storeDelegation() internal virtual;
 
     function setUp() public {
+        deploy();
+        deploy();
+    }
+
+    function deploy() internal {
         vm.chainId(33469);
         vm.deal(owner, 100_000 ether);
         vm.startPrank(owner);
@@ -121,91 +125,107 @@ abstract contract BaseDelegationTest is Test {
         vm.stopPrank();
     }
 
-    enum DepositMode {DepositThenStake, StakeThenDeposit, DepositThenMigrate}
+    enum DepositMode {Bootstrapping, Fundraising, Transforming}
 
-    function migrate(
+    function deposit(
         BaseDelegation delegation,
-        uint256 depositAmount
+        uint256 depositAmount,
+        DepositMode mode
     ) internal {
-        vm.deal(owner, owner.balance + depositAmount);
-        vm.startPrank(owner);
+        bytes memory blsPubKey;
+        currentDeploymentId = bytes1(uint8(currentDeploymentId) + 1);
+        uint256 preStaked = (mode == DepositMode.Fundraising) ? depositAmount / 10 : 0;
+        if (mode == DepositMode.Fundraising)
+            for (uint256 i = 1; i <= 2; i++) {
+                vm.deal(stakers[i], stakers[i].balance + preStaked);
+                vm.startPrank(stakers[i]);
+                vm.expectEmit(
+                    true,
+                    false,
+                    false,
+                    false,
+                    address(delegation)
+                );
+                emit IDelegation.Staked(
+                    stakers[i],
+                    preStaked,
+                    ""
+                );
+                delegation.stake{
+                    value: preStaked
+                }();
+                vm.stopPrank();
+            }
 
+        if (mode == DepositMode.Fundraising || mode == DepositMode.Bootstrapping) {
+            vm.deal(owner, owner.balance + depositAmount - (mode == DepositMode.Fundraising ? 2 : 0) * preStaked);
+            vm.startPrank(owner);
+            blsPubKey = bytes(hex"01fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c");
+            blsPubKey[47] = currentDeploymentId;
+            delegation.deposit{
+                value: depositAmount - (mode == DepositMode.Fundraising ? 2 : 0) * preStaked
+            }(
+                blsPubKey,
+                bytes(hex"002408011220d5ed74b09dcbe84d3b32a56c01ab721cf82809848b6604535212a219d35c412f"),
+                bytes(hex"b14832a866a49ddf8a3104f8ee379d29c136f29aeb8fccec9d7fb17180b99e8ed29bee2ada5ce390cb704bc6fd7f5ce814f914498376c4b8bc14841a57ae22279769ec8614e2673ba7f36edc5a4bf5733aa9d70af626279ee2b2cde939b4bd8a")
+            );
+            vm.stopPrank();
+
+            // wait 2 epochs for the change to the deposit to take affect
+            vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
+        }
+
+        if (mode == DepositMode.Transforming)
+            join(delegation, depositAmount, owner, 1);
+    }
+
+    function join(
+        BaseDelegation delegation,
+        uint256 depositAmount,
+        address controlAddress,
+        uint8 validatorId
+    ) internal {
+        vm.deal(controlAddress, controlAddress.balance + depositAmount);
+        vm.startPrank(controlAddress);
+        bytes memory blsPubKey = bytes(hex"92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c");
+        blsPubKey[47] = currentDeploymentId;
+        blsPubKey[0] = bytes1(validatorId);
         Deposit(delegation.DEPOSIT_CONTRACT()).deposit{
             value: depositAmount
         }(
-            bytes(hex"92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c"),
+            blsPubKey,
             bytes(hex"002408011220d5ed74b09dcbe84d3b32a56c01ab721cf82809848b6604535212a219d35c412f"),
             bytes(hex"b14832a866a49ddf8a3104f8ee379d29c136f29aeb8fccec9d7fb17180b99e8ed29bee2ada5ce390cb704bc6fd7f5ce814f914498376c4b8bc14841a57ae22279769ec8614e2673ba7f36edc5a4bf5733aa9d70af626279ee2b2cde939b4bd8a"),
             address(0x0),
             address(0x0)
         );
-
         Deposit(delegation.DEPOSIT_CONTRACT()).setControlAddress(
-            bytes(hex"92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c"),
+            blsPubKey,
             address(delegation)
         );
+        vm.stopPrank();
 
-        delegation.migrate(
-            bytes(hex"92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c")
+        vm.startPrank(owner);
+        delegation.join(
+            blsPubKey,
+            controlAddress
         );
-
         vm.stopPrank();
     }
 
-    function deposit(
-        BaseDelegation delegation,
-        uint256 depositAmount,
-        bool initialDeposit
-    ) internal {
-        if (initialDeposit) {
-            vm.deal(owner, owner.balance + depositAmount);
-            vm.startPrank(owner);
-
-            delegation.depositFirst{
-                value: depositAmount
-            }(
-                bytes(hex"92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c"),
-                bytes(hex"002408011220d5ed74b09dcbe84d3b32a56c01ab721cf82809848b6604535212a219d35c412f"),
-                bytes(hex"b14832a866a49ddf8a3104f8ee379d29c136f29aeb8fccec9d7fb17180b99e8ed29bee2ada5ce390cb704bc6fd7f5ce814f914498376c4b8bc14841a57ae22279769ec8614e2673ba7f36edc5a4bf5733aa9d70af626279ee2b2cde939b4bd8a")
-            );
-        } else {
-            vm.deal(stakers[0], stakers[0].balance + depositAmount);
-            vm.startPrank(stakers[0]);
-
-            vm.expectEmit(
-                true,
-                false,
-                false,
-                false,
-                address(delegation)
-            );
-            emit IDelegation.Staked(
-                stakers[0],
-                depositAmount,
-                ""
-            );
-
-            delegation.stake{
-                value: depositAmount
-            }();
-
-            vm.startPrank(owner);
-
-            delegation.depositLater(
-                bytes(hex"92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c"),
-                bytes(hex"002408011220d5ed74b09dcbe84d3b32a56c01ab721cf82809848b6604535212a219d35c412f"),
-                bytes(hex"b14832a866a49ddf8a3104f8ee379d29c136f29aeb8fccec9d7fb17180b99e8ed29bee2ada5ce390cb704bc6fd7f5ce814f914498376c4b8bc14841a57ae22279769ec8614e2673ba7f36edc5a4bf5733aa9d70af626279ee2b2cde939b4bd8a")
-            );
-        }
-        // wait 2 epochs for the change to the deposit to take affect
-        vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
+    function validator(
+        uint8 validatorId
+    ) internal view returns(bytes memory blsPubKey) {
+        blsPubKey = bytes(hex"92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c");
+        blsPubKey[47] = currentDeploymentId;
+        blsPubKey[0] = bytes1(validatorId);
     }
 
     function claimsAfterManyUnstakings(BaseDelegation delegation, uint64 steps) internal {
         uint256 i;
         uint256 x;
 
-        deposit(BaseDelegation(delegation), 10_000_000 ether, true);
+        deposit(BaseDelegation(delegation), 10_000_000 ether, DepositMode.Bootstrapping);
 
         // wait 2 epochs for the change to the deposit to take affect
         vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);

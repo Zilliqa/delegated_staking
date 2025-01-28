@@ -45,7 +45,7 @@ contract LiquidDelegation is BaseDelegation, ILiquidDelegation {
         return $.lst;
     }
 
-    function depositFirst(
+    function deposit(
         bytes calldata,
         bytes calldata,
         bytes calldata
@@ -53,15 +53,11 @@ contract LiquidDelegation is BaseDelegation, ILiquidDelegation {
         revert("not implemented");
     }
 
-    function depositLater(
-        bytes calldata,
-        bytes calldata,
-        bytes calldata
-    ) public pure override {
+    function join(bytes calldata, address) public pure override {
         revert("not implemented");
     }
 
-    function migrate(bytes calldata) public pure override {
+    function leave(bytes calldata) public pure override {
         revert("not implemented");
     }
 

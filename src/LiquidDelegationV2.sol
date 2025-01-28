@@ -29,96 +29,117 @@ contract LiquidDelegationV2 is BaseDelegation, ILiquidDelegation {
         _disableInitializers();
     }
 
-    // automatically incrementing the version number allows for
-    // upgrading the contract without manually specifying the next
-    // version number in the source file - use with caution since
-    // it won't be possible to identify the actual version of the
-    // source file without a hardcoded version number, but storing
-    // the file versions in separate folders would help
-    function reinitialize() public reinitializer(version() + 1) {
+    function reinitialize(uint64 fromVersion) public reinitializer(VERSION) {
+        migrate(fromVersion);
     }
 
     // called when stake withdrawn from the deposit contract is claimed
     // but not called when rewards are assigned to the reward address
     receive() external payable {
+        require(_msgSender() == DEPOSIT_CONTRACT, "sender must be the deposit contract");
         LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
         // do not deduct commission from the withdrawn stake
         $.taxedRewards += msg.value;
     }
 
-    // called by the node's owner who deployed this contract
-    // to turn the already deposited validator node into a staking pool
-    function migrate(bytes calldata blsPubKey) public override onlyOwner {
-        _migrate(blsPubKey);
+    // called by the contract owner to add an already deposited validator to the staking pool
+    function join(bytes calldata blsPubKey, address controlAddress) public override onlyOwner {
+        // deduct the commission from the yet untaxed rewards before calculating the number of shares
+        taxRewards();
+
+        _stake(getStake(blsPubKey), controlAddress);
+
+        // increases the deposited stake hence it must be called after calculating the shares
+        _join(blsPubKey, controlAddress);
+    }
+
+    // called by the validator node's original control address to remove the validator from
+    // the staking pool, reducing the pool's total stake by the validator's current deposit
+    function leave(bytes calldata blsPubKey) public override {
+        if (!_preparedToLeave(blsPubKey))
+            return;
+        // deduct the commission from the yet untaxed rewards before calculating the amount
+        taxRewards();
         LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
-        require(NonRebasingLST($.lst).totalSupply() == 0, "stake already delegated");
-        NonRebasingLST($.lst).mint(owner(), getStake());
+        uint256 amount = _unstake(NonRebasingLST($.lst).balanceOf(_msgSender()), _msgSender());
+        uint256 currentDeposit = getStake(blsPubKey);
+        if (amount > currentDeposit) {
+            _initiateLeaving(blsPubKey, currentDeposit);
+            _enqueueWithdrawal(amount - currentDeposit);
+            _decreaseDeposit(amount - currentDeposit);
+        } else
+            _initiateLeaving(blsPubKey, amount);
     }
 
-    // called by the node's owner who deployed this contract
-    // to deposit the node as a validator using the delegated stake
-    function depositLater(
-        bytes calldata blsPubKey,
-        bytes calldata peerId,
-        bytes calldata signature
-    ) public override onlyOwner {
-        _deposit(
-            blsPubKey,
-            peerId,
-            signature,
-            address(this).balance
-        );
-    }
-
-    // called by the node's owner who deployed this contract
-    // with at least the minimum stake to deposit the node
-    // as a validator before any stake is delegated to it
-    function depositFirst(
+    // called by the contract owner to turn the staking pool's first node into a validator
+    // by depositing the value sent with this transaction and the amounts delegated before 
+    function deposit(
         bytes calldata blsPubKey,
         bytes calldata peerId,
         bytes calldata signature
     ) public override payable onlyOwner {
+        if (msg.value > 0)
+            _stake(msg.value, _msgSender());
+
         _deposit(
             blsPubKey,
             peerId,
             signature,
-            msg.value
+            getStake()
         );
-        LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
-        require(NonRebasingLST($.lst).totalSupply() == 0, "stake already delegated");
-        NonRebasingLST($.lst).mint(owner(), msg.value);
     } 
 
     function stake() public override payable whenNotPaused {
-        require(msg.value >= MIN_DELEGATION, "delegated amount too low");
-        uint256 shares;
         LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
-        // deduct commission from the rewards only if already activated as a validator
-        // otherwise getRewards() returns 0 but taxedRewards would be greater than 0
+        // if we are in the fundraising phase getRewards() would return 0 and taxedRewards would
+        // be greater i.e. the commission calculated in taxRewards() would be negative, therefore
         if (_isActivated()) {
-            // the delegated amount is temporarily part of the rewards as it's in the balance
-            // add to the taxed rewards to avoid commission and remove it again after taxing
+            // the amount just delegated is now part of the rewards since it was added to the balance
+            // therefore add it to the taxed rewards too to avoid commission and remove it after taxing
             $.taxedRewards += msg.value;
-            // before calculating the shares deduct the commission from the yet untaxed rewards
+            // deduct the commission from the yet untaxed rewards before calculating the number of shares
             taxRewards();
             $.taxedRewards -= msg.value;
         }
+        _stake(msg.value, _msgSender());
+        _increaseDeposit(msg.value);
+    }
+
+    function _stake(uint256 value, address staker) internal {
+        require(value >= MIN_DELEGATION, "delegated amount too low");
+        uint256 shares;
+        LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
         uint256 depositedStake = getStake();
+        // if no validator has been activated yet, the depositedStake equals the
+        // balance that contains all delegations including the current one unless
+        // the first validator is just joining right now and depositedStake is zero
+        if (!_isActivated() && depositedStake > 0)
+            depositedStake -= value;
         if (NonRebasingLST($.lst).totalSupply() == 0)
-            // if the validator hasn't deposited yet, the formula for calculating the shares would divide by zero, therefore
-            shares = msg.value;
+            // if no validator deposited yet the formula for calculating the shares
+            // would divide by zero, hence
+            shares = value;
         else
             // otherwise depositedStake is greater than zero even if the deposit hasn't been activated yet
-            shares = NonRebasingLST($.lst).totalSupply() * msg.value / (depositedStake + $.taxedRewards);
-        NonRebasingLST($.lst).mint(_msgSender(), shares);
-        _increaseDeposit(msg.value);
-        emit Staked(_msgSender(), msg.value, abi.encode(shares));
+            shares = NonRebasingLST($.lst).totalSupply() * value / (depositedStake + $.taxedRewards);
+        NonRebasingLST($.lst).mint(staker, shares);
+        emit Staked(staker, value, abi.encode(shares));
     }
 
     function unstake(uint256 shares) public override whenNotPaused returns(uint256 amount) {
+        // if we are in the fundraising phase getRewards() would return 0 and taxedRewards would
+        // be greater i.e. the commission calculated in taxRewards() would be negative, therefore
+        if (_isActivated())
+            // deduct the commission from the yet untaxed rewards before calculating the amount
+            taxRewards();
+        amount = _unstake(shares, _msgSender());
+        _enqueueWithdrawal(amount);
+        // maintain a balance that is always sufficient to cover the claims
+        _decreaseDeposit(amount);
+    }
+
+    function _unstake(uint256 shares, address staker) internal returns(uint256 amount) {
         LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
-        // before calculating the amount deduct the commission from the yet untaxed rewards
-        taxRewards();
         if (NonRebasingLST($.lst).totalSupply() == 0)
             amount = shares;
         else
@@ -126,11 +147,8 @@ contract LiquidDelegationV2 is BaseDelegation, ILiquidDelegation {
         // stake the surplus of taxed rewards not needed for covering the pending withdrawals
         // before we increase the pending withdrawals by enqueueing the current amount
         _stakeRewards();
-        _enqueueWithdrawal(amount);
-        // maintain a balance that is always sufficient to cover the claims
-        _decreaseDeposit(amount);
-        NonRebasingLST($.lst).burn(_msgSender(), shares);
-        emit Unstaked(_msgSender(), amount, abi.encode(shares));
+        NonRebasingLST($.lst).burn(staker, shares);
+        emit Unstaked(staker, amount, abi.encode(shares));
     }
 
     // return the amount of ZIL equivalent to 1 LST (share)
@@ -168,7 +186,9 @@ contract LiquidDelegationV2 is BaseDelegation, ILiquidDelegation {
         taxRewards();
         // withdraw the unstaked deposit once the unbonding period is over
         _withdrawDeposit();
-        $.taxedRewards -= total;
+        // prevent underflow if there is nothing to withdraw hence taxedRewards is zero
+        if (_isActivated())
+            $.taxedRewards -= total;
         (bool success, ) = _msgSender().call{
             value: total
         }("");
@@ -177,6 +197,7 @@ contract LiquidDelegationV2 is BaseDelegation, ILiquidDelegation {
     }
 
     function stakeRewards() public override onlyOwner {
+        require(_isActivated(), "No validator activated and rewards earned yet");
         _stakeRewards();
     }
 
@@ -186,13 +207,13 @@ contract LiquidDelegationV2 is BaseDelegation, ILiquidDelegation {
         // they will not be taxed when they are unstaked
         taxRewards();
         // we must not deposit the funds we need to pay out the claims
-        if (address(this).balance > getTotalWithdrawals()) {
+        uint256 amount = getRewards();
+        if (amount > getTotalWithdrawals()) {
             // not only the rewards (balance) must be reduced
             // by the deposit topup but also the taxed rewards
-            $.taxedRewards -= address(this).balance - getTotalWithdrawals();
-            _increaseDeposit(address(this).balance - getTotalWithdrawals());
+            $.taxedRewards -= amount - getTotalWithdrawals();
+            _increaseDeposit(amount - getTotalWithdrawals());
         }
-        // TODO: replace address(this).balance everywhere with getRewards()
     }
 
     function collectCommission() public override onlyOwner {

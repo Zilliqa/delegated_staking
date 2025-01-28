@@ -23,8 +23,9 @@ contract Upgrade is Script {
             proxy
         );
 
+        uint64 oldVersion = oldDelegation.version();
         console.log("Upgrading from version: %s",
-            oldDelegation.version()
+            oldVersion
         );
 
         console.log("Owner is %s",
@@ -47,7 +48,8 @@ contract Upgrade is Script {
         );
 
         bytes memory reinitializerCall = abi.encodeWithSignature(
-            "reinitialize()"
+            "reinitialize(uint64)",
+            oldVersion
         );
 
         oldDelegation.upgradeToAndCall(
