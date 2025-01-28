@@ -506,6 +506,10 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     }
 
     function getStake(bytes calldata blsPubKey) public virtual view returns(uint256) {
+        BaseDelegationStorage storage $ = _getBaseDelegationStorage();
+        uint256 i = $.validatorIndex[blsPubKey];
+        if (i > 0)
+            return $.validators[--i].futureStake;
         (bool success, bytes memory data) = DEPOSIT_CONTRACT.staticcall(
             abi.encodeWithSignature("getFutureStake(bytes)", blsPubKey)
         );
