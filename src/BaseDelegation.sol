@@ -67,9 +67,9 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     } 
 
     function encodeVersion(uint24 major, uint24 minor, uint24 patch) pure public returns(uint64) {
-        require(major < 2*20, "incorrect major version");
-        require(minor < 2*20, "incorrect minor version");
-        require(patch < 2*20, "incorrect patch version");
+        require(major < 2**20, "incorrect major version");
+        require(minor < 2**20, "incorrect minor version");
+        require(patch < 2**20, "incorrect patch version");
         return uint64(major * 2**40 + minor * 2**20 + patch);
     }
 
