@@ -63,8 +63,7 @@ contract NonLiquidDelegationV2 is BaseDelegation, INonLiquidDelegation {
         _disableInitializers();
     }
 
-//TODO: use a hardcoded version number instead
-    function reinitialize(uint64 fromVersion) public reinitializer(version() + 1) {
+    function reinitialize(uint64 fromVersion) public reinitializer(VERSION) {
         migrate(fromVersion);
     }
 
@@ -123,9 +122,19 @@ contract NonLiquidDelegationV2 is BaseDelegation, INonLiquidDelegation {
     // called by the validator node's original control address to remove the validator from
     // the staking pool, reducing the pool's total stake by the validator's current deposit
     function leave(bytes calldata blsPubKey) public override {
-        // retrieve the validator's stake as long as it's deposited and record the unstaking
-        _append(-int256(getStake(blsPubKey)), _msgSender());
-        _leave(blsPubKey);
+        if (!_preparedToLeave(blsPubKey))
+            return;
+        NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
+        require($.stakingIndices[_msgSender()].length > 0, "staker not found");
+        uint256 amount = $.stakings[$.stakingIndices[_msgSender()][$.stakingIndices[_msgSender()].length - 1]].amount;
+        _append(-int256(amount), _msgSender());
+        uint256 currentDeposit = getStake(blsPubKey);
+        if (amount > currentDeposit) {
+            _initiateLeaving(blsPubKey, currentDeposit);
+            _enqueueWithdrawal(amount - currentDeposit);
+            _decreaseDeposit(amount - currentDeposit);
+        } else
+            _initiateLeaving(blsPubKey, amount);
     }
 
     // called by the contract owner to turn the staking pool's first node into a validator

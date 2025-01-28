@@ -29,8 +29,7 @@ contract LiquidDelegationV2 is BaseDelegation, ILiquidDelegation {
         _disableInitializers();
     }
 
-//TODO: use a hardcoded version number instead
-    function reinitialize(uint64 fromVersion) public reinitializer(version() + 1) {
+    function reinitialize(uint64 fromVersion) public reinitializer(VERSION) {
         migrate(fromVersion);
     }
 
@@ -57,19 +56,19 @@ contract LiquidDelegationV2 is BaseDelegation, ILiquidDelegation {
     // called by the validator node's original control address to remove the validator from
     // the staking pool, reducing the pool's total stake by the validator's current deposit
     function leave(bytes calldata blsPubKey) public override {
+        if (!_preparedToLeave(blsPubKey))
+            return;
         // deduct the commission from the yet untaxed rewards before calculating the amount
         taxRewards();
-
-        // retrieve the validator's stake as long as it's deposited and calculate the shares
-/*TODO: remove
-        uint256 shares = 1 ether * getStake(blsPubKey) / getPrice();
-        uint256 amount = _unstake(shares, _msgSender());
-*/
         LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
         uint256 amount = _unstake(NonRebasingLST($.lst).balanceOf(_msgSender()), _msgSender());
-        require(amount == getStake(blsPubKey), "unstaked amount does not match the deposit");
-
-        _leave(blsPubKey);
+        uint256 currentDeposit = getStake(blsPubKey);
+        if (amount > currentDeposit) {
+            _initiateLeaving(blsPubKey, currentDeposit);
+            _enqueueWithdrawal(amount - currentDeposit);
+            _decreaseDeposit(amount - currentDeposit);
+        } else
+            _initiateLeaving(blsPubKey, amount);
     }
 
     // called by the contract owner to turn the staking pool's first node into a validator
@@ -134,6 +133,7 @@ contract LiquidDelegationV2 is BaseDelegation, ILiquidDelegation {
             // deduct the commission from the yet untaxed rewards before calculating the amount
             taxRewards();
         amount = _unstake(shares, _msgSender());
+        _enqueueWithdrawal(amount);
         // maintain a balance that is always sufficient to cover the claims
         _decreaseDeposit(amount);
     }
@@ -147,7 +147,6 @@ contract LiquidDelegationV2 is BaseDelegation, ILiquidDelegation {
         // stake the surplus of taxed rewards not needed for covering the pending withdrawals
         // before we increase the pending withdrawals by enqueueing the current amount
         _stakeRewards();
-        _enqueueWithdrawal(amount);
         NonRebasingLST($.lst).burn(staker, shares);
         emit Unstaked(staker, amount, abi.encode(shares));
     }

@@ -110,10 +110,10 @@ abstract contract BaseDelegationTest is Test {
             delegation.DEPOSIT_CONTRACT(),
             address(new Deposit()).code
         );
-        vm.store(delegation.DEPOSIT_CONTRACT(), bytes32(uint256(0x958a6cf6390bd7165e3519675caa670ab90f0161508a9ee714d3db7edc50740b)), bytes32(uint256(block.number / 10)));
-        vm.store(delegation.DEPOSIT_CONTRACT(), bytes32(uint256(0x958a6cf6390bd7165e3519675caa670ab90f0161508a9ee714d3db7edc50740c)), bytes32(uint256(10_000_000 ether)));
-        vm.store(delegation.DEPOSIT_CONTRACT(), bytes32(uint256(0x958a6cf6390bd7165e3519675caa670ab90f0161508a9ee714d3db7edc50740d)), bytes32(uint256(256)));
-        vm.store(delegation.DEPOSIT_CONTRACT(), bytes32(uint256(0x958a6cf6390bd7165e3519675caa670ab90f0161508a9ee714d3db7edc50740e)), bytes32(uint256(10)));
+        vm.store(delegation.DEPOSIT_CONTRACT(), bytes32(uint256(0x958a6cf6390bd7165e3519675caa670ab90f0161508a9ee714d3db7edc50740a)), bytes32(uint256(block.number / 10)));
+        vm.store(delegation.DEPOSIT_CONTRACT(), bytes32(uint256(0x958a6cf6390bd7165e3519675caa670ab90f0161508a9ee714d3db7edc50740b)), bytes32(uint256(10_000_000 ether)));
+        vm.store(delegation.DEPOSIT_CONTRACT(), bytes32(uint256(0x958a6cf6390bd7165e3519675caa670ab90f0161508a9ee714d3db7edc50740c)), bytes32(uint256(256)));
+        vm.store(delegation.DEPOSIT_CONTRACT(), bytes32(uint256(0x958a6cf6390bd7165e3519675caa670ab90f0161508a9ee714d3db7edc50740d)), bytes32(uint256(10)));
         /*
         console.log("Deposit.minimimStake() =", Deposit(delegation.DEPOSIT_CONTRACT()).minimumStake());
         console.log("Deposit.maximumStakers() =", Deposit(delegation.DEPOSIT_CONTRACT()).maximumStakers());
@@ -213,19 +213,12 @@ abstract contract BaseDelegationTest is Test {
         vm.stopPrank();
     }
 
-    function leave(
-        BaseDelegation delegation,
-        address controlAddress,
+    function validator(
         uint8 validatorId
-    ) internal {
-        vm.startPrank(controlAddress);
-        bytes memory blsPubKey = bytes(hex"92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c");
+    ) internal view returns(bytes memory blsPubKey) {
+        blsPubKey = bytes(hex"92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c");
         blsPubKey[47] = currentDeploymentId;
         blsPubKey[0] = bytes1(validatorId);
-        delegation.leave(
-            blsPubKey
-        );
-        vm.stopPrank();
     }
 
     function claimsAfterManyUnstakings(BaseDelegation delegation, uint64 steps) internal {

@@ -29,7 +29,8 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
             owner
         );
         reinitializerCall = abi.encodeWithSelector(
-            NonLiquidDelegationV2.reinitialize.selector
+            NonLiquidDelegationV2.reinitialize.selector,
+            1
         );
     }
 
@@ -182,7 +183,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
                 10,
                 "rewards differ from calculated value"
             );
-            //TODO: add a test that withdraws a fixed amount < delegation.rewards(step)
+            //TODO: add tests that withdraw an amount < delegation.rewards(step)
             int256 totalRewardsAfter = int256(delegation.getTotalRewards());
             int256 delegationBalanceAfter = int256(address(delegation).balance);
             Console.log("rewards accrued until last staking: %s.%s%s", totalRewardsAfter);
@@ -235,7 +236,6 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         } 
 
         // rewards accrued so far
-//TODO: why minus rewardsAccruedAfterEach?
         vm.deal(address(delegation), address(delegation).balance + rewardsBeforeStaking - rewardsAccruedAfterEach);
 
         // stake and unstake
@@ -286,7 +286,6 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
             // wait 2 epochs for the change to the deposit to take affect
             vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
         }
-
         //further rewards accrued since the last staking
         vm.deal(address(delegation), address(delegation).balance + rewardsAccruedAfterEach);
 
@@ -726,7 +725,9 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         stakers.push(owner);
         join(BaseDelegation(delegation), depositAmount, makeAddr("2"), 2);
         stakers.push(makeAddr("2"));
-        leave(BaseDelegation(delegation), makeAddr("2"), 2);
+        vm.startPrank(makeAddr("2"));
+        delegation.leave(validator(2));
+        vm.stopPrank();
         (, , , , , , uint256[] memory withdrawnRewards2) = run(
             abi.encode([uint256(0x20), 5, 1, 2, 3, 1, 2]), //bytes -> uint256[] memory stakerIndicesBeforeWithdrawals,
             abi.encode([int256(0x20), 5, 50, 50, 25, 35, -35]), //bytes -> int256[] memory relativeAmountsBeforeWithdrawals,
@@ -769,7 +770,9 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         stakers.push(owner);
         join(BaseDelegation(delegation), depositAmount, makeAddr("2"), 2);
         stakers.push(makeAddr("2"));
-        leave(BaseDelegation(delegation), owner, 1);
+        vm.startPrank(owner);
+        delegation.leave(validator(1));
+        vm.stopPrank();
         (, , , , , , uint256[] memory withdrawnRewards2) = run(
             abi.encode([uint256(0x20), 5, 1, 2, 3, 1, 2]), //bytes -> uint256[] memory stakerIndicesBeforeWithdrawals,
             abi.encode([int256(0x20), 5, 50, 50, 25, 35, -35]), //bytes -> int256[] memory relativeAmountsBeforeWithdrawals,
@@ -816,9 +819,15 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         stakers.push(makeAddr("3"));
         join(BaseDelegation(delegation), 5 * depositAmount, makeAddr("4"), 4);
         stakers.push(makeAddr("4"));
-        leave(BaseDelegation(delegation), makeAddr("2"), 2);
-        leave(BaseDelegation(delegation), owner, 1);
-        leave(BaseDelegation(delegation), makeAddr("4"), 4);
+        vm.startPrank(makeAddr("2"));
+        delegation.leave(validator(2));
+        vm.stopPrank();
+        vm.startPrank(owner);
+        delegation.leave(validator(1));
+        vm.stopPrank();
+        vm.startPrank(makeAddr("4"));
+        delegation.leave(validator(4));
+        vm.stopPrank();
         (, , , , , , uint256[] memory withdrawnRewards2) = run(
             abi.encode([uint256(0x20), 5, 1, 2, 3, 1, 2]), //bytes -> uint256[] memory stakerIndicesBeforeWithdrawals,
             abi.encode([int256(0x20), 5, 50, 50, 25, 35, -35]), //bytes -> int256[] memory relativeAmountsBeforeWithdrawals,
@@ -837,7 +846,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
 
     // Additional test cases start here
 
-    function test_LeaveAfterOthersStaked() public {
+    function test_LeaveAfterOthersStakedPendingWithdrawalsDepositReduction() public {
         uint256 depositAmount = 10_000_000 ether;
         deposit(BaseDelegation(delegation), 2 * depositAmount, DepositMode.Bootstrapping);
         address[] memory temp = stakers;
@@ -886,8 +895,482 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
             availableRewards2,
             withdrawnRewards2
         );
-        leave(BaseDelegation(delegation), makeAddr("2"), 2);
-        assertEq(delegation.validators().length, 1, "validator leaving failed");
+        // stake and unstake to make pendingWithdrawals > 0 before leaving is initiated
+        vm.startPrank(owner);
+        vm.deal(owner, owner.balance + 100_000 ether);
+        delegation.stake{value: 100_000 ether}();
+        delegation.unstake(100_000 ether);
+        vm.stopPrank();
+        // initiate leaving but it can't be completed because of pending withdrawals
+        vm.startPrank(makeAddr("2"));
+        assertTrue(delegation.pendingWithdrawals(validator(2)), "there should be pending withdrawals");
+        delegation.leave(validator(2));
+        assertTrue(delegation.pendingWithdrawals(validator(2)), "there should be pending withdrawals");
+        vm.stopPrank();
+        // if staker claims which calls withdrawDeposit() before the unbonding period, pendingWithdrawals will not be 0
+        vm.startPrank(stakers[4-1]);
+        delegation.claim();
+        assertTrue(delegation.pendingWithdrawals(validator(2)), "there should be pending withdrawals");
+        vm.roll(block.number + WithdrawalQueue.unbondingPeriod());
+        vm.stopPrank();
+        // stake and unstake but pendingWithdrawals remains 0 after leaving was initiated
+        vm.startPrank(owner);
+        vm.deal(owner, owner.balance + 100_000 ether);
+        delegation.stake{value: 100_000 ether}();
+        delegation.unstake(100_000 ether);
+        vm.stopPrank();
+        // if staker claims which calls withdrawDeposit() after the unbonding period, pendingWithdrawals will be 0
+        vm.startPrank(stakers[4-1]);
+        delegation.claim();
+        assertFalse(delegation.pendingWithdrawals(validator(2)), "there should not be pending withdrawals");
+        vm.stopPrank();
+        // initiate leaving again, the validator's deposit gets decreased
+        vm.startPrank(makeAddr("2"));
+        delegation.leave(validator(2));
+        // completion of leaving has to wait for the unbonding period
+        delegation.completeLeaving(validator(2));
+        assertEq(delegation.validators().length, 2, "validator leaving should not be completed yet");
+        vm.roll(block.number + WithdrawalQueue.unbondingPeriod());
+        // completion of leaving is finally possible 
+        delegation.completeLeaving(validator(2));
+        assertEq(delegation.validators().length, 1, "validator leaving should be completed");
+        vm.stopPrank();
+        assertApproxEqAbs(withdrawnRewards1[0], withdrawnRewards2[2], 10, "withdrawn rewards mismatch");
+        assertApproxEqAbs(withdrawnRewards1[1], withdrawnRewards2[3], 10, "withdrawn rewards mismatch");
+    }
+
+    function test_LeaveAfterOthersStakedNoPendingWithdrawalsDepositReduction() public {
+        uint256 depositAmount = 10_000_000 ether;
+        deposit(BaseDelegation(delegation), 2 * depositAmount, DepositMode.Bootstrapping);
+        address[] memory temp = stakers;
+        stakers = [temp[0], temp[1]];
+        (, , , , uint256[] memory calculatedRewards1, uint256[] memory availableRewards1, uint256[] memory withdrawnRewards1) = run(
+            abi.encode([uint256(0x20), 4, 1, 2, 1, 2]), //bytes -> uint256[] memory stakerIndicesBeforeWithdrawals,
+            abi.encode([int256(0x20), 4, 50, 50, -25, -25]), //bytes -> int256[] memory relativeAmountsBeforeWithdrawals,
+            abi.encode([uint256(0x20), 2, 2, 1]), //bytes -> uint256[] memory stakerIndicesAfterWithdrawals,
+            abi.encode([int256(0x20), 2, 75, 75]), //bytes -> int256[] memory relativeAmountsAfterWithdrawals,
+            123_456_789, //uint256 withdrawalInSteps,
+            depositAmount,
+            50_000 ether, //uint256 rewardsBeforeStaking,
+            10_000 ether //uint256 rewardsAccruedAfterEach
+        );
+        vm.startPrank(owner);
+        delegation.unstake(depositAmount);
+        vm.stopPrank();
+        stakers = temp;
+        join(BaseDelegation(delegation), depositAmount, makeAddr("2"), 2);
+        stakers.push(makeAddr("2"));
+        uint256[] memory calculatedRewards2 = new uint256[](stakers.length);
+        calculatedRewards2[0] = calculatedRewards1[0];
+        calculatedRewards2[1] = calculatedRewards1[1];
+        uint256[] memory availableRewards2 = new uint256[](stakers.length);
+        availableRewards2[0] = availableRewards1[0];
+        availableRewards2[1] = availableRewards1[1];
+        uint256[] memory withdrawnRewards2 = new uint256[](stakers.length);
+        withdrawnRewards2[0] = withdrawnRewards1[0];
+        withdrawnRewards2[1] = withdrawnRewards1[1];
+        vm.startPrank(stakers[0]);
+        delegation.unstake(100 * depositAmount / 10);
+        vm.stopPrank();
+        vm.startPrank(stakers[1]);
+        delegation.unstake(100 * depositAmount / 10);
+        vm.stopPrank();
+        (, , , , , , withdrawnRewards2) = run(
+            abi.encode([uint256(0x20), 4, 3, 4, 3, 4]), //bytes -> uint256[] memory stakerIndicesBeforeWithdrawals,
+            abi.encode([int256(0x20), 4, 50, 50, -25, -25]), //bytes -> int256[] memory relativeAmountsBeforeWithdrawals,
+            abi.encode([uint256(0x20), 2, 4, 3]), //bytes -> uint256[] memory stakerIndicesAfterWithdrawals,
+            abi.encode([int256(0x20), 2, 75, 75]), //bytes -> int256[] memory relativeAmountsAfterWithdrawals,
+            123_456_789, //uint256 withdrawalInSteps,
+            depositAmount,
+            0 ether, //uint256 rewardsBeforeStaking,
+            10_000 ether, //uint256 rewardsAccruedAfterEach,
+            calculatedRewards2,
+            availableRewards2,
+            withdrawnRewards2
+        );
+        vm.roll(block.number + WithdrawalQueue.unbondingPeriod());
+        // if staker claims which calls withdrawDeposit() after the unbonding period, pendingWithdrawals will be 0
+        vm.startPrank(stakers[4-1]);
+        delegation.claim();
+        assertFalse(delegation.pendingWithdrawals(validator(2)), "there should not be pending withdrawals");
+        vm.stopPrank();
+        // initiate leaving, the validator's deposit gets decreased
+        vm.startPrank(makeAddr("2"));
+        delegation.leave(validator(2));
+        // completion of leaving has to wait for the unbonding period
+        delegation.completeLeaving(validator(2));
+        assertEq(delegation.validators().length, 2, "validator leaving should not be completed yet");
+        vm.roll(block.number + WithdrawalQueue.unbondingPeriod());
+        // completion of leaving is finally possible 
+        delegation.completeLeaving(validator(2));
+        assertEq(delegation.validators().length, 1, "validator leaving should be completed");
+        vm.stopPrank();
+        assertApproxEqAbs(withdrawnRewards1[0], withdrawnRewards2[2], 10, "withdrawn rewards mismatch");
+        assertApproxEqAbs(withdrawnRewards1[1], withdrawnRewards2[3], 10, "withdrawn rewards mismatch");
+    }
+
+    function test_LeaveAfterOthersStakedPendingWithdrawalsRefund() public {
+        uint256 depositAmount = 10_000_000 ether;
+        deposit(BaseDelegation(delegation), 2 * depositAmount, DepositMode.Bootstrapping);
+        address[] memory temp = stakers;
+        stakers = [temp[0], temp[1]];
+        (, , , , uint256[] memory calculatedRewards1, uint256[] memory availableRewards1, uint256[] memory withdrawnRewards1) = run(
+            abi.encode([uint256(0x20), 4, 1, 2, 1, 2]), //bytes -> uint256[] memory stakerIndicesBeforeWithdrawals,
+            abi.encode([int256(0x20), 4, 50, 50, -25, -25]), //bytes -> int256[] memory relativeAmountsBeforeWithdrawals,
+            abi.encode([uint256(0x20), 2, 2, 1]), //bytes -> uint256[] memory stakerIndicesAfterWithdrawals,
+            abi.encode([int256(0x20), 2, 75, 75]), //bytes -> int256[] memory relativeAmountsAfterWithdrawals,
+            123_456_789, //uint256 withdrawalInSteps,
+            depositAmount,
+            50_000 ether, //uint256 rewardsBeforeStaking,
+            10_000 ether //uint256 rewardsAccruedAfterEach
+        );
+        vm.startPrank(owner);
+        delegation.unstake(depositAmount);
+        vm.stopPrank();
+        stakers = temp;
+        join(BaseDelegation(delegation), depositAmount, makeAddr("2"), 2);
+        stakers.push(makeAddr("2"));
+        uint256[] memory calculatedRewards2 = new uint256[](stakers.length);
+        calculatedRewards2[0] = calculatedRewards1[0];
+        calculatedRewards2[1] = calculatedRewards1[1];
+        uint256[] memory availableRewards2 = new uint256[](stakers.length);
+        availableRewards2[0] = availableRewards1[0];
+        availableRewards2[1] = availableRewards1[1];
+        uint256[] memory withdrawnRewards2 = new uint256[](stakers.length);
+        withdrawnRewards2[0] = withdrawnRewards1[0];
+        withdrawnRewards2[1] = withdrawnRewards1[1];
+        vm.startPrank(stakers[0]);
+        delegation.unstake(100 * depositAmount / 10);
+        vm.stopPrank();
+        vm.startPrank(stakers[1]);
+        delegation.unstake(100 * depositAmount / 10);
+        vm.stopPrank();
+        (, , , , , , withdrawnRewards2) = run(
+            abi.encode([uint256(0x20), 4, 3, 4, 3, 4]), //bytes -> uint256[] memory stakerIndicesBeforeWithdrawals,
+            abi.encode([int256(0x20), 4, 50, 50, -25, -25]), //bytes -> int256[] memory relativeAmountsBeforeWithdrawals,
+            abi.encode([uint256(0x20), 2, 4, 3]), //bytes -> uint256[] memory stakerIndicesAfterWithdrawals,
+            abi.encode([int256(0x20), 2, 75, 75]), //bytes -> int256[] memory relativeAmountsAfterWithdrawals,
+            123_456_789, //uint256 withdrawalInSteps,
+            depositAmount,
+            0 ether, //uint256 rewardsBeforeStaking,
+            10_000 ether, //uint256 rewardsAccruedAfterEach,
+            calculatedRewards2,
+            availableRewards2,
+            withdrawnRewards2
+        );
+        // stake and unstake to make pendingWithdrawals > 0 before leaving is initiated
+        vm.startPrank(owner);
+        vm.deal(owner, owner.balance + 100_000 ether);
+        delegation.stake{value: 100_000 ether}();
+        delegation.unstake(100_000 ether);
+        vm.stopPrank();
+        // initiate leaving but it can't be completed because of pending withdrawals
+        vm.startPrank(makeAddr("2"));
+        assertTrue(delegation.pendingWithdrawals(validator(2)), "there should be pending withdrawals");
+        delegation.leave(validator(2));
+        assertTrue(delegation.pendingWithdrawals(validator(2)), "there should be pending withdrawals");
+        vm.stopPrank();
+        // if staker claims which calls withdrawDeposit() before the unbonding period, pendingWithdrawals will not be 0
+        vm.startPrank(stakers[4-1]);
+        delegation.claim();
+        assertTrue(delegation.pendingWithdrawals(validator(2)), "there should be pending withdrawals");
+        vm.roll(block.number + WithdrawalQueue.unbondingPeriod());
+        vm.stopPrank();
+        // stake and unstake but pendingWithdrawals remains 0 after leaving was initiated
+        vm.startPrank(owner);
+        vm.deal(owner, owner.balance + 100_000 ether);
+        delegation.stake{value: 100_000 ether}();
+        delegation.unstake(100_000 ether);
+        vm.stopPrank();
+        // control address stakes more than the validator's deposit
+        vm.startPrank(makeAddr("2"));
+        uint256 amount =
+            100 ether +
+            1_000_000_000 ether * (delegation.getStake(validator(2)) - delegation.getDelegatedStake()) /
+            (1_000_000_000 ether - 1_000_000_000 ether * delegation.getStake(validator(2)) / (delegation.getStake(validator(1)) + delegation.getStake(validator(2))));
+        vm.deal(makeAddr("2"), makeAddr("2").balance + amount);
+        delegation.stake{value: amount}();
+        uint256 refund = delegation.getDelegatedStake() - delegation.getStake(validator(2));
+        vm.stopPrank();
+        // if staker claims which calls withdrawDeposit() after the unbonding period, pendingWithdrawals will be 0
+        vm.startPrank(stakers[4-1]);
+        delegation.claim();
+        assertFalse(delegation.pendingWithdrawals(validator(2)), "there should not be pending withdrawals");
+        vm.stopPrank();
+        // initiate leaving again, it gets completed instantly, the surplus gets unstaked and can be claimed
+        vm.startPrank(makeAddr("2"));
+        delegation.leave(validator(2));
+        assertEq(delegation.validators().length, 1, "validator leaving should be completed");
+        // control address can't claim the refund before the unbonding period
+        uint256 controlAddressBalance = makeAddr("2").balance;
+        delegation.claim();
+        assertEq(makeAddr("2").balance - controlAddressBalance, 0, "control address should not be able to claim refund");
+        vm.roll(block.number + WithdrawalQueue.unbondingPeriod());
+        // control address can claim the refund after the unbonding period 
+        controlAddressBalance = makeAddr("2").balance;
+        delegation.claim();
+        assertEq(makeAddr("2").balance - controlAddressBalance, refund, "control address should be able to claim refund");
+        vm.stopPrank();
+        assertApproxEqAbs(withdrawnRewards1[0], withdrawnRewards2[2], 10, "withdrawn rewards mismatch");
+        assertApproxEqAbs(withdrawnRewards1[1], withdrawnRewards2[3], 10, "withdrawn rewards mismatch");
+    }
+
+    function test_LeaveAfterOthersStakedNoPendingWithdrawalsRefund() public {
+        uint256 depositAmount = 10_000_000 ether;
+        deposit(BaseDelegation(delegation), 2 * depositAmount, DepositMode.Bootstrapping);
+        address[] memory temp = stakers;
+        stakers = [temp[0], temp[1]];
+        (, , , , uint256[] memory calculatedRewards1, uint256[] memory availableRewards1, uint256[] memory withdrawnRewards1) = run(
+            abi.encode([uint256(0x20), 4, 1, 2, 1, 2]), //bytes -> uint256[] memory stakerIndicesBeforeWithdrawals,
+            abi.encode([int256(0x20), 4, 50, 50, -25, -25]), //bytes -> int256[] memory relativeAmountsBeforeWithdrawals,
+            abi.encode([uint256(0x20), 2, 2, 1]), //bytes -> uint256[] memory stakerIndicesAfterWithdrawals,
+            abi.encode([int256(0x20), 2, 75, 75]), //bytes -> int256[] memory relativeAmountsAfterWithdrawals,
+            123_456_789, //uint256 withdrawalInSteps,
+            depositAmount,
+            50_000 ether, //uint256 rewardsBeforeStaking,
+            10_000 ether //uint256 rewardsAccruedAfterEach
+        );
+        vm.startPrank(owner);
+        delegation.unstake(depositAmount);
+        vm.stopPrank();
+        stakers = temp;
+        join(BaseDelegation(delegation), depositAmount, makeAddr("2"), 2);
+        stakers.push(makeAddr("2"));
+        uint256[] memory calculatedRewards2 = new uint256[](stakers.length);
+        calculatedRewards2[0] = calculatedRewards1[0];
+        calculatedRewards2[1] = calculatedRewards1[1];
+        uint256[] memory availableRewards2 = new uint256[](stakers.length);
+        availableRewards2[0] = availableRewards1[0];
+        availableRewards2[1] = availableRewards1[1];
+        uint256[] memory withdrawnRewards2 = new uint256[](stakers.length);
+        withdrawnRewards2[0] = withdrawnRewards1[0];
+        withdrawnRewards2[1] = withdrawnRewards1[1];
+        vm.startPrank(stakers[0]);
+        delegation.unstake(100 * depositAmount / 10);
+        vm.stopPrank();
+        vm.startPrank(stakers[1]);
+        delegation.unstake(100 * depositAmount / 10);
+        vm.stopPrank();
+        (, , , , , , withdrawnRewards2) = run(
+            abi.encode([uint256(0x20), 4, 3, 4, 3, 4]), //bytes -> uint256[] memory stakerIndicesBeforeWithdrawals,
+            abi.encode([int256(0x20), 4, 50, 50, -25, -25]), //bytes -> int256[] memory relativeAmountsBeforeWithdrawals,
+            abi.encode([uint256(0x20), 2, 4, 3]), //bytes -> uint256[] memory stakerIndicesAfterWithdrawals,
+            abi.encode([int256(0x20), 2, 75, 75]), //bytes -> int256[] memory relativeAmountsAfterWithdrawals,
+            123_456_789, //uint256 withdrawalInSteps,
+            depositAmount,
+            0 ether, //uint256 rewardsBeforeStaking,
+            10_000 ether, //uint256 rewardsAccruedAfterEach,
+            calculatedRewards2,
+            availableRewards2,
+            withdrawnRewards2
+        );
+        // control address stakes more than the validator's deposit
+        vm.startPrank(makeAddr("2"));
+        uint256 amount =
+            100 ether +
+            1_000_000_000 ether * (delegation.getStake(validator(2)) - delegation.getDelegatedStake()) /
+            (1_000_000_000 ether - 1_000_000_000 ether * delegation.getStake(validator(2)) / (delegation.getStake(validator(1)) + delegation.getStake(validator(2))));
+        vm.deal(makeAddr("2"), makeAddr("2").balance + amount);
+        delegation.stake{value: amount}();
+        uint256 refund = delegation.getDelegatedStake() - delegation.getStake(validator(2));
+        vm.stopPrank();
+        vm.roll(block.number + WithdrawalQueue.unbondingPeriod());
+        // if staker claims which calls withdrawDeposit() after the unbonding period, pendingWithdrawals will be 0
+        vm.startPrank(stakers[4-1]);
+        delegation.claim();
+        assertFalse(delegation.pendingWithdrawals(validator(2)), "there should not be pending withdrawals");
+        vm.stopPrank();
+        // initiate leaving, it gets completed instantly, the surplus gets unstaked and can be claimed
+        vm.startPrank(makeAddr("2"));
+        delegation.leave(validator(2));
+        assertEq(delegation.validators().length, 1, "validator leaving should be completed");
+        // control address can't claim the refund before the unbonding period
+        uint256 controlAddressBalance = makeAddr("2").balance;
+        delegation.claim();
+        assertEq(makeAddr("2").balance - controlAddressBalance, 0, "control address should not be able to claim refund");
+        vm.roll(block.number + WithdrawalQueue.unbondingPeriod());
+        // control address can claim the refund after the unbonding period 
+        controlAddressBalance = makeAddr("2").balance;
+        delegation.claim();
+        assertEq(makeAddr("2").balance - controlAddressBalance, refund, "control address should be able to claim refund");
+        vm.stopPrank();
+        assertApproxEqAbs(withdrawnRewards1[0], withdrawnRewards2[2], 10, "withdrawn rewards mismatch");
+        assertApproxEqAbs(withdrawnRewards1[1], withdrawnRewards2[3], 10, "withdrawn rewards mismatch");
+    }
+
+    function test_LeaveAfterOthersStakedPendingWithdrawalsNoRefund() public {
+        uint256 depositAmount = 10_000_000 ether;
+        deposit(BaseDelegation(delegation), 2 * depositAmount, DepositMode.Bootstrapping);
+        address[] memory temp = stakers;
+        stakers = [temp[0], temp[1]];
+        (, , , , uint256[] memory calculatedRewards1, uint256[] memory availableRewards1, uint256[] memory withdrawnRewards1) = run(
+            abi.encode([uint256(0x20), 4, 1, 2, 1, 2]), //bytes -> uint256[] memory stakerIndicesBeforeWithdrawals,
+            abi.encode([int256(0x20), 4, 50, 50, -25, -25]), //bytes -> int256[] memory relativeAmountsBeforeWithdrawals,
+            abi.encode([uint256(0x20), 2, 2, 1]), //bytes -> uint256[] memory stakerIndicesAfterWithdrawals,
+            abi.encode([int256(0x20), 2, 75, 75]), //bytes -> int256[] memory relativeAmountsAfterWithdrawals,
+            123_456_789, //uint256 withdrawalInSteps,
+            depositAmount,
+            50_000 ether, //uint256 rewardsBeforeStaking,
+            10_000 ether //uint256 rewardsAccruedAfterEach
+        );
+        vm.startPrank(owner);
+        delegation.unstake(depositAmount);
+        vm.stopPrank();
+        stakers = temp;
+        join(BaseDelegation(delegation), depositAmount, makeAddr("2"), 2);
+        stakers.push(makeAddr("2"));
+        uint256[] memory calculatedRewards2 = new uint256[](stakers.length);
+        calculatedRewards2[0] = calculatedRewards1[0];
+        calculatedRewards2[1] = calculatedRewards1[1];
+        uint256[] memory availableRewards2 = new uint256[](stakers.length);
+        availableRewards2[0] = availableRewards1[0];
+        availableRewards2[1] = availableRewards1[1];
+        uint256[] memory withdrawnRewards2 = new uint256[](stakers.length);
+        withdrawnRewards2[0] = withdrawnRewards1[0];
+        withdrawnRewards2[1] = withdrawnRewards1[1];
+        vm.startPrank(stakers[0]);
+        delegation.unstake(100 * depositAmount / 10);
+        vm.stopPrank();
+        vm.startPrank(stakers[1]);
+        delegation.unstake(100 * depositAmount / 10);
+        vm.stopPrank();
+        (, , , , , , withdrawnRewards2) = run(
+            abi.encode([uint256(0x20), 4, 3, 4, 3, 4]), //bytes -> uint256[] memory stakerIndicesBeforeWithdrawals,
+            abi.encode([int256(0x20), 4, 50, 50, -25, -25]), //bytes -> int256[] memory relativeAmountsBeforeWithdrawals,
+            abi.encode([uint256(0x20), 2, 4, 3]), //bytes -> uint256[] memory stakerIndicesAfterWithdrawals,
+            abi.encode([int256(0x20), 2, 75, 75]), //bytes -> int256[] memory relativeAmountsAfterWithdrawals,
+            123_456_789, //uint256 withdrawalInSteps,
+            depositAmount,
+            0 ether, //uint256 rewardsBeforeStaking,
+            10_000 ether, //uint256 rewardsAccruedAfterEach,
+            calculatedRewards2,
+            availableRewards2,
+            withdrawnRewards2
+        );
+        // stake and unstake to make pendingWithdrawals > 0 before leaving is initiated
+        vm.startPrank(owner);
+        vm.deal(owner, owner.balance + 1_000_000 ether);
+        delegation.stake{value: 1_000_000 ether}();
+        delegation.unstake(100_000 ether);
+        vm.stopPrank();
+        // initiate leaving but it can't be completed because of pending withdrawals
+        vm.startPrank(makeAddr("2"));
+        assertTrue(delegation.pendingWithdrawals(validator(2)), "there should be pending withdrawals");
+        delegation.leave(validator(2));
+        assertTrue(delegation.pendingWithdrawals(validator(2)), "there should be pending withdrawals");
+        vm.stopPrank();
+        // if staker claims which calls withdrawDeposit() before the unbonding period, pendingWithdrawals will not be 0
+        vm.startPrank(stakers[4-1]);
+        delegation.claim();
+        assertTrue(delegation.pendingWithdrawals(validator(2)), "there should be pending withdrawals");
+        vm.roll(block.number + WithdrawalQueue.unbondingPeriod());
+        vm.stopPrank();
+        // stake and unstake but pendingWithdrawals remains 0 after leaving was initiated
+        vm.startPrank(owner);
+        vm.deal(owner, owner.balance + 100000 ether);
+        delegation.stake{value: 100000 ether}();
+        delegation.unstake(100000 ether);
+        vm.stopPrank();
+        // control address stakes as much as the validator's deposit
+        vm.startPrank(makeAddr("2"));
+        uint256 amount =
+            1_000_000_000 ether * (delegation.getStake(validator(2)) - delegation.getDelegatedStake()) /
+            (1_000_000_000 ether - 1_000_000_000 ether * delegation.getStake(validator(2)) / (delegation.getStake(validator(1)) + delegation.getStake(validator(2))));
+        vm.deal(makeAddr("2"), makeAddr("2").balance + amount);
+        delegation.stake{value: amount}();
+        vm.stopPrank();
+        // if staker claims which calls withdrawDeposit() after the unbonding period, pendingWithdrawals will be 0
+        vm.startPrank(stakers[4-1]);
+        delegation.claim();
+        assertFalse(delegation.pendingWithdrawals(validator(2)), "there should not be pending withdrawals");
+        vm.stopPrank();
+        // initiate leaving again, it gets completed instantly, the surplus gets unstaked and can be claimed
+        vm.startPrank(makeAddr("2"));
+        delegation.leave(validator(2));
+        assertEq(delegation.validators().length, 1, "validator leaving should be completed");
+        vm.roll(block.number + WithdrawalQueue.unbondingPeriod());
+        // there is no refund to claim after the unbonding period 
+        uint256 controlAddressBalance = makeAddr("2").balance;
+        delegation.claim();
+        assertEq(makeAddr("2").balance - controlAddressBalance, 0, "there should be no refund");
+        vm.stopPrank();
+        assertApproxEqAbs(withdrawnRewards1[0], withdrawnRewards2[2], 10, "withdrawn rewards mismatch");
+        assertApproxEqAbs(withdrawnRewards1[1], withdrawnRewards2[3], 10, "withdrawn rewards mismatch");
+    }
+
+    function test_LeaveAfterOthersStakedNoPendingWithdrawalsNoRefund() public {
+        uint256 depositAmount = 10_000_000 ether;
+        deposit(BaseDelegation(delegation), 2 * depositAmount, DepositMode.Bootstrapping);
+        address[] memory temp = stakers;
+        stakers = [temp[0], temp[1]];
+        (, , , , uint256[] memory calculatedRewards1, uint256[] memory availableRewards1, uint256[] memory withdrawnRewards1) = run(
+            abi.encode([uint256(0x20), 4, 1, 2, 1, 2]), //bytes -> uint256[] memory stakerIndicesBeforeWithdrawals,
+            abi.encode([int256(0x20), 4, 50, 50, -25, -25]), //bytes -> int256[] memory relativeAmountsBeforeWithdrawals,
+            abi.encode([uint256(0x20), 2, 2, 1]), //bytes -> uint256[] memory stakerIndicesAfterWithdrawals,
+            abi.encode([int256(0x20), 2, 75, 75]), //bytes -> int256[] memory relativeAmountsAfterWithdrawals,
+            123_456_789, //uint256 withdrawalInSteps,
+            depositAmount,
+            50_000 ether, //uint256 rewardsBeforeStaking,
+            10_000 ether //uint256 rewardsAccruedAfterEach
+        );
+        vm.startPrank(owner);
+        delegation.unstake(depositAmount);
+        vm.stopPrank();
+        stakers = temp;
+        join(BaseDelegation(delegation), depositAmount, makeAddr("2"), 2);
+        stakers.push(makeAddr("2"));
+        uint256[] memory calculatedRewards2 = new uint256[](stakers.length);
+        calculatedRewards2[0] = calculatedRewards1[0];
+        calculatedRewards2[1] = calculatedRewards1[1];
+        uint256[] memory availableRewards2 = new uint256[](stakers.length);
+        availableRewards2[0] = availableRewards1[0];
+        availableRewards2[1] = availableRewards1[1];
+        uint256[] memory withdrawnRewards2 = new uint256[](stakers.length);
+        withdrawnRewards2[0] = withdrawnRewards1[0];
+        withdrawnRewards2[1] = withdrawnRewards1[1];
+        vm.startPrank(stakers[0]);
+        delegation.unstake(100 * depositAmount / 10);
+        vm.stopPrank();
+        vm.startPrank(stakers[1]);
+        delegation.unstake(100 * depositAmount / 10);
+        vm.stopPrank();
+        (, , , , , , withdrawnRewards2) = run(
+            abi.encode([uint256(0x20), 4, 3, 4, 3, 4]), //bytes -> uint256[] memory stakerIndicesBeforeWithdrawals,
+            abi.encode([int256(0x20), 4, 50, 50, -25, -25]), //bytes -> int256[] memory relativeAmountsBeforeWithdrawals,
+            abi.encode([uint256(0x20), 2, 4, 3]), //bytes -> uint256[] memory stakerIndicesAfterWithdrawals,
+            abi.encode([int256(0x20), 2, 75, 75]), //bytes -> int256[] memory relativeAmountsAfterWithdrawals,
+            123_456_789, //uint256 withdrawalInSteps,
+            depositAmount,
+            0 ether, //uint256 rewardsBeforeStaking,
+            10_000 ether, //uint256 rewardsAccruedAfterEach,
+            calculatedRewards2,
+            availableRewards2,
+            withdrawnRewards2
+        );
+        // control address stakes as much as the validator's deposit
+        vm.startPrank(makeAddr("2"));
+        uint256 amount =
+            1_000_000_000 ether * (delegation.getStake(validator(2)) - delegation.getDelegatedStake()) /
+            (1_000_000_000 ether - 1_000_000_000 ether * delegation.getStake(validator(2)) / (delegation.getStake(validator(1)) + delegation.getStake(validator(2))));
+        vm.deal(makeAddr("2"), makeAddr("2").balance + amount);
+        delegation.stake{value: amount}();
+        vm.stopPrank();
+        vm.roll(block.number + WithdrawalQueue.unbondingPeriod());
+        // if staker claims which calls withdrawDeposit() after the unbonding period, pendingWithdrawals will be 0
+        vm.startPrank(stakers[4-1]);
+        delegation.claim();
+        assertFalse(delegation.pendingWithdrawals(validator(2)), "there should not be pending withdrawals");
+        vm.stopPrank();
+        // initiate leaving, it gets completed instantly, the surplus gets unstaked and can be claimed
+        vm.startPrank(makeAddr("2"));
+        delegation.leave(validator(2));
+        assertEq(delegation.validators().length, 1, "validator leaving should be completed");
+        vm.roll(block.number + WithdrawalQueue.unbondingPeriod());
+        // there is no refund to claim after the unbonding period 
+        uint256 controlAddressBalance = makeAddr("2").balance;
+        delegation.claim();
+        assertEq(makeAddr("2").balance - controlAddressBalance, 0, "there should be no refund");
+        vm.stopPrank();
         assertApproxEqAbs(withdrawnRewards1[0], withdrawnRewards2[2], 10, "withdrawn rewards mismatch");
         assertApproxEqAbs(withdrawnRewards1[1], withdrawnRewards2[3], 10, "withdrawn rewards mismatch");
     }
@@ -905,9 +1388,17 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         vm.startPrank(makeAddr("2"));
         delegation.unstake(2 * depositAmount);
         vm.stopPrank();
+        assertEq(delegation.getStake(validator(1)), 15 * depositAmount / 10, "validator deposits are decreased equally");
+        assertEq(delegation.getStake(validator(2)), 15 * depositAmount / 10, "validator deposits are decreased equally");
+        assertEq(delegation.getStake(validator(3)), 15 * depositAmount / 10, "validator deposits are decreased equally");
+        assertEq(delegation.getStake(validator(4)), 15 * depositAmount / 10, "validator deposits are decreased equally");
         vm.startPrank(makeAddr("3"));
         delegation.unstake(2 * depositAmount);
         vm.stopPrank();
+        assertEq(delegation.getStake(validator(1)), 10 * depositAmount / 10, "validator deposits are decreased equally");
+        assertEq(delegation.getStake(validator(2)), 10 * depositAmount / 10, "validator deposits are decreased equally");
+        assertEq(delegation.getStake(validator(3)), 10 * depositAmount / 10, "validator deposits are decreased equally");
+        assertEq(delegation.getStake(validator(4)), 10 * depositAmount / 10, "validator deposits are decreased equally");
     }
 
     function testFail_UnstakeTooMuch() public {
@@ -923,9 +1414,17 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         vm.startPrank(makeAddr("2"));
         delegation.unstake(2 * depositAmount);
         vm.stopPrank();
+        assertEq(delegation.getStake(validator(1)), 15 * depositAmount / 10, "validator deposits are decreased equally");
+        assertEq(delegation.getStake(validator(2)), 15 * depositAmount / 10, "validator deposits are decreased equally");
+        assertEq(delegation.getStake(validator(3)), 15 * depositAmount / 10, "validator deposits are decreased equally");
+        assertEq(delegation.getStake(validator(4)), 15 * depositAmount / 10, "validator deposits are decreased equally");
         vm.startPrank(makeAddr("3"));
         delegation.unstake(2 * depositAmount);
         vm.stopPrank();
+        assertEq(delegation.getStake(validator(1)), 10 * depositAmount / 10, "validator deposits are decreased equally");
+        assertEq(delegation.getStake(validator(2)), 10 * depositAmount / 10, "validator deposits are decreased equally");
+        assertEq(delegation.getStake(validator(3)), 10 * depositAmount / 10, "validator deposits are decreased equally");
+        assertEq(delegation.getStake(validator(4)), 10 * depositAmount / 10, "validator deposits are decreased equally");
         vm.startPrank(makeAddr("4"));
         delegation.unstake(2 * depositAmount);
         vm.stopPrank();

@@ -120,7 +120,25 @@ cast send --legacy --rpc-url $RPC_URL --private-key 0x... \
 0x7a0b7e6d24ede78260c9ddbd98e828b0e11a8ea2 "leave(bytes)" \
 0x92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c
 ```
-using the private key that you used to deposit your node, the BLS public key of your node and the address of the staking pool's delegation contract. Note that your validator can't leave the staking pool as long as it has pending unstaked deposit, but it can be excluded from future stakings and unstakings so that it can leave after the ongoing unbonding period. After leaving the pool, your node will remain a validator.
+using the private key that you used to deposit your node, the BLS public key of your node and the address of the staking pool's delegation contract. Note that your validator can't leave the staking pool as long as there are pending stake withdrawals. The following event emitted by the above transaction indicates whether it was successful or not:
+```solidity
+event ValidatorLeaving(bytes indexed blsPubKey, bool success);
+```
+
+If it wasn't, use the following command to check if the validator has pending withdrawals and repeat the above command when the query returns `false`:
+```bash
+cast call --legacy --rpc-url $RPC_URL \
+0x7a0b7e6d24ede78260c9ddbd98e828b0e11a8ea2 "pendingWithdrawals(bytes)(bool)" \
+0x92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c
+```
+
+If the validator's deposit was lower than the value of your LST balance or staked ZIL then you can claim the difference after the unbonding period as explained in the section about unstaking. If the the validator's deposit was higher, then it can't leave the staking pool yet. First, its deposit is automatically reduced to the value of your LST balance or staked ZIL and the difference is redistributed among the validators remaining in the staking pool after the unbonding period. During the unbonding period i.e. before the redistribution, unstaking of larger amounts might fail if the remaining validators' deposits are insufficient to cover the amount to be unstaked. To complete the leaving of your validator, run the following command as soon as the unbonding period is over:
+```bash
+cast send --legacy --rpc-url $RPC_URL --private-key 0x... \
+0x7a0b7e6d24ede78260c9ddbd98e828b0e11a8ea2 "completeLeaving(bytes)" \
+0x92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c
+```
+After leaving the staking pool, your node will remain a validator.
 
 If you don't have an activated validator node yet, but have already deployed a delegation contract and your balance as the contract owner cover the required minimum stake, you can make a fully synced node the first validator of your staking pool by submitting a transaction with e.g. 10 million ZIL through
 ```bash
