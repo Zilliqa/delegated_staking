@@ -32,6 +32,7 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         mapping(address => WithdrawalQueue.Fifo) withdrawals;
         uint256 totalWithdrawals;
         Validator[] validators;
+        address commissionReceiver;
     }
 
     // keccak256(abi.encode(uint256(keccak256("zilliqa.storage.BaseDelegation")) - 1)) & ~bytes32(uint256(0xff))
@@ -56,7 +57,7 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     // contract file names remain the same across all versions
     // so that the upgrade script does not need to be modified
     // to import the new version each time there is one
-    uint64 internal immutable VERSION = encodeVersion(0, 2, 0);
+    uint64 internal immutable VERSION = encodeVersion(0, 3, 0);
 
     function version() public view returns(uint64) {
         return _getInitializedVersion();
@@ -86,10 +87,12 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         __Ownable_init_unchained(initialOwner);
         __UUPSUpgradeable_init_unchained();
         __ERC165_init_unchained();
-        __BaseDelegation_init_unchained();
+        __BaseDelegation_init_unchained(initialOwner);
     }
 
-    function __BaseDelegation_init_unchained() internal onlyInitializing {
+    function __BaseDelegation_init_unchained(address initialOwner) internal onlyInitializing {
+        BaseDelegationStorage storage $ = _getBaseDelegationStorage();
+        $.commissionReceiver = initialOwner;
     }
 
     struct DeprecatedStorage {
@@ -98,6 +101,7 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     }
 
     function migrate(uint64 fromVersion) internal {
+
         // the contract has been deployed but not upgraded yet
         if (fromVersion == 1)
             return;
@@ -107,6 +111,10 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
             return;
 
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
+
+        // the contract has been upgraded to an older version which did
+        // not set the commission receiver or allow the owner to change it
+        $.commissionReceiver = owner();
 
         // the contract has been upgraded but the length of the peerId
         // stored in the same slot as the activated bool is zero
@@ -416,6 +424,16 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
         numerator = $.commissionNumerator;
         denominator = DENOMINATOR;
+    }
+
+    function getCommissionReceiver() public virtual view returns(address) {
+        BaseDelegationStorage storage $ = _getBaseDelegationStorage();
+        return $.commissionReceiver;
+    }
+
+    function setCommissionReceiver(address _commissionReceiver) public virtual onlyOwner {
+        BaseDelegationStorage storage $ = _getBaseDelegationStorage();
+        $.commissionReceiver = _commissionReceiver;
     }
 
     function getMinDelegation() public virtual view returns(uint256) {

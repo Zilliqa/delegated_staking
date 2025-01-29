@@ -23,10 +23,27 @@ contract Upgrade is Script {
             proxy
         );
 
+        uint24 major;
+        uint24 minor;
+        uint24 patch;
         uint64 oldVersion = oldDelegation.version();
-        console.log("Upgrading from version: %s",
-            oldVersion
-        );
+
+        // the contract has been already upgraded to a version that supports semver 
+        if (oldVersion >= 2**20) {
+            (major, minor, patch) = oldDelegation.decodedVersion();
+            console.log("Upgrading from version: %s.%s.%s",
+                uint256(major),
+                uint256(minor),
+                uint256(patch)
+            );
+        } else if (oldVersion == 1)
+            console.log("Upgrading from initial version",
+                oldVersion
+            );
+        else
+            console.log("Upgrading from version: %s",
+                oldVersion
+            );
 
         console.log("Owner is %s",
             oldDelegation.owner()
@@ -61,8 +78,11 @@ contract Upgrade is Script {
             proxy
         );
 
-        console.log("Upgraded to version: %s",
-            newDelegation.version()
+        (major, minor, patch) = newDelegation.decodedVersion();
+        console.log("Upgraded to version: %s.%s.%s",
+            uint256(major),
+            uint256(minor),
+            uint256(patch)
         );
 
         vm.stopBroadcast();

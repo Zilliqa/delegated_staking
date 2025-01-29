@@ -174,7 +174,7 @@ contract LiquidDelegationV2 is BaseDelegation, ILiquidDelegation {
             value: commission
         }("");
         require(success, "transfer of commission failed");
-        emit CommissionPaid(owner(), commission);
+        emit CommissionPaid(getCommissionReceiver(), commission);
     }
 
     function claim() public override whenNotPaused {

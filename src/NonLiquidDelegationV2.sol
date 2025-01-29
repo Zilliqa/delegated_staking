@@ -229,7 +229,7 @@ contract NonLiquidDelegationV2 is BaseDelegation, INonLiquidDelegation {
             value: commission
         }("");
         require(success, "transfer of commission failed");
-        emit CommissionPaid(owner(), commission);
+        emit CommissionPaid(getCommissionReceiver(), commission);
         return untaxedRewards - commission;
     }
 
