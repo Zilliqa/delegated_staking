@@ -43,7 +43,6 @@ You will see an output like this:
   Signer is 0x15fc323DFE5D5DCfbeEdc25CEcbf57f676634d77
   Proxy deployed: 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 
   Implementation deployed: 0x7C623e01c5ce2e313C223ef2aEc1Ae5C6d12D9DD
-  Deployed version: 1
   Owner is 0x15fc323DFE5D5DCfbeEdc25CEcbf57f676634d77
 ```
 
@@ -61,10 +60,10 @@ forge script script/Upgrade.s.sol --rpc-url $RPC_URL --broadcast --legacy --sig 
 The output will look like this:
 ```
   Signer is 0x15fc323DFE5D5DCfbeEdc25CEcbf57f676634d77
-  Upgrading from version: 1
+  Upgrading from initial version
   Owner is 0x15fc323DFE5D5DCfbeEdc25CEcbf57f676634d77
   New implementation deployed: 0x64Fa96a67910956141cc481a43f242C045c10165
-  Upgraded to version: 2
+  Upgraded to version: 0.3.0
 ```
 
 To adapt the contract to your needs, create your own copy of `LiquidDelegationV2` or `NonLiquidDelegationV2` and run the above upgrade script again.
@@ -74,12 +73,12 @@ To adapt the contract to your needs, create your own copy of `LiquidDelegationV2
 
 Now or at a later time you can set the commission on the rewards the validator earns to e.g. 10% as follows:
 ```bash
-forge script script/ManageCommission.s.sol --rpc-url $RPC_URL --broadcast --legacy --sig "run(address payable, string, bool)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 1000 false
+forge script script/Configure.s.sol --rpc-url $RPC_URL --broadcast --legacy --sig "commissionRate(address payable, string, bool)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 1000 false
 ```
 
 The output will contain the following information:
 ```
-  Running version: 2
+  Running version: 0.3.0
   Commission rate: 0.0%
   New commission rate: 10.0%
 ```
@@ -89,12 +88,25 @@ Note that the commission rate is specified as an integer to be divided by the `D
 cast call 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 "DENOMINATOR()(uint256)" --rpc-url $RPC_URL  | sed 's/\[[^]]*\]//g'
 ```
 
-Once the validator is activated and starts earning rewards, commissions are transferred automatically to the owner account. Commissions of a non-liquid staking validator are deducted when delegators withdraw or stake rewards. In case of the liquid staking variant, commissions are deducted each time delegators stake, unstake or claim what they unstaked, or when the contract owner requests the outstanding commissions that haven't been transferred yet. To collect them, run
+Once the validator is activated and starts earning rewards, the commission is deducted and transferred automatically. The commission of a non-liquid staking pool is deducted when delegators withdraw or stake rewards. In case of a liquid staking pool, the commission is deducted each time delegators stake, unstake or claim what they unstaked, or when the contract owner requests the outstanding commission that hasn't been transferred yet. To collect the outstanding commission, run
 ```bash
-forge script script/ManageCommission.s.sol --rpc-url $RPC_URL --broadcast --legacy --sig "run(address payable, string, bool)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 same true
+forge script script/Configure.s.sol --rpc-url $RPC_URL --broadcast --legacy --sig "commissionRate(address payable, string, bool)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 same true
 ```
 using `same` for the second argument to leave the commission percentage unchanged and `true` for the third argument. Replacing the second argument with `same` and the third argument with `false` only displays the current commission rate.
 
+By default, the commission is transferred to the original contract owner. The current contract owner can change the address to which the commission is transferred by running
+```bash
+forge script script/Configure.s.sol --rpc-url $RPC_URL --broadcast --legacy --sig "commissionReceiver(address payable, address, bool)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 0xeA78aAE5Be606D2D152F00760662ac321aB8F017 false
+```
+
+The output will contain the following information:
+```
+  Running version: 0.3.0
+  Commission receiver: 0x15fc323DFE5D5DCfbeEdc25CEcbf57f676634d77
+  New commission receiver: 0xeA78aAE5Be606D2D152F00760662ac321aB8F017
+```
+
+If the last argument is `true` the outstanding commission is deducted and transferred to the new receiver address. Using the above command the commission can be redirected to a cold wallet, a multisig wallet or a smart contract which splits the commission proportionally to the deposit of the validators who join the staking pool.
 
 ## Validator Activation or Migration
 
@@ -175,7 +187,7 @@ with the private key of delegator account. It's important to make sure the accou
 
 The output will look like this for liquid staking:
 ```
-  Running version: 2
+  Running version: 0.3.0
   Current stake: 10000000000000000000000000 wei
   Current rewards: 110314207650273223687 wei
   LST address: 0x9e5c257D1c6dF74EaA54e58CdccaCb924669dc83
@@ -184,7 +196,7 @@ The output will look like this for liquid staking:
 ```
 and like this for the non-liquid variant:
 ```
-  Running version: 2
+  Running version: 0.3.0
   Current stake: 10000000000000000000000000 wei
   Current rewards: 110314207650273223687 wei
   Staker balance before: 99899145245801454561224 wei
@@ -211,7 +223,7 @@ using the private key of an account that holds some LST in case of the liquid va
 
 The output will look like this for liquid staking:
 ```
-  Running version: 2
+  Running version: 0.3.0
   Current stake: 10000000000000000000000000 wei
   Current rewards: 331912568306010928520 wei
   LST address: 0x9e5c257D1c6dF74EaA54e58CdccaCb924669dc83
@@ -220,7 +232,7 @@ The output will look like this for liquid staking:
 ```
 and like this for the non-liquid variant:
 ```
-  Running version: 2
+  Running version: 0.3.0
   Current stake: 10000000000000000000000000 wei
   Current rewards: 331912568306010928520 wei
   Staker balance before: 99698814298179759361224 wei
@@ -235,7 +247,7 @@ with the private key of the account that unstaked in the previous step.
 
 The output will look like this:
 ```
-  Running version: 2
+  Running version: 0.3.0
   Staker balance before: 99698086421983460161224 wei
   Staker balance after: 99798095485861371162343 wei
 ```

@@ -14,8 +14,11 @@ contract Claim is Script {
                 proxy
             );
 
-        console.log("Running version: %s",
-            delegation.version()
+        (uint24 major, uint24 minor, uint24 patch) = delegation.decodedVersion();
+        console.log("Running version: %s.%s.%s",
+            uint256(major),
+            uint256(minor),
+            uint256(patch)
         );
 
         console.log("Staker balance before: %s wei",

@@ -30,7 +30,6 @@ abstract contract BaseDelegationTest is Test {
     constructor() {
         for (uint256 i = 0; i < stakers.length; i++)
             assertNotEq(owner, stakers[i], "owner and staker must be different");
-        //console.log("Signer is %s", owner);
     }
 
     function storeDelegation() internal virtual;
@@ -48,32 +47,10 @@ abstract contract BaseDelegationTest is Test {
         proxy = payable(
             new ERC1967Proxy(oldImplementation, initializerCall)
         );
-        /*
-        console.log(
-            "Proxy deployed: %s \r\n  Implementation deployed: %s",
-            proxy,
-            oldImplementation
-        );
-        //*/
 
         BaseDelegation oldDelegation = BaseDelegation(
             proxy
         );
-        /*
-        console.log("Deployed version: %s",
-            oldDelegation.version()
-        );
-
-        console.log("Owner is %s",
-            oldDelegation.owner()
-        );
-        //*/
-
-        /*
-        console.log("New implementation deployed: %s",
-            newImplementation
-        );
-        //*/
 
         oldDelegation.upgradeToAndCall(
             newImplementation,
@@ -85,25 +62,8 @@ abstract contract BaseDelegationTest is Test {
             proxy
         );
 
-        /*
-        console.log("Upgraded to version: %s",
-            delegation.version()
-        );
-        //*/
-        /*
-        Console.log("Old commission rate: %s.%s%s%%",
-            delegation.getCommissionNumerator(),
-            2
-        );
-        //*/
         uint256 commissionNumerator = 1_000;
         delegation.setCommissionNumerator(commissionNumerator);
-        /*
-        Console.log("New commission rate: %s.%s%s%%",
-            delegation.getCommissionNumerator(),
-            2
-        );
-        //*/
 
         //vm.deployCodeTo("Deposit.sol", delegation.DEPOSIT_CONTRACT());
         vm.etch(

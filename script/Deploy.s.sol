@@ -54,10 +54,6 @@ contract Deploy is Script {
                 proxy
             );
 
-        console.log("Deployed version: %s",
-            delegation.version()
-        );
-
         console.log("Owner is %s",
             delegation.owner()
         );
