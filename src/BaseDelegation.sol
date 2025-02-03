@@ -144,6 +144,10 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         require(success, "future stake could not be retrieved");
         uint256 futureStake = abi.decode(data, (uint256));
 
+        // validators migrated from version < 0.2.0 use the contract owner
+        // as their original reward address and control address, i.e. after
+        // leaving the staking pool the contract owner must set the actual
+        // control address, which can then set the actual reward address 
         $.validators.push(Validator(
             temp.blsPubKey,
             futureStake,
