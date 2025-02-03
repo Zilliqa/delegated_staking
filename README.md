@@ -46,7 +46,7 @@ You will see an output like this:
   Owner is 0x15fc323DFE5D5DCfbeEdc25CEcbf57f676634d77
 ```
 
-You and your delegators will need the proxy address from the above output in all commands below. If you know the address of a proxy contract but don't know which variant of staking it supports, run
+You will need the proxy address from the above output in all commands below. If you know the address of a proxy contract but don't know which variant of staking it supports, run
 ```bash
 forge script script/CheckVariant.s.sol --rpc-url $RPC_URL --sig "run(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2
 ```
@@ -66,6 +66,11 @@ The output will look like this:
   Upgraded to version: 0.3.0
 ```
 
+If you want to check the current version your contract was upgraded to, run
+```bash
+forge script script/CheckVersion.s.sol --rpc-url $RPC_URL --sig "run(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2
+```
+
 To adapt the contract to your needs, create your own copy of `LiquidDelegationV2` or `NonLiquidDelegationV2` and run the above upgrade script again.
 
 
@@ -73,7 +78,7 @@ To adapt the contract to your needs, create your own copy of `LiquidDelegationV2
 
 Now or at a later time you can set the commission on the rewards the validator earns to e.g. 10% as follows:
 ```bash
-forge script script/Configure.s.sol --rpc-url $RPC_URL --broadcast --legacy --sig "commissionRate(address payable, string, bool)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 1000 false
+forge script script/Configure.s.sol --rpc-url $RPC_URL --broadcast --legacy --sig "commissionRate(address payable, uint16)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 1000
 ```
 
 The output will contain the following information:
@@ -83,6 +88,11 @@ The output will contain the following information:
   New commission rate: 10.0%
 ```
 
+If you only want to view the current commission rate and leave it unchanged, run
+```bash
+forge script script/Configure.s.sol --rpc-url $RPC_URL --broadcast --legacy --sig "commissionRate(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2
+```
+
 Note that the commission rate is specified as an integer to be divided by the `DENOMINATOR` which can be retrieved from the delegation contract:
 ```bash
 cast call 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 "DENOMINATOR()(uint256)" --rpc-url $RPC_URL  | sed 's/\[[^]]*\]//g'
@@ -90,13 +100,12 @@ cast call 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 "DENOMINATOR()(uint256)" --
 
 Once the validator is activated and starts earning rewards, the commission is deducted and transferred automatically. The commission of a non-liquid staking pool is deducted when delegators withdraw or stake rewards. In case of a liquid staking pool, the commission is deducted each time delegators stake, unstake or claim what they unstaked, or when the contract owner requests the outstanding commission that hasn't been transferred yet. To collect the outstanding commission, run
 ```bash
-forge script script/Configure.s.sol --rpc-url $RPC_URL --broadcast --legacy --sig "commissionRate(address payable, string, bool)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 same true
+forge script script/CollectCommission.s.sol --rpc-url $RPC_URL --broadcast --legacy --sig "run(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2
 ```
-using `same` for the second argument to leave the commission percentage unchanged and `true` for the third argument. Replacing the second argument with `same` and the third argument with `false` only displays the current commission rate.
 
 By default, the commission is transferred to the original contract owner. The current contract owner can change the address to which the commission is transferred by running
 ```bash
-forge script script/Configure.s.sol --rpc-url $RPC_URL --broadcast --legacy --sig "commissionReceiver(address payable, address, bool)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 0xeA78aAE5Be606D2D152F00760662ac321aB8F017 false
+forge script script/Configure.s.sol --rpc-url $RPC_URL --broadcast --legacy --sig "commissionReceiver(address payable, address)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 0xeA78aAE5Be606D2D152F00760662ac321aB8F017
 ```
 
 The output will contain the following information:
@@ -106,9 +115,15 @@ The output will contain the following information:
   New commission receiver: 0xeA78aAE5Be606D2D152F00760662ac321aB8F017
 ```
 
-If the last argument is `true` the outstanding commission is deducted and transferred to the new receiver address. Using the above command the commission can be redirected to a cold wallet, a multisig wallet or a smart contract which splits the commission proportionally to the deposit of the validators who join the staking pool.
+Using the above command the commission can be redirected to a cold wallet, a multisig wallet or a smart contract which splits the commission proportionally to the deposit of the validators who join the staking pool.
 
-## Validator Activation or Migration
+If you only want to view the current commission receiver and leave it unchanged, run
+```bash
+forge script script/Configure.s.sol --rpc-url $RPC_URL --broadcast --legacy --sig "commissionReceiver(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2
+```
+
+
+## Validator Addition and Removal
 
 If your node has already been activated as a validator i.e. solo staker, it can join a staking pool. Run
 ```bash
@@ -285,7 +300,7 @@ You can also specify the exact amount you want to withdraw. To withdraw e.g. 1 Z
 ```bash
 forge script script/WithdrawRewards.s.sol --rpc-url $RPC_URL --broadcast --legacy --sig "run(address payable, string, string)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 1000000000000000000 100 --private-key 0x...
 ```
-with the private key of a delegator account. To withdraw as much as possible with the given value of `n` set the amount to `all`. To withdraw the chosen amount without setting `n` replace `n` with `all`. To withdraw all rewards replace both the amount and `n` with `all`.
+with the private key of a delegator account. To withdraw as much as possible using a specified `n` set the amount to `all`. To withdraw the specified amount without specifying `n` replace `n` with `all`. To withdraw all rewards replace both the amount and `n` with `all`.
 
 Last but not least, in order to stake rewards instead of withdrawing them, run
 ```bash

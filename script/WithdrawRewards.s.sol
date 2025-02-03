@@ -30,7 +30,6 @@ contract WithdrawRewards is Script {
 
         vm.broadcast();
 
-        //TODO: figure out why Strings.parseUint() is not found
         if (amount.equal("all"))
             if (additionalSteps.equal("all"))
                 delegation.withdrawAllRewards();
