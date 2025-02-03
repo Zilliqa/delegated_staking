@@ -57,7 +57,7 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     // contract file names remain the same across all versions
     // so that the upgrade script does not need to be modified
     // to import the new version each time there is one
-    uint64 internal immutable VERSION = encodeVersion(0, 3, 0);
+    uint64 internal immutable VERSION = encodeVersion(0, 3, 2);
 
     function version() public view returns(uint64) {
         return _getInitializedVersion();
@@ -106,18 +106,25 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         if (fromVersion == 1)
             return;
 
-        // the previous version is higher or same as the current version
+        // the contract has been upgraded to a version which
+        // is higher or same as the current version
         if (fromVersion >= VERSION)
             return;
 
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
 
-        // the contract has been upgraded to an older version which did
-        // not set the commission receiver or allow the owner to change it
-        $.commissionReceiver = owner();
+        if (fromVersion < encodeVersion(0, 3, 0))
+            // the contract has been upgraded to a version which did not
+            // set the commission receiver or allow the owner to change it
+            $.commissionReceiver = owner();
 
-        // the contract has been upgraded but the length of the peerId
-        // stored in the same slot as the activated bool is zero
+        if (fromVersion >= encodeVersion(0, 2, 0))
+            // the contract has been upgraded to a version which has
+            // already migrated the blsPubKey to the validators array
+            return;
+
+        // the contract has been upgraded from the initial version but the length
+        // of the peerId stored in the same slot as the activated bool is zero
         if (!$.activated)
             return;
 
