@@ -225,7 +225,7 @@ contract NonLiquidDelegationV2 is BaseDelegation, INonLiquidDelegation {
             return untaxedRewards;
         $.totalRewards -= int256(commission);
         // commissions are not subject to the unbonding period
-        (bool success, ) = owner().call{
+        (bool success, ) = getCommissionReceiver().call{
             value: commission
         }("");
         require(success, "transfer of commission failed");

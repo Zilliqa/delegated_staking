@@ -170,7 +170,7 @@ contract LiquidDelegationV2 is BaseDelegation, ILiquidDelegation {
         if (commission == 0)
             return;
         // commissions are not subject to the unbonding period
-        (bool success, ) = owner().call{
+        (bool success, ) = getCommissionReceiver().call{
             value: commission
         }("");
         require(success, "transfer of commission failed");
