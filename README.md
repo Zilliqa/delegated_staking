@@ -13,9 +13,14 @@ forge install OpenZeppelin/openzeppelin-contracts-upgradeable --no-commit
 forge install OpenZeppelin/openzeppelin-contracts --no-commit
 ```
 
-Set the `RPC_URL` environment variable to point to your RPC node:
+Set the `FOUNDRY_ETH_RPC_URL` environment variable to point to your RPC node:
 ```bash
-export RPC_URL=http://localhost:4202
+export FOUNDRY_ETH_RPC_URL=http://localhost:4202
+```
+
+Alternatively, you can specify the RPC in each command below by adding the following option
+```bash
+--rpc-url http://localhost:4202
 ```
 
 ## Contract Deployment
@@ -29,13 +34,13 @@ Before running the deployment script, set the `PRIVATE_KEY` environment variable
 
 To deploy `LiquidDelegation` run
 ```bash
-forge script script/Deploy.s.sol --rpc-url $RPC_URL --broadcast --legacy --sig "run(string,string,string)" LiquidDelegation Name Symbol
+forge script script/Deploy.s.sol --broadcast --legacy --sig "liquidDelegation(string,string)" Name Symbol
 ```
 using the `Name` and the `Symbol` of your LST.
 
 To deploy ``NonLiquidDelegation` run
 ```bash
-forge script script/Deploy.s.sol --rpc-url $RPC_URL --broadcast --legacy --sig "run(string,string,string)" NonLiquidDelegation "" ""
+forge script script/Deploy.s.sol --broadcast --legacy --sig "nonLiquidDelegation()"
 ```
 
 You will see an output like this:
@@ -44,31 +49,33 @@ You will see an output like this:
   Proxy deployed: 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 
   Implementation deployed: 0x7C623e01c5ce2e313C223ef2aEc1Ae5C6d12D9DD
   Owner is 0x15fc323DFE5D5DCfbeEdc25CEcbf57f676634d77
+  New implementation deployed: 0xFf6d41b0567d7368e60B064F4dCbd6681cBC31A7
+  Upgraded to version: 0.3.0
 ```
 
 You will need the proxy address from the above output in all commands below. If you know the address of a proxy contract but don't know which variant of staking it supports, run
 ```bash
-forge script script/CheckVariant.s.sol --rpc-url $RPC_URL --sig "run(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2
+forge script script/CheckVariant.s.sol --sig "run(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2
 ```
 The output will be `ILiquidStaking`, `INonLiquidStaking` or none of them if the address is not a valid delegation contract.
 
-To use the delegation contract, upgrade it to the latest version of `LiquidDelegationV2` or `NonLiquidDelegationV2` depending on the staking model it implements, by running
+You can upgrade the contract to the latest version by running
 ```bash
-forge script script/Upgrade.s.sol --rpc-url $RPC_URL --broadcast --legacy --sig "run(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2
+forge script script/Upgrade.s.sol --broadcast --legacy --sig "run(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2
 ```
 
 The output will look like this:
 ```
   Signer is 0x15fc323DFE5D5DCfbeEdc25CEcbf57f676634d77
-  Upgrading from initial version
+  Upgrading from version: 0.3.0
   Owner is 0x15fc323DFE5D5DCfbeEdc25CEcbf57f676634d77
   New implementation deployed: 0x64Fa96a67910956141cc481a43f242C045c10165
-  Upgraded to version: 0.3.0
+  Upgraded to version: 0.3.2
 ```
 
 If you want to check the current version your contract was upgraded to, run
 ```bash
-forge script script/CheckVersion.s.sol --rpc-url $RPC_URL --sig "run(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2
+forge script script/CheckVersion.s.sol --sig "run(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2
 ```
 
 To adapt the contract to your needs, create your own copy of `LiquidDelegationV2` or `NonLiquidDelegationV2` and run the above upgrade script again.
@@ -78,39 +85,39 @@ To adapt the contract to your needs, create your own copy of `LiquidDelegationV2
 
 Now or at a later time you can set the commission on the rewards the validator earns to e.g. 10% as follows:
 ```bash
-forge script script/Configure.s.sol --rpc-url $RPC_URL --broadcast --legacy --sig "commissionRate(address payable, uint16)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 1000
+forge script script/Configure.s.sol --broadcast --legacy --sig "commissionRate(address payable, uint16)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 1000
 ```
 
 The output will contain the following information:
 ```
-  Running version: 0.3.0
+  Running version: 0.3.2
   Commission rate: 0.0%
   New commission rate: 10.0%
 ```
 
 If you only want to view the current commission rate and leave it unchanged, run
 ```bash
-forge script script/Configure.s.sol --rpc-url $RPC_URL --broadcast --legacy --sig "commissionRate(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2
+forge script script/Configure.s.sol --broadcast --legacy --sig "commissionRate(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2
 ```
 
 Note that the commission rate is specified as an integer to be divided by the `DENOMINATOR` which can be retrieved from the delegation contract:
 ```bash
-cast call 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 "DENOMINATOR()(uint256)" --rpc-url $RPC_URL  | sed 's/\[[^]]*\]//g'
+cast call 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 "DENOMINATOR()(uint256)"  | sed 's/\[[^]]*\]//g'
 ```
 
 Once the validator is activated and starts earning rewards, the commission is deducted and transferred automatically. The commission of a non-liquid staking pool is deducted when delegators withdraw or stake rewards. In case of a liquid staking pool, the commission is deducted each time delegators stake, unstake or claim what they unstaked, or when the contract owner requests the outstanding commission that hasn't been transferred yet. To collect the outstanding commission, run
 ```bash
-forge script script/CollectCommission.s.sol --rpc-url $RPC_URL --broadcast --legacy --sig "run(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2
+forge script script/CollectCommission.s.sol --broadcast --legacy --sig "run(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2
 ```
 
 By default, the commission is transferred to the original contract owner. The current contract owner can change the address to which the commission is transferred by running
 ```bash
-forge script script/Configure.s.sol --rpc-url $RPC_URL --broadcast --legacy --sig "commissionReceiver(address payable, address)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 0xeA78aAE5Be606D2D152F00760662ac321aB8F017
+forge script script/Configure.s.sol --broadcast --legacy --sig "commissionReceiver(address payable, address)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 0xeA78aAE5Be606D2D152F00760662ac321aB8F017
 ```
 
 The output will contain the following information:
 ```
-  Running version: 0.3.0
+  Running version: 0.3.2
   Commission receiver: 0x15fc323DFE5D5DCfbeEdc25CEcbf57f676634d77
   New commission receiver: 0xeA78aAE5Be606D2D152F00760662ac321aB8F017
 ```
@@ -119,7 +126,7 @@ Using the above command the commission can be redirected to a cold wallet, a mul
 
 If you only want to view the current commission receiver and leave it unchanged, run
 ```bash
-forge script script/Configure.s.sol --rpc-url $RPC_URL --broadcast --legacy --sig "commissionReceiver(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2
+forge script script/Configure.s.sol --broadcast --legacy --sig "commissionReceiver(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2
 ```
 
 
@@ -127,14 +134,14 @@ forge script script/Configure.s.sol --rpc-url $RPC_URL --broadcast --legacy --si
 
 If your node has already been activated as a validator i.e. solo staker, it can join a staking pool. Run
 ```bash
-cast send --legacy --rpc-url $RPC_URL --private-key 0x... \
+cast send --legacy --private-key 0x... \
 0x00000000005a494c4445504f53495450524f5859 "setControlAddress(bytes,address)" \
 0x92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c \
 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2
 ```
 using the private key that you used to deposit your node, the BLS public key of your node and the address of the staking pool's delegation contract. Afterwards the staking pool contract owner must run
 ```bash
-cast send --legacy --rpc-url $RPC_URL --private-key $PRIVATE_KEY \
+cast send --legacy --private-key $PRIVATE_KEY \
 0x7a0b7e6d24ede78260c9ddbd98e828b0e11a8ea2 "join(bytes,address)" \
 0x92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c \
 0xe0c6f3d59b8cda6ce4fd66418212404a63ad8517
@@ -143,7 +150,7 @@ using the BLS public key and the original control address that you used when you
 
 To leave a staking pool, run 
 ```bash
-cast send --legacy --rpc-url $RPC_URL --private-key 0x... \
+cast send --legacy --private-key 0x... \
 0x7a0b7e6d24ede78260c9ddbd98e828b0e11a8ea2 "leave(bytes)" \
 0x92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c
 ```
@@ -154,14 +161,14 @@ event ValidatorLeaving(bytes indexed blsPubKey, bool success);
 
 If it wasn't, use the following command to check if the validator has pending withdrawals and repeat the above command when the query returns `false`:
 ```bash
-cast call --legacy --rpc-url $RPC_URL \
+cast call --legacy \
 0x7a0b7e6d24ede78260c9ddbd98e828b0e11a8ea2 "pendingWithdrawals(bytes)(bool)" \
 0x92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c
 ```
 
 If the validator's deposit was lower than the value of your LST balance or staked ZIL then you can claim the difference after the unbonding period as explained in the section about unstaking. If the the validator's deposit was higher, then it can't leave the staking pool yet. First, its deposit is automatically reduced to the value of your LST balance or staked ZIL and the difference is redistributed among the validators remaining in the staking pool after the unbonding period. During the unbonding period i.e. before the redistribution, unstaking of larger amounts might fail if the remaining validators' deposits are insufficient to cover the amount to be unstaked. To complete the leaving of your validator, run the following command as soon as the unbonding period is over:
 ```bash
-cast send --legacy --rpc-url $RPC_URL --private-key 0x... \
+cast send --legacy --private-key 0x... \
 0x7a0b7e6d24ede78260c9ddbd98e828b0e11a8ea2 "completeLeaving(bytes)" \
 0x92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c
 ```
@@ -169,7 +176,7 @@ After leaving the staking pool, your node will remain a validator.
 
 If you don't have an activated validator node yet, but have already deployed a delegation contract and your balance as the contract owner cover the required minimum stake, you can make a fully synced node the first validator of your staking pool by submitting a transaction with e.g. 10 million ZIL through
 ```bash
-cast send --legacy --value 10000000ether --rpc-url $RPC_URL --private-key $PRIVATE_KEY \
+cast send --legacy --value 10000000ether --private-key $PRIVATE_KEY \
 0x7a0b7e6d24ede78260c9ddbd98e828b0e11a8ea2 "deposit(bytes,bytes,bytes)" \
 0x92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c \
 0x002408011220d5ed74b09dcbe84d3b32a56c01ab721cf82809848b6604535212a219d35c412f \
@@ -182,7 +189,7 @@ echo '{"secret_key":"...", "chain_id":..., "control_address":"0x7a0b7e6d24ede782
 
 Even if you don't own the required minimum stake to deposit a validator, your delegation contract can start collecting delegated stake and as soon as its funds plus your balance cover the required minimum stake, you can activate a fully synced node as your first validator by providing e.g. 5 million ZIL in addition to your delegation contract's funds in the command introduced above:
 ```bash
-cast send --legacy --value 5000000ether --rpc-url $RPC_URL --private-key $PRIVATE_KEY \
+cast send --legacy --value 5000000ether --private-key $PRIVATE_KEY \
 0x7a0b7e6d24ede78260c9ddbd98e828b0e11a8ea2 "deposit(bytes,bytes,bytes)" \
 0x92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c \
 0x002408011220d5ed74b09dcbe84d3b32a56c01ab721cf82809848b6604535212a219d35c412f \
@@ -196,13 +203,13 @@ Note that the reward address registered for the validator node will be the addre
 
 Once the delegation contract has been deployed and upgraded to the latest version, it can accept delegations. In order to stake e.g. 200 ZIL, run
 ```bash
-forge script script/Stake.s.sol --rpc-url $RPC_URL --broadcast --legacy --sig "run(address payable, uint256)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 200000000000000000000 --private-key 0x...
+forge script script/Stake.s.sol --broadcast --legacy --sig "run(address payable, uint256)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 200000000000000000000 --private-key 0x...
 ```
 with the private key of delegator account. It's important to make sure the account's balance can cover the transaction fees plus the 200 ZIL to be delegated.
 
 The output will look like this for liquid staking:
 ```
-  Running version: 0.3.0
+  Running version: 0.3.2
   Current stake: 10000000000000000000000000 wei
   Current rewards: 110314207650273223687 wei
   LST address: 0x9e5c257D1c6dF74EaA54e58CdccaCb924669dc83
@@ -211,7 +218,7 @@ The output will look like this for liquid staking:
 ```
 and like this for the non-liquid variant:
 ```
-  Running version: 0.3.0
+  Running version: 0.3.2
   Current stake: 10000000000000000000000000 wei
   Current rewards: 110314207650273223687 wei
   Staker balance before: 99899145245801454561224 wei
@@ -220,25 +227,25 @@ and like this for the non-liquid variant:
 
 Due to the fact that the above output was generated based on the local script execution before the transaction got submitted to the network, the ZIL balance does not reflect the gas fees of the staking transaction and the LST balance is also different from the actual LST balance which you can query by running
 ```bash
-cast call 0x9e5c257D1c6dF74EaA54e58CdccaCb924669dc83 "balanceOf(address)(uint256)" 0xd819fFcE7A58b1E835c25617Db7b46a00888B013 --rpc-url $RPC_URL  | sed 's/\[[^]]*\]//g'
+cast call $(cast call 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 "getLST()(address)") "balanceOf(address)(uint256)" 0xd819fFcE7A58b1E835c25617Db7b46a00888B013 | sed 's/\[[^]]*\]//g'
 ```
 
 Copy the LST address from the above output and add it to your wallet if you want to transfer liquid staking tokens to another account.
 
 To query the current price of an LST, run
 ```bash
-cast to-unit $(cast call 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 "getPrice()(uint256)" --block latest --rpc-url $RPC_URL | sed 's/\[[^]]*\]//g') ether
+cast to-unit $(cast call 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 "getPrice()(uint256)" --block latest | sed 's/\[[^]]*\]//g') ether
 ```
 
 To unstake e.g. 100 LST (liquid variant) or 100 ZIL (non-liquid variant), run
 ```bash
-forge script script/Unstake.s.sol --rpc-url $RPC_URL --broadcast --legacy --sig "run(address payable, uint256)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 100000000000000000000 --private-key 0x...
+forge script script/Unstake.s.sol --broadcast --legacy --sig "run(address payable, uint256)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 100000000000000000000 --private-key 0x...
 ```
 using the private key of an account that holds some LST in case of the liquid variant or using the private key of the delegator account in case of the non-liquid variant.
 
 The output will look like this for liquid staking:
 ```
-  Running version: 0.3.0
+  Running version: 0.3.2
   Current stake: 10000000000000000000000000 wei
   Current rewards: 331912568306010928520 wei
   LST address: 0x9e5c257D1c6dF74EaA54e58CdccaCb924669dc83
@@ -247,7 +254,7 @@ The output will look like this for liquid staking:
 ```
 and like this for the non-liquid variant:
 ```
-  Running version: 0.3.0
+  Running version: 0.3.2
   Current stake: 10000000000000000000000000 wei
   Current rewards: 331912568306010928520 wei
   Staker balance before: 99698814298179759361224 wei
@@ -256,20 +263,20 @@ and like this for the non-liquid variant:
 
 The ZIL balance hasn't increased yet because the unstaked amount can not be transferred immediately. To claim the unstaked amount after the unbonding period, run
 ```bash
-forge script script/Claim.s.sol --rpc-url $RPC_URL --broadcast --legacy --sig "run(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 --private-key 0x...
+forge script script/Claim.s.sol --broadcast --legacy --sig "run(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 --private-key 0x...
 ```
 with the private key of the account that unstaked in the previous step.
 
 The output will look like this:
 ```
-  Running version: 0.3.0
+  Running version: 0.3.2
   Staker balance before: 99698086421983460161224 wei
   Staker balance after: 99798095485861371162343 wei
 ```
 
 To query how much ZIL you can already claim, run
 ```bash
-cast to-unit $(cast call 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 "getClaimable()(uint256)" --from 0xd819fFcE7A58b1E835c25617Db7b46a00888B013 --block latest --rpc-url $RPC_URL | sed 's/\[[^]]*\]//g') ether
+cast to-unit $(cast call 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 "getClaimable()(uint256)" --from 0xd819fFcE7A58b1E835c25617Db7b46a00888B013 --block latest | sed 's/\[[^]]*\]//g') ether
 ```
 with the address of the account that unstaked above as an argument.
 
@@ -282,29 +289,29 @@ Of course, delegators will not be using the CLI to stake, unstake and claim thei
 
 In the liquid staking variant, you as the node operator can stake the rewards accrued by the node. To do so, run
 ```bash
-forge script script/StakeRewards.s.sol --rpc-url $RPC_URL --broadcast --legacy --sig "run(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 --private-key 0x...
+forge script script/StakeRewards.s.sol --broadcast --legacy --sig "run(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 --private-key 0x...
 ```
 
 In the non-liquid variant of staking, delegators can stake or withdraw their share of the rewards. To query the amount of rewards available, run
 ```bash
-cast to-unit $(cast call 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 "rewards()(uint256)" --from 0xd819fFcE7A58b1E835c25617Db7b46a00888B013 --block latest --rpc-url $RPC_URL | sed 's/\[[^]]*\]//g') ether
+cast to-unit $(cast call 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 "rewards()(uint256)" --from 0xd819fFcE7A58b1E835c25617Db7b46a00888B013 --block latest | sed 's/\[[^]]*\]//g') ether
 ```
 
 If a delegator hasn't withdrawn rewards while thousands of delegators staked or unstaked, the gas used by the above function might hit the block limit. In this case it's possible to withdraw only the rewards accrued during the next `n` subsequent stakings or unstaking that have not been withdrawn yet. This can be repeated several times to withdraw all rewards using multiple transactions. To calculate the rewards that can be withdrawn in the next transaction, choose a number `0 <= n <= 11000` e.g. `100` and run
 ```bash
-cast to-unit $(cast call 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 "rewards(uint64)(uint256)" 100 --from 0xd819fFcE7A58b1E835c25617Db7b46a00888B013 --block latest --rpc-url $RPC_URL | sed 's/\[[^]]*\]//g') ether
+cast to-unit $(cast call 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 "rewards(uint64)(uint256)" 100 --from 0xd819fFcE7A58b1E835c25617Db7b46a00888B013 --block latest | sed 's/\[[^]]*\]//g') ether
 ```
 Note that `n` actually denotes the number of additional stakings or unstakings so that at least one is always reflected in the result, even if you specify `n = 0`.
 
 You can also specify the exact amount you want to withdraw. To withdraw e.g. 1 ZIL using `n = 100`, run
 ```bash
-forge script script/WithdrawRewards.s.sol --rpc-url $RPC_URL --broadcast --legacy --sig "run(address payable, string, string)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 1000000000000000000 100 --private-key 0x...
+forge script script/WithdrawRewards.s.sol --broadcast --legacy --sig "run(address payable, string, string)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 1000000000000000000 100 --private-key 0x...
 ```
 with the private key of a delegator account. To withdraw as much as possible using a specified `n` set the amount to `all`. To withdraw the specified amount without specifying `n` replace `n` with `all`. To withdraw all rewards replace both the amount and `n` with `all`.
 
 Last but not least, in order to stake rewards instead of withdrawing them, run
 ```bash
-forge script script/StakeRewards.s.sol --rpc-url $RPC_URL --broadcast --legacy --sig "run(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 --private-key 0x...
+forge script script/StakeRewards.s.sol --broadcast --legacy --sig "run(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 --private-key 0x...
 ```
 using the private key of their account.
 
