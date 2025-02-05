@@ -253,21 +253,21 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         require(i-- > 0, "validator with provided bls key not found");
         require(_msgSender() == $.validators[i].controlAddress, "only the control address can initiate leaving");                
         require($.validators[i].status == ValidatorStatus.PreparingToLeave, "validator is not prepared to leave");
-        if ($.validators[i].pendingWithdrawals == 0)
-            if ($.validators[i].futureStake > leavingStake) {
-                $.validators[i].status = ValidatorStatus.WaitingToLeave;
-                (bool success, ) = DEPOSIT_CONTRACT.call(
-                    abi.encodeWithSignature("unstake(bytes,uint256)",
-                        $.validators[i].blsPubKey,
-                        $.validators[i].futureStake - leavingStake
-                    )
-                );
-                require(success, "deposit decrease failed");
-                $.validators[i].futureStake = leavingStake;
-            } else {
-                $.validators[i].status = ValidatorStatus.ReadyToLeave;
-                completeLeaving(blsPubKey);
-            }
+        require($.validators[i].pendingWithdrawals == 0, "there must not be pending withdrawals");
+        if ($.validators[i].futureStake > leavingStake) {
+            $.validators[i].status = ValidatorStatus.WaitingToLeave;
+            (bool success, ) = DEPOSIT_CONTRACT.call(
+                abi.encodeWithSignature("unstake(bytes,uint256)",
+                    $.validators[i].blsPubKey,
+                    $.validators[i].futureStake - leavingStake
+                )
+            );
+            require(success, "deposit decrease failed");
+            $.validators[i].futureStake = leavingStake;
+        } else {
+            $.validators[i].status = ValidatorStatus.ReadyToLeave;
+            completeLeaving(blsPubKey);
+        }
     }
 
     function pendingWithdrawals(bytes calldata blsPubKey) public virtual view returns(bool) {

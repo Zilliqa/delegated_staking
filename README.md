@@ -161,8 +161,7 @@ event ValidatorLeaving(bytes indexed blsPubKey, bool success);
 
 If it wasn't, use the following command to check if the validator has pending withdrawals and repeat the above command when the query returns `false`:
 ```bash
-cast call --legacy \
-0x7a0b7e6d24ede78260c9ddbd98e828b0e11a8ea2 "pendingWithdrawals(bytes)(bool)" \
+cast call 0x7a0b7e6d24ede78260c9ddbd98e828b0e11a8ea2 "pendingWithdrawals(bytes)(bool)" \
 0x92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c
 ```
 
