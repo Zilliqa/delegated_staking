@@ -6,8 +6,6 @@ import {Script} from "forge-std/Script.sol";
 import {BaseDelegation} from "src/BaseDelegation.sol";
 import {LiquidDelegation} from "src/LiquidDelegation.sol";
 import {NonLiquidDelegation} from "src/NonLiquidDelegation.sol";
-import {LiquidDelegationV2} from "src/LiquidDelegationV2.sol";
-import {NonLiquidDelegationV2} from "src/NonLiquidDelegationV2.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {console} from "forge-std/console.sol";
@@ -50,22 +48,6 @@ contract Deploy is Script {
 
         console.log("Owner is %s",
             delegation.owner()
-        );
-
-        address payable newImplementation = payable(new LiquidDelegationV2());
-
-        console.log("New implementation deployed: %s",
-            newImplementation
-        );
-
-        bytes memory reinitializerCall = abi.encodeWithSignature(
-            "reinitialize(uint64)",
-            1
-        );
-
-        delegation.upgradeToAndCall(
-            newImplementation,
-            reinitializerCall
         );
 
         (uint24 major, uint24 minor, uint24 patch) = delegation.decodedVersion();
@@ -112,22 +94,6 @@ contract Deploy is Script {
 
         console.log("Owner is %s",
             delegation.owner()
-        );
-
-        address payable newImplementation = payable(new NonLiquidDelegationV2());
-
-        console.log("New implementation deployed: %s",
-            newImplementation
-        );
-
-        bytes memory reinitializerCall = abi.encodeWithSignature(
-            "reinitialize(uint64)",
-            1
-        );
-
-        delegation.upgradeToAndCall(
-            newImplementation,
-            reinitializerCall
         );
 
         (uint24 major, uint24 minor, uint24 patch) = delegation.decodedVersion();

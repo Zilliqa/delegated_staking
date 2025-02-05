@@ -4,7 +4,6 @@ pragma solidity ^0.8.26;
 /* solhint-disable no-console */
 import {BaseDelegationTest} from "test/BaseDelegation.t.sol";
 import {NonLiquidDelegation} from "src/NonLiquidDelegation.sol";
-import {NonLiquidDelegationV2} from "src/NonLiquidDelegationV2.sol";
 import {BaseDelegation} from "src/BaseDelegation.sol";
 import {WithdrawalQueue} from "src/WithdrawalQueue.sol";
 import {IDelegation} from "src/IDelegation.sol";
@@ -18,24 +17,19 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 contract NonLiquidDelegationTest is BaseDelegationTest {
     using SafeCast for int256;
 
-    NonLiquidDelegationV2[] internal delegations;
-    NonLiquidDelegationV2 internal delegation;
+    NonLiquidDelegation[] internal delegations;
+    NonLiquidDelegation internal delegation;
 
     constructor() BaseDelegationTest() {
-        oldImplementation = address(new NonLiquidDelegation());
-        newImplementation = payable(new NonLiquidDelegationV2());
+        implementation = address(new NonLiquidDelegation());
         initializerCall = abi.encodeWithSelector(
             NonLiquidDelegation.initialize.selector,
             owner
         );
-        reinitializerCall = abi.encodeWithSelector(
-            NonLiquidDelegationV2.reinitialize.selector,
-            1
-        );
     }
 
     function storeDelegation() internal override {
-        delegation = NonLiquidDelegationV2(
+        delegation = NonLiquidDelegation(
             proxy
         );
         delegations.push(delegation);
@@ -54,7 +48,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         console.log("-----------------------------------------------");
         console.log(s, i, x);
         uint256[] memory shares = new uint256[](stakers.length + 1);
-        NonLiquidDelegationV2.Staking[] memory stakings = delegation.getStakingHistory();
+        NonLiquidDelegation.Staking[] memory stakings = delegation.getStakingHistory();
         for (uint256 k = 0; k < stakings.length; k++) {
             uint256 stakerIndex = findStaker(stakings[k].staker);
             shares[stakerIndex] = stakings[k].amount;
@@ -1483,8 +1477,6 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
             console.log("staker %s: %s", i+1, stakers[i]);
         }
 
-        delegation = NonLiquidDelegationV2(proxy);
-
         // rewards accrued so far
         vm.deal(address(delegation), 50_000 ether);
         x = 100;
@@ -1577,7 +1569,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
 
     function test_ClaimsAfterManyUnstakings() public {
         claimsAfterManyUnstakings(
-            NonLiquidDelegationV2(proxy), //delegation
+            NonLiquidDelegation(proxy), //delegation
             20 //steps
         );
     }
@@ -1594,8 +1586,6 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         for (i = 0; i < 4; i++) {
             vm.deal(stakers[i], 100_000 ether);
         }
-
-        delegation = NonLiquidDelegationV2(proxy);
 
         // rewards accrued so far
         vm.deal(address(delegation), 50_000 ether);
@@ -1650,7 +1640,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
             true,
             address(delegation)
         );
-        emit NonLiquidDelegationV2.RewardPaid(
+        emit NonLiquidDelegation.RewardPaid(
             stakers[i-1],
             rewards
         );

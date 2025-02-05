@@ -28,7 +28,7 @@ Alternatively, you can specify the RPC in each command below by adding the follo
 The delegation contract manages the stake delegated to the staking pool. It acts as the validator node's control address and interacts with the Zilliqa 2.0 protocol's deposit contract.
 
 `BaseDelegation` is an abstract contract that concrete implementations inherit from.
-`LiquidDelegation` is the initial version of the liquid staking variant of the delegation contract that creates a `NonRebasingLST` contract when it is initialized. `LiquidDelegationV2` contains the full implementation including the LST price calculation and other features. `NonLiquidDelegation` is the initial version of the non-liquid staking variant of the delegation contract. `NonLiquidDelegationV2` contains the full implementation that allows delegators to withdraw rewards.
+`LiquidDelegation` implements the liquid staking variant, which deploys a `NonRebasingLST` contract when it is initialized. `NonLiquidDelegation` implements the non-liquid staking variant, which allows delegators to withdraw rewards.
 
 Before running the deployment script, set the `PRIVATE_KEY` environment variable to the private key of the contract owner. Note that only the contract owner will be able to upgrade the contract, change the commission rate and activate the node as a validator.
 
@@ -78,7 +78,7 @@ If you want to check the current version your contract was upgraded to, run
 forge script script/CheckVersion.s.sol --sig "run(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2
 ```
 
-To adapt the contract to your needs, create your own copy of `LiquidDelegationV2` or `NonLiquidDelegationV2` and run the above upgrade script again.
+To adapt the contract to your needs, create your own copy of `LiquidDelegation` or `NonLiquidDelegation` and run the above upgrade script again.
 
 
 ## Contract Configuration

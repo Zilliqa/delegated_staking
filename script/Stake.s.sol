@@ -5,8 +5,7 @@ pragma solidity ^0.8.26;
 import {Script} from "forge-std/Script.sol";
 import {NonRebasingLST} from "src/NonRebasingLST.sol";
 import {BaseDelegation} from "src/BaseDelegation.sol";
-import {ILiquidDelegation} from "src/LiquidDelegation.sol";
-import {LiquidDelegationV2} from "src/LiquidDelegationV2.sol";
+import {ILiquidDelegation, LiquidDelegation} from "src/LiquidDelegation.sol";
 import {ERC165Checker} from "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 import {console} from "forge-std/console.sol";
 
@@ -33,7 +32,7 @@ contract Stake is Script {
         );
 
         if (address(delegation).supportsInterface(type(ILiquidDelegation).interfaceId)) {
-            NonRebasingLST lst = NonRebasingLST(LiquidDelegationV2(payable(address(delegation))).getLST());
+            NonRebasingLST lst = NonRebasingLST(LiquidDelegation(payable(address(delegation))).getLST());
             console.log("LST address: %s",
                 address(lst)
             );
@@ -56,7 +55,7 @@ contract Stake is Script {
         }();
 
         if (address(delegation).supportsInterface(type(ILiquidDelegation).interfaceId)) {
-            NonRebasingLST lst = NonRebasingLST(LiquidDelegationV2(payable(address(delegation))).getLST());
+            NonRebasingLST lst = NonRebasingLST(LiquidDelegation(payable(address(delegation))).getLST());
             console.log("Staker balance after: %s wei %s %s",
                 staker.balance,
                 lst.balanceOf(staker),
