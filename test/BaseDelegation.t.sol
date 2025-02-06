@@ -14,10 +14,10 @@ import {console} from "forge-std/console.sol";
 /* solhint-disable one-contract-per-file */
 abstract contract BaseDelegationTest is Test {
     address payable internal proxy;
-    address internal oldImplementation;
+    address internal implementation;
     bytes internal initializerCall;
-    address payable internal newImplementation;
-    bytes internal reinitializerCall;
+//    address payable internal newImplementation;
+//    bytes internal reinitializerCall;
     bytes1 internal currentDeploymentId;
     address internal owner = 0x15fc323DFE5D5DCfbeEdc25CEcbf57f676634d77;
     address[] internal stakers = [
@@ -45,19 +45,11 @@ abstract contract BaseDelegationTest is Test {
         vm.startPrank(owner);
 
         proxy = payable(
-            new ERC1967Proxy(oldImplementation, initializerCall)
-        );
-
-        BaseDelegation oldDelegation = BaseDelegation(
-            proxy
-        );
-
-        oldDelegation.upgradeToAndCall(
-            newImplementation,
-            reinitializerCall
+            new ERC1967Proxy(implementation, initializerCall)
         );
 
         storeDelegation();
+
         BaseDelegation delegation = BaseDelegation(
             proxy
         );

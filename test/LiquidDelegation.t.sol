@@ -4,7 +4,6 @@ pragma solidity ^0.8.26;
 /* solhint-disable no-console */
 import {BaseDelegationTest} from "test/BaseDelegation.t.sol";
 import {LiquidDelegation} from "src/LiquidDelegation.sol";
-import {LiquidDelegationV2} from "src/LiquidDelegationV2.sol";
 import {NonRebasingLST} from "src/NonRebasingLST.sol";
 import {BaseDelegation} from "src/BaseDelegation.sol";
 import {WithdrawalQueue} from "src/WithdrawalQueue.sol";
@@ -17,28 +16,23 @@ import {console} from "forge-std/console.sol";
 /* solhint-disable func-name-mixedcase */
 contract LiquidDelegationTest is BaseDelegationTest {
 
-    LiquidDelegationV2[] internal delegations;
-    LiquidDelegationV2 internal delegation;
+    LiquidDelegation[] internal delegations;
+    LiquidDelegation internal delegation;
     NonRebasingLST[] internal lsts;
     NonRebasingLST internal lst;
 
     constructor() BaseDelegationTest() {
-        oldImplementation = address(new LiquidDelegation());
-        newImplementation = payable(new LiquidDelegationV2());
+        implementation = address(new LiquidDelegation());
         initializerCall = abi.encodeWithSelector(
             LiquidDelegation.initialize.selector,
             owner,
             "LiquidStakingToken",
             "LST"
         );
-        reinitializerCall = abi.encodeWithSelector(
-            LiquidDelegationV2.reinitialize.selector,
-            1
-        );
     }
 
     function storeDelegation() internal override {
-        delegation = LiquidDelegationV2(
+        delegation = LiquidDelegation(
             proxy
         );
         lst = NonRebasingLST(delegation.getLST());
@@ -1659,7 +1653,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
 
     function test_ClaimsAfterManyUnstakings() public {
         claimsAfterManyUnstakings(
-            LiquidDelegationV2(proxy), //delegation
+            LiquidDelegation(proxy), //delegation
             20 //steps
         );
     }

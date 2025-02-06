@@ -57,7 +57,7 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     // contract file names remain the same across all versions
     // so that the upgrade script does not need to be modified
     // to import the new version each time there is one
-    uint64 internal immutable VERSION = encodeVersion(0, 3, 0);
+    uint64 internal immutable VERSION = encodeVersion(0, 3, 3);
 
     function version() public view returns(uint64) {
         return _getInitializedVersion();
@@ -106,18 +106,25 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         if (fromVersion == 1)
             return;
 
-        // the previous version is higher or same as the current version
+        // the contract has been upgraded to a version which
+        // is higher or same as the current version
         if (fromVersion >= VERSION)
             return;
 
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
 
-        // the contract has been upgraded to an older version which did
-        // not set the commission receiver or allow the owner to change it
-        $.commissionReceiver = owner();
+        if (fromVersion < encodeVersion(0, 3, 0))
+            // the contract has been upgraded to a version which did not
+            // set the commission receiver or allow the owner to change it
+            $.commissionReceiver = owner();
 
-        // the contract has been upgraded but the length of the peerId
-        // stored in the same slot as the activated bool is zero
+        if (fromVersion >= encodeVersion(0, 2, 0))
+            // the contract has been upgraded to a version which has
+            // already migrated the blsPubKey to the validators array
+            return;
+
+        // the contract has been upgraded from the initial version but the length
+        // of the peerId stored in the same slot as the activated bool is zero
         if (!$.activated)
             return;
 
@@ -137,6 +144,10 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         require(success, "future stake could not be retrieved");
         uint256 futureStake = abi.decode(data, (uint256));
 
+        // validators migrated from version < 0.2.0 use the contract owner
+        // as their original reward address and control address, i.e. after
+        // leaving the staking pool the contract owner must set the actual
+        // control address, which can then set the actual reward address 
         $.validators.push(Validator(
             temp.blsPubKey,
             futureStake,
@@ -242,21 +253,21 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         require(i-- > 0, "validator with provided bls key not found");
         require(_msgSender() == $.validators[i].controlAddress, "only the control address can initiate leaving");                
         require($.validators[i].status == ValidatorStatus.PreparingToLeave, "validator is not prepared to leave");
-        if ($.validators[i].pendingWithdrawals == 0)
-            if ($.validators[i].futureStake > leavingStake) {
-                $.validators[i].status = ValidatorStatus.WaitingToLeave;
-                (bool success, ) = DEPOSIT_CONTRACT.call(
-                    abi.encodeWithSignature("unstake(bytes,uint256)",
-                        $.validators[i].blsPubKey,
-                        $.validators[i].futureStake - leavingStake
-                    )
-                );
-                require(success, "deposit decrease failed");
-                $.validators[i].futureStake = leavingStake;
-            } else {
-                $.validators[i].status = ValidatorStatus.ReadyToLeave;
-                completeLeaving(blsPubKey);
-            }
+        require($.validators[i].pendingWithdrawals == 0, "there must not be pending withdrawals");
+        if ($.validators[i].futureStake > leavingStake) {
+            $.validators[i].status = ValidatorStatus.WaitingToLeave;
+            (bool success, ) = DEPOSIT_CONTRACT.call(
+                abi.encodeWithSignature("unstake(bytes,uint256)",
+                    $.validators[i].blsPubKey,
+                    $.validators[i].futureStake - leavingStake
+                )
+            );
+            require(success, "deposit decrease failed");
+            $.validators[i].futureStake = leavingStake;
+        } else {
+            $.validators[i].status = ValidatorStatus.ReadyToLeave;
+            completeLeaving(blsPubKey);
+        }
     }
 
     function pendingWithdrawals(bytes calldata blsPubKey) public virtual view returns(bool) {

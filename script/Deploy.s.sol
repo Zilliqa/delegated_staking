@@ -13,7 +13,7 @@ import {console} from "forge-std/console.sol";
 contract Deploy is Script {
     using Strings for string;
 
-    function run(string calldata variant, string calldata name, string calldata symbol) external {
+    function liquidDelegation(string calldata name, string calldata symbol) external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         address owner = vm.addr(deployerPrivateKey);
         console.log("Signer is %s", owner);
@@ -23,22 +23,14 @@ contract Deploy is Script {
         address implementation;
         bytes memory initializerCall;
 
-        if (variant.equal("LiquidDelegation")) {
-            implementation = address(new LiquidDelegation());
-            initializerCall = abi.encodeWithSignature(
-                "initialize(address,string,string)",
-                owner,
-                name,
-                symbol
-            );
-        } else if (variant.equal("NonLiquidDelegation")) {
-            implementation = address(new NonLiquidDelegation());
-            initializerCall = abi.encodeWithSignature(
-                "initialize(address)",
-                owner
-            );
-        } else
-            return;
+
+        implementation = address(new LiquidDelegation());
+        initializerCall = abi.encodeWithSignature(
+            "initialize(address,string,string)",
+            owner,
+            name,
+            symbol
+        );
 
         address payable proxy = payable(
             new ERC1967Proxy(implementation, initializerCall)
@@ -56,6 +48,59 @@ contract Deploy is Script {
 
         console.log("Owner is %s",
             delegation.owner()
+        );
+
+        (uint24 major, uint24 minor, uint24 patch) = delegation.decodedVersion();
+        console.log("Upgraded to version: %s.%s.%s",
+            uint256(major),
+            uint256(minor),
+            uint256(patch)
+        );
+
+        vm.stopBroadcast();
+
+    }
+
+    function nonLiquidDelegation() external {
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        address owner = vm.addr(deployerPrivateKey);
+        console.log("Signer is %s", owner);
+
+        vm.startBroadcast(deployerPrivateKey);
+
+        address implementation;
+        bytes memory initializerCall;
+
+
+        implementation = address(new NonLiquidDelegation());
+        initializerCall = abi.encodeWithSignature(
+            "initialize(address)",
+            owner
+        );
+
+        address payable proxy = payable(
+            new ERC1967Proxy(implementation, initializerCall)
+        );
+
+        console.log(
+            "Proxy deployed: %s \r\n  Implementation deployed: %s",
+            proxy,
+            implementation
+        );
+
+        BaseDelegation delegation = BaseDelegation(
+                proxy
+            );
+
+        console.log("Owner is %s",
+            delegation.owner()
+        );
+
+        (uint24 major, uint24 minor, uint24 patch) = delegation.decodedVersion();
+        console.log("Upgraded to version: %s.%s.%s",
+            uint256(major),
+            uint256(minor),
+            uint256(patch)
         );
 
         vm.stopBroadcast();

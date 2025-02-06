@@ -11,7 +11,25 @@ import {console} from "forge-std/console.sol";
 contract Configure is Script {
     using Strings for string;
 
-    function commissionRate(address payable proxy, string calldata commissionNumerator, bool collectCommission) external {
+    function commissionRate(address payable proxy) external view {
+        BaseDelegation delegation = BaseDelegation(
+            proxy
+        );
+
+        (uint24 major, uint24 minor, uint24 patch) = delegation.decodedVersion();
+        console.log("Running version: %s.%s.%s",
+            uint256(major),
+            uint256(minor),
+            uint256(patch)
+        );
+
+        Console.log("Commission rate: %s.%s%s%%",
+            delegation.getCommissionNumerator(),
+            2
+        );
+    }
+
+    function commissionRate(address payable proxy, uint16 commissionNumerator) external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
 
         BaseDelegation delegation = BaseDelegation(
@@ -30,27 +48,34 @@ contract Configure is Script {
             2
         );
 
-        if (!commissionNumerator.equal("same")) {
-            vm.broadcast(deployerPrivateKey);
+        vm.broadcast(deployerPrivateKey);
 
-            delegation.setCommissionNumerator(uint16(vm.parseUint(commissionNumerator)));
+        delegation.setCommissionNumerator(commissionNumerator);
 
-            Console.log("New commission rate: %s.%s%s%%",
-                delegation.getCommissionNumerator(),
-                2
-            );
-        }
-
-        if (collectCommission) {
-            vm.broadcast(deployerPrivateKey);
-
-            delegation.collectCommission();
-
-            console.log("Outstanding commission transferred");
-        }
+        Console.log("New commission rate: %s.%s%s%%",
+            delegation.getCommissionNumerator(),
+            2
+        );
     }
 
-    function commissionReceiver(address payable proxy, address commissionAddress, bool collectCommission) external {
+    function commissionReceiver(address payable proxy) external view {
+        BaseDelegation delegation = BaseDelegation(
+            proxy
+        );
+
+        (uint24 major, uint24 minor, uint24 patch) = delegation.decodedVersion();
+        console.log("Running version: %s.%s.%s",
+            uint256(major),
+            uint256(minor),
+            uint256(patch)
+        );
+
+        console.log("Commission receiver: %s",
+            delegation.getCommissionReceiver()
+        );
+    }
+
+    function commissionReceiver(address payable proxy, address commissionAddress) external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
 
         BaseDelegation delegation = BaseDelegation(
@@ -68,20 +93,12 @@ contract Configure is Script {
             delegation.getCommissionReceiver()
         );
 
-        vm.startBroadcast(deployerPrivateKey);
+        vm.broadcast(deployerPrivateKey);
 
         delegation.setCommissionReceiver(commissionAddress);
 
         console.log("New commission receiver: %s",
-            delegation.getCommissionNumerator()
+            delegation.getCommissionReceiver()
         );
-
-        if (collectCommission) {
-            delegation.collectCommission();
-
-            console.log("Outstanding commission transferred");
-        }
-
-        vm.stopBroadcast();
     }
 }
