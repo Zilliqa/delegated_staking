@@ -70,7 +70,7 @@ The output will look like this:
   Upgrading from version: 0.3.0
   Owner is 0x15fc323DFE5D5DCfbeEdc25CEcbf57f676634d77
   New implementation deployed: 0x64Fa96a67910956141cc481a43f242C045c10165
-  Upgraded to version: 0.3.2
+  Upgraded to version: 0.3.3
 ```
 
 If you want to check the current version your contract was upgraded to, run
@@ -90,7 +90,7 @@ forge script script/Configure.s.sol --broadcast --legacy --sig "commissionRate(a
 
 The output will contain the following information:
 ```
-  Running version: 0.3.2
+  Running version: 0.3.3
   Commission rate: 0.0%
   New commission rate: 10.0%
 ```
@@ -117,7 +117,7 @@ forge script script/Configure.s.sol --broadcast --legacy --sig "commissionReceiv
 
 The output will contain the following information:
 ```
-  Running version: 0.3.2
+  Running version: 0.3.3
   Commission receiver: 0x15fc323DFE5D5DCfbeEdc25CEcbf57f676634d77
   New commission receiver: 0xeA78aAE5Be606D2D152F00760662ac321aB8F017
 ```
@@ -208,7 +208,7 @@ with the private key of delegator account. It's important to make sure the accou
 
 The output will look like this for liquid staking:
 ```
-  Running version: 0.3.2
+  Running version: 0.3.3
   Current stake: 10000000000000000000000000 wei
   Current rewards: 110314207650273223687 wei
   LST address: 0x9e5c257D1c6dF74EaA54e58CdccaCb924669dc83
@@ -217,7 +217,7 @@ The output will look like this for liquid staking:
 ```
 and like this for the non-liquid variant:
 ```
-  Running version: 0.3.2
+  Running version: 0.3.3
   Current stake: 10000000000000000000000000 wei
   Current rewards: 110314207650273223687 wei
   Staker balance before: 99899145245801454561224 wei
@@ -244,7 +244,7 @@ using the private key of an account that holds some LST in case of the liquid va
 
 The output will look like this for liquid staking:
 ```
-  Running version: 0.3.2
+  Running version: 0.3.3
   Current stake: 10000000000000000000000000 wei
   Current rewards: 331912568306010928520 wei
   LST address: 0x9e5c257D1c6dF74EaA54e58CdccaCb924669dc83
@@ -253,7 +253,7 @@ The output will look like this for liquid staking:
 ```
 and like this for the non-liquid variant:
 ```
-  Running version: 0.3.2
+  Running version: 0.3.3
   Current stake: 10000000000000000000000000 wei
   Current rewards: 331912568306010928520 wei
   Staker balance before: 99698814298179759361224 wei
@@ -268,7 +268,7 @@ with the private key of the account that unstaked in the previous step.
 
 The output will look like this:
 ```
-  Running version: 0.3.2
+  Running version: 0.3.3
   Staker balance before: 99698086421983460161224 wei
   Staker balance after: 99798095485861371162343 wei
 ```
