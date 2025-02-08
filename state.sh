@@ -45,9 +45,9 @@ if [[ "$variant" == "ILiquidDelegation" ]]; then
     echo owner: $owner_lst $symbol && echo owner: $owner_zil ZIL unstaked
     echo staker: $staker_lst $symbol && echo staker: $staker_zil ZIL unstaked
 else
-    x=$(cast call $1 "getDelegatedStake()(uint256)" --from $owner --block $block_num | sed 's/\[[^]]*\]//g')
+    x=$(cast call $1 "getDelegatedAmount()(uint256)" --from $owner --block $block_num | sed 's/\[[^]]*\]//g')
     owner_staked=$(cast to-unit $x ether)
-    x=$(cast call $1 "getDelegatedStake()(uint256)" --from $2 --block $block_num | sed 's/\[[^]]*\]//g')
+    x=$(cast call $1 "getDelegatedAmount()(uint256)" --from $2 --block $block_num | sed 's/\[[^]]*\]//g')
     staker_staked=$(cast to-unit $x ether)
     echo owner: $owner_staked ZIL staked && echo owner: $owner_zil ZIL unstaked
     echo staker: $staker_staked ZIL staked && echo staker: $staker_zil ZIL unstaked

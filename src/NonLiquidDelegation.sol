@@ -8,7 +8,7 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 // the staking variant of an already deployed delegation contract
 interface INonLiquidDelegation {
     function interfaceId() external pure returns (bytes4);
-    function getDelegatedStake() external view returns(uint256);
+    function getDelegatedAmount() external view returns(uint256);
     function rewards() external view returns(uint256);
 }
 
@@ -50,9 +50,10 @@ contract NonLiquidDelegation is BaseDelegation, INonLiquidDelegation {
         // the amount that has already been withdrawn from the
         // constantly growing rewards accrued since the last staking
         mapping(address => uint256) withdrawnAfterLastStaking;
-        // the balance of the reward address without the rewards
-        // accrued since the last staking
-        int256 totalRewards;
+        // all rewards accrued until the last staking whereas the balance
+        // also reflects the rewards accrued since then; the immutable
+        // rewards only change when some of it is withdrawn or staked 
+        int256 immutableRewards;
     }
 
     // keccak256(abi.encode(uint256(keccak256("zilliqa.storage.NonLiquidDelegation")) - 1)) & ~bytes32(uint256(0xff))
@@ -85,12 +86,12 @@ contract NonLiquidDelegation is BaseDelegation, INonLiquidDelegation {
         require(_msgSender() == DEPOSIT_CONTRACT, "sender must be the deposit contract");
         NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
         // add the stake withdrawn from the deposit to the reward balance
-        $.totalRewards += int256(msg.value);
+        $.immutableRewards += int256(msg.value);
     }
 
-    function getTotalRewards() public view returns(int256) {
+    function getImmutableRewards() public view returns(int256) {
         NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
-        return $.totalRewards;
+        return $.immutableRewards;
     }
 
     function getStakingHistory() public view returns(Staking[] memory) {
@@ -113,11 +114,17 @@ contract NonLiquidDelegation is BaseDelegation, INonLiquidDelegation {
         withdrawnAfterLastStaking = $.withdrawnAfterLastStaking[_msgSender()];
     }
 
-    function getDelegatedStake() public view returns(uint256 result) {
+    function getDelegatedAmount() public view returns(uint256 result) {
         NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
         uint64[] storage stakingIndices = $.stakingIndices[_msgSender()];
         if (stakingIndices.length > 0)
             result = $.stakings[stakingIndices[stakingIndices.length - 1]].amount;
+    }
+
+    function getDelegatedTotal() public view returns(uint256 result) {
+        NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
+        if ($.stakings.length > 0)
+            result = $.stakings[$.stakings.length - 1].total;
     }
 
     event RewardPaid(address indexed delegator, uint256 reward);
@@ -129,6 +136,15 @@ contract NonLiquidDelegation is BaseDelegation, INonLiquidDelegation {
         // the node's deposit must also be recorded in the staking history otherwise
         // its owner would not benefit from the rewards accrued due to the deposit
         _append(int256(getStake(blsPubKey)), controlAddress);
+    }
+
+    function _completeLeaving(uint256 amount) internal override {
+        // if there is no other validator left, the withdrawn deposit will not
+        // be deposited with the remaining validators but stay in the balance
+        if (validators().length > 1) {
+            NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
+            $.immutableRewards -= int256(amount);
+        }
     }
 
     // called by the validator node's original control address to remove the validator from
@@ -176,7 +192,7 @@ contract NonLiquidDelegation is BaseDelegation, INonLiquidDelegation {
             return;*/
         // withdraw the unstaked deposit once the unbonding period is over
         _withdrawDeposit();
-        $.totalRewards -= int256(total);
+        $.immutableRewards -= int256(total);
         (bool success, ) = _msgSender().call{
             value: total
         }("");
@@ -192,7 +208,8 @@ contract NonLiquidDelegation is BaseDelegation, INonLiquidDelegation {
 
     function unstake(uint256 value) public override whenNotPaused returns(uint256 amount) {
         _append(-int256(value), _msgSender());
-        _decreaseDeposit(uint256(value));
+        if (validators().length > 0)
+            _decreaseDeposit(uint256(value));
         _enqueueWithdrawal(value);
         emit Unstaked(_msgSender(), value, "");
         return value;
@@ -209,9 +226,9 @@ contract NonLiquidDelegation is BaseDelegation, INonLiquidDelegation {
         uint256 newRewards; // no rewards before the first staker is added
         if ($.stakings.length > 0) {
             value += int256($.stakings[$.stakings.length - 1].total);
-            newRewards = (int256(getRewards()) - $.totalRewards).toUint256();
+            newRewards = (int256(getRewards()) - $.immutableRewards).toUint256();
         }
-        $.totalRewards = int256(getRewards());
+        $.immutableRewards = int256(getRewards());
         $.stakings.push(Staking(staker, uint256(amount), uint256(value), newRewards));
         $.stakingIndices[staker].push(uint64($.stakings.length - 1));
     }
@@ -235,7 +252,7 @@ contract NonLiquidDelegation is BaseDelegation, INonLiquidDelegation {
         uint256 commission = untaxedRewards * getCommissionNumerator() / DENOMINATOR;
         if (commission == 0)
             return untaxedRewards;
-        $.totalRewards -= int256(commission);
+        $.immutableRewards -= int256(commission);
         // commissions are not subject to the unbonding period
         (bool success, ) = getCommissionReceiver().call{
             value: commission
@@ -303,7 +320,7 @@ contract NonLiquidDelegation is BaseDelegation, INonLiquidDelegation {
             amount = $.allWithdrawnRewards[_msgSender()];
         require(amount <= $.allWithdrawnRewards[_msgSender()], "can not withdraw more than accrued");
         $.allWithdrawnRewards[_msgSender()] -= amount;
-        $.totalRewards -= int256(amount);
+        $.immutableRewards -= int256(amount);
         return (amount, taxedRewards);
     }
 
@@ -357,7 +374,7 @@ contract NonLiquidDelegation is BaseDelegation, INonLiquidDelegation {
         if (nextStakingIndex == $.stakings.length) {
             // the last step is to add the rewards accrued since the last staking
             if (total > 0) {
-                resultAfterLastStaking = (int256(getRewards()) - $.totalRewards).toUint256() * amount / total;
+                resultAfterLastStaking = (int256(getRewards()) - $.immutableRewards).toUint256() * amount / total;
                 resultInTotal += resultAfterLastStaking;
             }
         }

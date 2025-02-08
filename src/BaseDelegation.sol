@@ -199,6 +199,8 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         emit ValidatorJoined(blsPubKey);
     }
 
+    function _completeLeaving(uint256 amount) internal virtual;
+
     function completeLeaving(bytes calldata blsPubKey) public virtual {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
         uint256 i = $.validatorIndex[blsPubKey];
@@ -216,8 +218,9 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
             require(success, "deposit withdrawal failed");
             amount = address(this).balance - amount;
             if (amount > 0) {
-                _increaseDeposit(amount);
                 $.validators[i].status = ValidatorStatus.ReadyToLeave;
+                _completeLeaving(amount);
+                _increaseDeposit(amount);
             }
         }
         if ($.validators[i].status == ValidatorStatus.ReadyToLeave) {
@@ -329,17 +332,19 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     ) public virtual payable;
 
     // topup the deposits proportionally to the validators' current deposit
-    function _increaseDeposit(uint256 amount) internal virtual {
+    function _increaseDeposit(uint256 amount) internal virtual returns(bool increased) {
         // topup the deposit only if already activated as a validator
         if (_isActivated()) {
             BaseDelegationStorage storage $ = _getBaseDelegationStorage();
             uint256[] memory contribution = new uint256[]($.validators.length);
             uint256 total;
-            for (uint256 i = 0; i < $.validators.length; i++) {
-                contribution[i] = $.validators[i].futureStake;
-                total += contribution[i];
-            }
-            require(total > 0, "no validators in the staking pool");
+            for (uint256 i = 0; i < $.validators.length; i++)
+                if ($.validators[i].status < ValidatorStatus.ReadyToLeave)  {
+                    contribution[i] = $.validators[i].futureStake;
+                    total += contribution[i];
+                }
+            // return false if no validator is left whose deposit can be increased
+            increased = total > 0;
             for (uint256 i = 0; i < $.validators.length; i++)
                 if (contribution[i] > 0) {
                     uint256 value = amount * contribution[i] / total;
