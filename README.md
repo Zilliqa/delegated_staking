@@ -334,6 +334,15 @@ To enable the tests to interact with the Zilliqa 2.0 deposit contract, the contr
 @zilliqa/zq2/=/home/user/zq2/zilliqa/src/contracts/
 ```
 
+To execute end-to-end tests on a local network, run
+```bash
+chmod +x e2e_liquid.sh && ./e2e_liquid.sh
+chmod +x e2e_non-liquid.sh && ./e2e_non-liquid.sh
+```
+
+The scripts start a network of 4 validators, deploy the delegation contract of a staking pool, make the validators join the staking pool, perform staking, unstaking and claiming of unstaked funds, staking of rewards as well as withdrawing rewards in case of the non-liquid variant, and finally remove the validators from the staking pool.
+
+
 The following bash scripts with verbose output can be used to test staking, unstaking and claiming of unstaked funds as well as withdrawing and staking of rewards and to print the current state of a delegator's stake queried from the validator's local node. Their output is useful for checking the results of these operations. Here a few examples of how to use them (private key replaced with `0x...`):
 ```bash
 # stake 200 ZIL
