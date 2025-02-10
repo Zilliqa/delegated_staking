@@ -320,10 +320,12 @@ Staking pool operators are encouraged to fork and adapt the above contracts to i
 
 The tests included in this repository should also be adjusted and extended accordingly. They can be executed by running
 ```bash
+unset FOUNDRY_ETH_RPC_URL
 forge test
 ```
 or
 ```bash
+unset FOUNDRY_ETH_RPC_URL
 forge test -vv
 ```
 if you want to see the values calculated in the tests.
