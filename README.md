@@ -402,6 +402,8 @@ for liquid staking and
 ```solidity
 event RewardPaid(address indexed delegator, uint256 reward);
 
+function getDelegatedAmount() external view returns(uint256 result);
+function getDelegatedTotal() external view returns(uint256 result);
 function rewards() external view returns(uint256 total);
 function withdrawAllRewards() external returns(uint256 taxedRewards);
 function withdrawRewards(uint256 amount) external returns(uint256 taxedRewards);
