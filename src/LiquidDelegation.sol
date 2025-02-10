@@ -43,7 +43,6 @@ contract LiquidDelegation is BaseDelegation, ILiquidDelegation {
         __BaseDelegation_init(initialOwner);
         LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
         $.lst = address(new NonRebasingLST(address(this), name, symbol));
-        migrate(1);
     }
 
     // called when stake withdrawn from the deposit contract is claimed

@@ -77,7 +77,6 @@ contract NonLiquidDelegation is BaseDelegation, INonLiquidDelegation {
 
     function initialize(address initialOwner) public initializer {
         __BaseDelegation_init(initialOwner);
-        migrate(1);
     }
 
     // called when stake withdrawn from the deposit contract is claimed
