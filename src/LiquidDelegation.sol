@@ -66,6 +66,15 @@ contract LiquidDelegation is BaseDelegation, ILiquidDelegation {
         _join(blsPubKey, controlAddress);
     }
 
+    function _completeLeaving(uint256 amount) internal override {
+        // if there is no other validator left, the withdrawn deposit will not
+        // be deposited with the remaining validators but stay in the balance
+        if (validators().length > 1) {
+            LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
+            $.taxedRewards -= amount;
+        }
+    }
+
     // called by the validator node's original control address to remove the validator from
     // the staking pool, reducing the pool's total stake by the validator's current deposit
     function leave(bytes calldata blsPubKey) public override {
@@ -147,8 +156,8 @@ contract LiquidDelegation is BaseDelegation, ILiquidDelegation {
             taxRewards();
         amount = _unstake(shares, _msgSender());
         _enqueueWithdrawal(amount);
-        // maintain a balance that is always sufficient to cover the claims
-        _decreaseDeposit(amount);
+        if (validators().length > 0)
+            _decreaseDeposit(amount);
     }
 
     function _unstake(uint256 shares, address staker) internal returns(uint256 amount) {
@@ -158,7 +167,7 @@ contract LiquidDelegation is BaseDelegation, ILiquidDelegation {
         else
             amount = (getStake() + $.taxedRewards) * shares / NonRebasingLST($.lst).totalSupply();
         // stake the surplus of taxed rewards not needed for covering the pending withdrawals
-        // before we increase the pending withdrawals by enqueueing the current amount
+        // before we increase the pending withdrawals by enqueueing the amount being unstaked
         _stakeRewards();
         NonRebasingLST($.lst).burn(staker, shares);
         emit Unstaked(staker, amount, abi.encode(shares));
@@ -222,10 +231,11 @@ contract LiquidDelegation is BaseDelegation, ILiquidDelegation {
         // we must not deposit the funds we need to pay out the claims
         uint256 amount = getRewards();
         if (amount > getTotalWithdrawals()) {
-            // not only the rewards (balance) must be reduced
-            // by the deposit topup but also the taxed rewards
-            $.taxedRewards -= amount - getTotalWithdrawals();
-            _increaseDeposit(amount - getTotalWithdrawals());
+            bool success = _increaseDeposit(amount - getTotalWithdrawals());
+            if (success)
+                // not only the rewards (balance) must be reduced
+                // by the deposit topup but also the taxed rewards
+                $.taxedRewards -= amount - getTotalWithdrawals();
         }
     }
 

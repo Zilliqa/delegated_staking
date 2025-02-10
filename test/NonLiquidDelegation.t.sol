@@ -84,7 +84,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
             if (k < stakings.length - 1)
                 calculatedRewards += stakings[k+1].rewards * shares[i-1] / stakings[k].total;
             else
-                calculatedRewards += (int256(delegation.getRewards()) - delegation.getTotalRewards()).toUint256() * shares[i-1] / stakings[k].total;
+                calculatedRewards += (int256(delegation.getRewards()) - delegation.getImmutableRewards()).toUint256() * shares[i-1] / stakings[k].total;
         } 
         (
             uint64[] memory stakingIndices,
@@ -156,7 +156,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
             Console.log("_withdrawnRewards = %s.%s%s", _withdrawnRewards);
             int256 temp = int256(calculatedRewards[i-1]) - int256(withdrawnRewards[i-1] * delegation.DENOMINATOR() / (delegation.DENOMINATOR() - delegation.getCommissionNumerator()));
             calculatedRewards[i-1] = (temp > 0 ? temp : -temp).toUint256();
-            int256 totalRewardsBefore = int256(delegation.getTotalRewards());
+            int256 totalRewardsBefore = int256(delegation.getImmutableRewards());
             int256 delegationBalanceBefore = int256(address(delegation).balance);
             Console.log("rewards accrued until last staking: %s.%s%s", totalRewardsBefore);
             Console.log("delegation contract balance: %s.%s%s", delegationBalanceBefore);
@@ -178,7 +178,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
                 "rewards differ from calculated value"
             );
             //TODO: add tests that withdraw an amount < delegation.rewards(step)
-            int256 totalRewardsAfter = int256(delegation.getTotalRewards());
+            int256 totalRewardsAfter = int256(delegation.getImmutableRewards());
             int256 delegationBalanceAfter = int256(address(delegation).balance);
             Console.log("rewards accrued until last staking: %s.%s%s", totalRewardsAfter);
             Console.log("delegation contract balance: %s.%s%s", delegationBalanceAfter);
@@ -1080,11 +1080,11 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         vm.startPrank(makeAddr("2"));
         uint256 amount =
             100 ether +
-            1_000_000_000 ether * (delegation.getStake(validator(2)) - delegation.getDelegatedStake()) /
+            1_000_000_000 ether * (delegation.getStake(validator(2)) - delegation.getDelegatedAmount()) /
             (1_000_000_000 ether - 1_000_000_000 ether * delegation.getStake(validator(2)) / (delegation.getStake(validator(1)) + delegation.getStake(validator(2))));
         vm.deal(makeAddr("2"), makeAddr("2").balance + amount);
         delegation.stake{value: amount}();
-        uint256 refund = delegation.getDelegatedStake() - delegation.getStake(validator(2));
+        uint256 refund = delegation.getDelegatedAmount() - delegation.getStake(validator(2));
         vm.stopPrank();
         // if staker claims which calls withdrawDeposit() after the unbonding period, pendingWithdrawals will be 0
         vm.startPrank(stakers[4-1]);
@@ -1162,11 +1162,11 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         vm.startPrank(makeAddr("2"));
         uint256 amount =
             100 ether +
-            1_000_000_000 ether * (delegation.getStake(validator(2)) - delegation.getDelegatedStake()) /
+            1_000_000_000 ether * (delegation.getStake(validator(2)) - delegation.getDelegatedAmount()) /
             (1_000_000_000 ether - 1_000_000_000 ether * delegation.getStake(validator(2)) / (delegation.getStake(validator(1)) + delegation.getStake(validator(2))));
         vm.deal(makeAddr("2"), makeAddr("2").balance + amount);
         delegation.stake{value: amount}();
-        uint256 refund = delegation.getDelegatedStake() - delegation.getStake(validator(2));
+        uint256 refund = delegation.getDelegatedAmount() - delegation.getStake(validator(2));
         vm.stopPrank();
         vm.roll(block.number + WithdrawalQueue.unbondingPeriod());
         // if staker claims which calls withdrawDeposit() after the unbonding period, pendingWithdrawals will be 0
@@ -1268,7 +1268,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         // control address stakes as much as the validator's deposit
         vm.startPrank(makeAddr("2"));
         uint256 amount =
-            1_000_000_000 ether * (delegation.getStake(validator(2)) - delegation.getDelegatedStake()) /
+            1_000_000_000 ether * (delegation.getStake(validator(2)) - delegation.getDelegatedAmount()) /
             (1_000_000_000 ether - 1_000_000_000 ether * delegation.getStake(validator(2)) / (delegation.getStake(validator(1)) + delegation.getStake(validator(2))));
         vm.deal(makeAddr("2"), makeAddr("2").balance + amount);
         delegation.stake{value: amount}();
@@ -1344,7 +1344,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         // control address stakes as much as the validator's deposit
         vm.startPrank(makeAddr("2"));
         uint256 amount =
-            1_000_000_000 ether * (delegation.getStake(validator(2)) - delegation.getDelegatedStake()) /
+            1_000_000_000 ether * (delegation.getStake(validator(2)) - delegation.getDelegatedAmount()) /
             (1_000_000_000 ether - 1_000_000_000 ether * delegation.getStake(validator(2)) / (delegation.getStake(validator(1)) + delegation.getStake(validator(2))));
         vm.deal(makeAddr("2"), makeAddr("2").balance + amount);
         delegation.stake{value: amount}();
