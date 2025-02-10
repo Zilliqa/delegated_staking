@@ -1,7 +1,7 @@
 #!/bin/bash
 
 export FOUNDRY_ETH_RPC_URL=http://localhost:4201
-PRIVATE_KEY=0x$(openssl rand -hex 32)
+export PRIVATE_KEY=0x$(openssl rand -hex 32)
 OWNER_KEY=$PRIVATE_KEY
 OWNER_ADDRESS=$(cast wallet address $OWNER_KEY)
 STAKER_KEY=0x$(openssl rand -hex 32)
