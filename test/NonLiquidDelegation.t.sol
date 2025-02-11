@@ -1597,7 +1597,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
                     vm.stopPrank();
                     vm.deal(stakers[i-1], stakers[i-1].balance + 200_000 ether);
                     vm.startPrank(stakers[i-1]);
-                    delegation.replaceAddress(old);
+                    delegation.replaceOldAddress(old);
                     vm.stopPrank();
                 }
             for (i = 1; i <= 4; i++) {

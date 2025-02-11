@@ -137,7 +137,7 @@ contract NonLiquidDelegation is BaseDelegation, INonLiquidDelegation {
         $.newAddress[_msgSender()] = to;
     }
 
-    function replaceAddress(address old) public {
+    function replaceOldAddress(address old) public {
         NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
         address sender = _msgSender();
         require($.newAddress[old] == sender, "must be called by the new address");

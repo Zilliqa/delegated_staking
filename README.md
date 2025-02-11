@@ -406,7 +406,7 @@ event RewardPaid(address indexed delegator, uint256 reward);
 function getDelegatedAmount() external view returns(uint256 result);
 function getDelegatedTotal() external view returns(uint256 result);
 function setNewAddress(address to) external;
-function replaceAddress(address old) external;
+function replaceOldAddress(address old) external;
 function rewards() external view returns(uint256 total);
 function withdrawAllRewards() external returns(uint256 taxedRewards);
 function withdrawRewards(uint256 amount) external returns(uint256 taxedRewards);
