@@ -54,6 +54,7 @@ contract NonLiquidDelegation is BaseDelegation, INonLiquidDelegation {
         // also reflects the rewards accrued since then; the immutable
         // rewards only change when some of it is withdrawn or staked 
         int256 immutableRewards;
+        mapping(address => address) newAddress;
     }
 
     // keccak256(abi.encode(uint256(keccak256("zilliqa.storage.NonLiquidDelegation")) - 1)) & ~bytes32(uint256(0xff))
@@ -125,6 +126,37 @@ contract NonLiquidDelegation is BaseDelegation, INonLiquidDelegation {
         if ($.stakings.length > 0)
             result = $.stakings[$.stakings.length - 1].total;
     }
+
+    function getNewAddress() public view returns(address) {
+        NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
+        return $.newAddress[_msgSender()];
+    }
+
+    function setNewAddress(address to) public {
+        NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
+        $.newAddress[_msgSender()] = to;
+    }
+
+    function replaceAddress(address old) public {
+        NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
+        address sender = _msgSender();
+        require($.newAddress[old] == sender, "must be called by the new address");
+        /* keep the original staking addresses to save gas
+        for (uint64 i = 0; i < $.stakingIndices[old].length; i++)
+            $.stakings[$.stakingIndices[old][i]].staker = sender;
+        */
+        $.stakingIndices[sender] = $.stakingIndices[old];
+        delete $.stakingIndices[old];
+        $.firstStakingIndex[sender] = $.firstStakingIndex[old];
+        $.allWithdrawnRewards[sender] = $.allWithdrawnRewards[old];
+        $.lastWithdrawnStakingIndex[sender] = $.lastWithdrawnStakingIndex[old];
+        $.withdrawnAfterLastStaking[sender] = $.withdrawnAfterLastStaking[old];
+        delete $.firstStakingIndex[old];
+        delete $.allWithdrawnRewards[old];
+        delete $.lastWithdrawnStakingIndex[old];
+        delete $.withdrawnAfterLastStaking[old];
+        delete $.newAddress[old];
+    } 
 
     event RewardPaid(address indexed delegator, uint256 reward);
 
