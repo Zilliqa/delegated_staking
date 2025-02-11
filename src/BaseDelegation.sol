@@ -57,7 +57,7 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     // contract file names remain the same across all versions
     // so that the upgrade script does not need to be modified
     // to import the new version each time there is one
-    uint64 internal immutable VERSION = encodeVersion(0, 3, 3);
+    uint64 internal immutable VERSION = encodeVersion(0, 3, 4);
 
     function version() public view returns(uint64) {
         return _getInitializedVersion();
