@@ -905,7 +905,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         vm.startPrank(stakers[4-1]);
         delegation.claim();
         assertTrue(delegation.pendingWithdrawals(validator(2)), "there should be pending withdrawals");
-        vm.roll(block.number + WithdrawalQueue.unbondingPeriod());
+        vm.roll(block.number + delegation.unbondingPeriod());
         vm.stopPrank();
         // stake and unstake but pendingWithdrawals remains 0 after leaving was initiated
         vm.startPrank(owner);
@@ -924,7 +924,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         // completion of leaving has to wait for the unbonding period
         delegation.completeLeaving(validator(2));
         assertEq(delegation.validators().length, 2, "validator leaving should not be completed yet");
-        vm.roll(block.number + WithdrawalQueue.unbondingPeriod());
+        vm.roll(block.number + delegation.unbondingPeriod());
         // completion of leaving is finally possible 
         delegation.completeLeaving(validator(2));
         assertEq(delegation.validators().length, 1, "validator leaving should be completed");
@@ -982,7 +982,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
             availableRewards2,
             withdrawnRewards2
         );
-        vm.roll(block.number + WithdrawalQueue.unbondingPeriod());
+        vm.roll(block.number + delegation.unbondingPeriod());
         // if staker claims which calls withdrawDeposit() after the unbonding period, pendingWithdrawals will be 0
         vm.startPrank(stakers[4-1]);
         delegation.claim();
@@ -994,7 +994,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         // completion of leaving has to wait for the unbonding period
         delegation.completeLeaving(validator(2));
         assertEq(delegation.validators().length, 2, "validator leaving should not be completed yet");
-        vm.roll(block.number + WithdrawalQueue.unbondingPeriod());
+        vm.roll(block.number + delegation.unbondingPeriod());
         // completion of leaving is finally possible 
         delegation.completeLeaving(validator(2));
         assertEq(delegation.validators().length, 1, "validator leaving should be completed");
@@ -1068,7 +1068,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         vm.startPrank(stakers[4-1]);
         delegation.claim();
         assertTrue(delegation.pendingWithdrawals(validator(2)), "there should be pending withdrawals");
-        vm.roll(block.number + WithdrawalQueue.unbondingPeriod());
+        vm.roll(block.number + delegation.unbondingPeriod());
         vm.stopPrank();
         // stake and unstake but pendingWithdrawals remains 0 after leaving was initiated
         vm.startPrank(owner);
@@ -1099,7 +1099,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         uint256 controlAddressBalance = makeAddr("2").balance;
         delegation.claim();
         assertEq(makeAddr("2").balance - controlAddressBalance, 0, "control address should not be able to claim refund");
-        vm.roll(block.number + WithdrawalQueue.unbondingPeriod());
+        vm.roll(block.number + delegation.unbondingPeriod());
         // control address can claim the refund after the unbonding period 
         controlAddressBalance = makeAddr("2").balance;
         delegation.claim();
@@ -1168,7 +1168,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         delegation.stake{value: amount}();
         uint256 refund = delegation.getDelegatedAmount() - delegation.getStake(validator(2));
         vm.stopPrank();
-        vm.roll(block.number + WithdrawalQueue.unbondingPeriod());
+        vm.roll(block.number + delegation.unbondingPeriod());
         // if staker claims which calls withdrawDeposit() after the unbonding period, pendingWithdrawals will be 0
         vm.startPrank(stakers[4-1]);
         delegation.claim();
@@ -1182,7 +1182,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         uint256 controlAddressBalance = makeAddr("2").balance;
         delegation.claim();
         assertEq(makeAddr("2").balance - controlAddressBalance, 0, "control address should not be able to claim refund");
-        vm.roll(block.number + WithdrawalQueue.unbondingPeriod());
+        vm.roll(block.number + delegation.unbondingPeriod());
         // control address can claim the refund after the unbonding period 
         controlAddressBalance = makeAddr("2").balance;
         delegation.claim();
@@ -1257,7 +1257,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         vm.startPrank(stakers[4-1]);
         delegation.claim();
         assertTrue(delegation.pendingWithdrawals(validator(2)), "there should be pending withdrawals");
-        vm.roll(block.number + WithdrawalQueue.unbondingPeriod());
+        vm.roll(block.number + delegation.unbondingPeriod());
         vm.stopPrank();
         // stake and unstake but pendingWithdrawals remains 0 after leaving was initiated
         vm.startPrank(owner);
@@ -1282,7 +1282,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         vm.startPrank(makeAddr("2"));
         delegation.leave(validator(2));
         assertEq(delegation.validators().length, 1, "validator leaving should be completed");
-        vm.roll(block.number + WithdrawalQueue.unbondingPeriod());
+        vm.roll(block.number + delegation.unbondingPeriod());
         // there is no refund to claim after the unbonding period 
         uint256 controlAddressBalance = makeAddr("2").balance;
         delegation.claim();
@@ -1349,7 +1349,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         vm.deal(makeAddr("2"), makeAddr("2").balance + amount);
         delegation.stake{value: amount}();
         vm.stopPrank();
-        vm.roll(block.number + WithdrawalQueue.unbondingPeriod());
+        vm.roll(block.number + delegation.unbondingPeriod());
         // if staker claims which calls withdrawDeposit() after the unbonding period, pendingWithdrawals will be 0
         vm.startPrank(stakers[4-1]);
         delegation.claim();
@@ -1359,7 +1359,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         vm.startPrank(makeAddr("2"));
         delegation.leave(validator(2));
         assertEq(delegation.validators().length, 1, "validator leaving should be completed");
-        vm.roll(block.number + WithdrawalQueue.unbondingPeriod());
+        vm.roll(block.number + delegation.unbondingPeriod());
         // there is no refund to claim after the unbonding period 
         uint256 controlAddressBalance = makeAddr("2").balance;
         delegation.claim();
@@ -1367,6 +1367,17 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         vm.stopPrank();
         assertApproxEqAbs(withdrawnRewards1[0], withdrawnRewards2[2], 10, "withdrawn rewards mismatch");
         assertApproxEqAbs(withdrawnRewards1[1], withdrawnRewards2[3], 10, "withdrawn rewards mismatch");
+    }
+
+    function test_InstantUnstakeBeforeActivation() public {
+        vm.deal(stakers[0], stakers[0].balance + 110 ether);
+        vm.startPrank(stakers[0]);
+        delegation.stake{value: 100 ether}();
+        uint256 stakerBalance = stakers[0].balance;
+        delegation.unstake(delegation.getDelegatedAmount());
+        delegation.claim();
+        assertEq(stakers[0].balance - stakerBalance, 100 ether, "balance must increase instantly");
+        vm.stopPrank();
     }
 
     function test_UnstakeNotTooMuch() public {
@@ -1546,7 +1557,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         //Console.log("staker balance: %s.%s%s", stakers[i-1].balance);
         vm.stopPrank();
 
-        vm.roll(block.number + WithdrawalQueue.unbondingPeriod());
+        vm.roll(block.number + delegation.unbondingPeriod());
 
         i = 1;
         vm.startPrank(stakers[i-1]);
@@ -1665,7 +1676,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         //Console.log("staker balance: %s.%s%s", stakers[i-1].balance);
         vm.stopPrank();
 
-        vm.roll(block.number + WithdrawalQueue.unbondingPeriod());
+        vm.roll(block.number + delegation.unbondingPeriod());
 
         i = 1;
         vm.startPrank(stakers[i-1]);

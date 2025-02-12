@@ -361,7 +361,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            WithdrawalQueue.unbondingPeriod()
+            delegation.unbondingPeriod()
         );
     }
 
@@ -382,7 +382,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            WithdrawalQueue.unbondingPeriod()
+            delegation.unbondingPeriod()
         );
     }
 
@@ -403,7 +403,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            WithdrawalQueue.unbondingPeriod()
+            delegation.unbondingPeriod()
         );
     }
 
@@ -424,7 +424,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            WithdrawalQueue.unbondingPeriod()
+            delegation.unbondingPeriod()
         );
     }
 
@@ -447,7 +447,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            WithdrawalQueue.unbondingPeriod()
+            delegation.unbondingPeriod()
         );
     } 
 
@@ -468,7 +468,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            WithdrawalQueue.unbondingPeriod()
+            delegation.unbondingPeriod()
         );
     } 
 
@@ -489,7 +489,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            WithdrawalQueue.unbondingPeriod()
+            delegation.unbondingPeriod()
         );
     }
 
@@ -510,7 +510,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            WithdrawalQueue.unbondingPeriod()
+            delegation.unbondingPeriod()
         );
     }
 
@@ -533,7 +533,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            WithdrawalQueue.unbondingPeriod()
+            delegation.unbondingPeriod()
         );
     }
 
@@ -554,7 +554,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            WithdrawalQueue.unbondingPeriod()
+            delegation.unbondingPeriod()
         );
     }
 
@@ -575,7 +575,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            WithdrawalQueue.unbondingPeriod()
+            delegation.unbondingPeriod()
         );
     }
 
@@ -596,7 +596,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            WithdrawalQueue.unbondingPeriod()
+            delegation.unbondingPeriod()
         );
     }
 
@@ -619,7 +619,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            WithdrawalQueue.unbondingPeriod()
+            delegation.unbondingPeriod()
         );
     }
 
@@ -640,7 +640,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            WithdrawalQueue.unbondingPeriod()
+            delegation.unbondingPeriod()
         );
     } 
 
@@ -661,7 +661,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            WithdrawalQueue.unbondingPeriod()
+            delegation.unbondingPeriod()
         );
     }
 
@@ -682,7 +682,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            WithdrawalQueue.unbondingPeriod()
+            delegation.unbondingPeriod()
         );
     } 
 
@@ -705,7 +705,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking, // rewardsBeforeUnstaking
-            WithdrawalQueue.unbondingPeriod()
+            delegation.unbondingPeriod()
         );
     }
 
@@ -726,7 +726,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking, // rewardsBeforeUnstaking
-            WithdrawalQueue.unbondingPeriod()
+            delegation.unbondingPeriod()
         );
     }
 
@@ -747,7 +747,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking, // rewardsBeforeUnstaking
-            WithdrawalQueue.unbondingPeriod()
+            delegation.unbondingPeriod()
         );
     }
 
@@ -768,7 +768,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking, // rewardsBeforeUnstaking
-            WithdrawalQueue.unbondingPeriod()
+            delegation.unbondingPeriod()
         );
     }
 
@@ -789,7 +789,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking, // rewardsBeforeUnstaking
-            WithdrawalQueue.unbondingPeriod()
+            delegation.unbondingPeriod()
         );
     }
 
@@ -810,7 +810,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking, // rewardsBeforeUnstaking
-            WithdrawalQueue.unbondingPeriod()
+            delegation.unbondingPeriod()
         );
     }
 
@@ -833,7 +833,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            WithdrawalQueue.unbondingPeriod()
+            delegation.unbondingPeriod()
         );
         console.log("====================================================================");
         // delegation and lst point to the last element of delegations and lsts by default
@@ -850,7 +850,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * 3 * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            WithdrawalQueue.unbondingPeriod()
+            delegation.unbondingPeriod()
         );
         assertApproxEqAbs(lstPrice1, lstPrice2, 1e11, "LST price mismatch");
     }     
@@ -872,7 +872,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            WithdrawalQueue.unbondingPeriod()
+            delegation.unbondingPeriod()
         );
         console.log("====================================================================");
         // delegation and lst point to the last element of delegations and lsts by default
@@ -886,7 +886,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            WithdrawalQueue.unbondingPeriod()
+            delegation.unbondingPeriod()
         );
         assertEq(lstPrice1, lstPrice2, "LST price mismatch");
     }
@@ -908,7 +908,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            WithdrawalQueue.unbondingPeriod()
+            delegation.unbondingPeriod()
         );
         console.log("====================================================================");
         // delegation and lst point to the last element of delegations and lsts by default
@@ -922,7 +922,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 365 * 24 * 51_000 ether * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            WithdrawalQueue.unbondingPeriod()
+            delegation.unbondingPeriod()
         );
         assertEq(lstPrice1, lstPrice2, "LST price mismatch");
     }
@@ -944,7 +944,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
             9, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 51_000 ether / uint256(60) * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            WithdrawalQueue.unbondingPeriod()
+            delegation.unbondingPeriod()
         );
         console.log("====================================================================");
         // delegation and lst point to the last element of delegations and lsts by default
@@ -958,7 +958,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 51_000 ether / uint256(60) * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            WithdrawalQueue.unbondingPeriod()
+            delegation.unbondingPeriod()
         );
         assertApproxEqAbs(unstakedAmount1, unstakedAmount2, 10, "unstaked amount not approximately same");
     }
@@ -980,7 +980,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 51_000 ether / uint256(60) * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            WithdrawalQueue.unbondingPeriod()
+            delegation.unbondingPeriod()
         );
         console.log("====================================================================");
         // delegation and lst point to the last element of delegations and lsts by default
@@ -998,7 +998,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 51_000 ether / uint256(60) * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            WithdrawalQueue.unbondingPeriod()
+            delegation.unbondingPeriod()
         );
         assertEq(lstPrice1, lstPrice2, "LST price mismatch");
         assertEq(unstakedAmount1, unstakedAmount2, "unstaked amount mismatch");
@@ -1021,7 +1021,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 51_000 ether / uint256(60) * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            WithdrawalQueue.unbondingPeriod()
+            delegation.unbondingPeriod()
         );
         console.log("====================================================================");
         // delegation and lst point to the last element of delegations and lsts by default
@@ -1039,7 +1039,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 51_000 ether / uint256(60) * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            WithdrawalQueue.unbondingPeriod()
+            delegation.unbondingPeriod()
         );
         assertEq(lstPrice1, lstPrice2, "LST price mismatch");
         assertEq(unstakedAmount1, unstakedAmount2, "unstaked amount mismatch");
@@ -1062,7 +1062,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 51_000 ether / uint256(60) * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            WithdrawalQueue.unbondingPeriod()
+            delegation.unbondingPeriod()
         );
         console.log("====================================================================");
         // delegation and lst point to the last element of delegations and lsts by default
@@ -1089,7 +1089,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 51_000 ether / uint256(60) * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            WithdrawalQueue.unbondingPeriod()
+            delegation.unbondingPeriod()
         );
         assertEq(lstPrice1, lstPrice2, "LST price mismatch");
         assertEq(unstakedAmount1, unstakedAmount2, "unstaked amount mismatch");
@@ -1114,7 +1114,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 51_000 ether / uint256(60) * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            WithdrawalQueue.unbondingPeriod()
+            delegation.unbondingPeriod()
         );
         join(BaseDelegation(delegation), depositAmount, makeAddr("2"), 2);
         (, , , , , , , , uint256 lstPrice2, , , , , , uint256 unstakedAmount2, ) = run(
@@ -1124,7 +1124,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 51_000 ether / uint256(60) * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            WithdrawalQueue.unbondingPeriod()
+            delegation.unbondingPeriod()
         );
         // stake and unstake to make pendingWithdrawals > 0 before leaving is initiated
         vm.startPrank(owner);
@@ -1143,7 +1143,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         vm.startPrank(stakers[4-1]);
         delegation.claim();
         assertTrue(delegation.pendingWithdrawals(validator(2)), "there should be pending withdrawals");
-        vm.roll(block.number + WithdrawalQueue.unbondingPeriod());
+        vm.roll(block.number + delegation.unbondingPeriod());
         vm.stopPrank();
         // stake and unstake but pendingWithdrawals remains 0 after leaving was initiated
         vm.startPrank(owner);
@@ -1163,7 +1163,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         // completion of leaving has to wait for the unbonding period
         delegation.completeLeaving(validator(2));
         assertEq(delegation.validators().length, 2, "validator leaving should not be completed yet");
-        vm.roll(block.number + WithdrawalQueue.unbondingPeriod());
+        vm.roll(block.number + delegation.unbondingPeriod());
         // completion of leaving is finally possible 
         delegation.completeLeaving(validator(2));
         assertEq(delegation.validators().length, 1, "validator leaving should be completed");
@@ -1189,7 +1189,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 51_000 ether / uint256(60) * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            WithdrawalQueue.unbondingPeriod()
+            delegation.unbondingPeriod()
         );
         join(BaseDelegation(delegation), depositAmount, makeAddr("2"), 2);
         (, , , , , , , , uint256 lstPrice2, , , , , , uint256 unstakedAmount2, ) = run(
@@ -1199,9 +1199,9 @@ contract LiquidDelegationTest is BaseDelegationTest {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 51_000 ether / uint256(60) * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            WithdrawalQueue.unbondingPeriod()
+            delegation.unbondingPeriod()
         );
-        vm.roll(block.number + WithdrawalQueue.unbondingPeriod());
+        vm.roll(block.number + delegation.unbondingPeriod());
         // if staker claims which calls withdrawDeposit() after the unbonding period, pendingWithdrawals will be 0
         vm.startPrank(stakers[4-1]);
         delegation.claim();
@@ -1213,7 +1213,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         // completion of leaving has to wait for the unbonding period
         delegation.completeLeaving(validator(2));
         assertEq(delegation.validators().length, 2, "validator leaving should not be completed yet");
-        vm.roll(block.number + WithdrawalQueue.unbondingPeriod());
+        vm.roll(block.number + delegation.unbondingPeriod());
         // completion of leaving is finally possible 
         delegation.completeLeaving(validator(2));
         assertEq(delegation.validators().length, 1, "validator leaving should be completed");
@@ -1239,7 +1239,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 51_000 ether / uint256(60) * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            WithdrawalQueue.unbondingPeriod()
+            delegation.unbondingPeriod()
         );
         join(BaseDelegation(delegation), depositAmount, makeAddr("2"), 2);
         (, , , , , , , , uint256 lstPrice2, , , , , , uint256 unstakedAmount2, ) = run(
@@ -1249,7 +1249,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 51_000 ether / uint256(60) * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            WithdrawalQueue.unbondingPeriod()
+            delegation.unbondingPeriod()
         );
         // stake and unstake to make pendingWithdrawals > 0 before leaving is initiated
         vm.startPrank(owner);
@@ -1268,7 +1268,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         vm.startPrank(stakers[4-1]);
         delegation.claim();
         assertTrue(delegation.pendingWithdrawals(validator(2)), "there should be pending withdrawals");
-        vm.roll(block.number + WithdrawalQueue.unbondingPeriod());
+        vm.roll(block.number + delegation.unbondingPeriod());
         vm.stopPrank();
         // stake and unstake but pendingWithdrawals remains 0 after leaving was initiated
         vm.startPrank(owner);
@@ -1303,7 +1303,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         uint256 controlAddressBalance = makeAddr("2").balance;
         delegation.claim();
         assertEq(makeAddr("2").balance - controlAddressBalance, 0, "control address should not be able to claim refund");
-        vm.roll(block.number + WithdrawalQueue.unbondingPeriod());
+        vm.roll(block.number + delegation.unbondingPeriod());
         // control address can claim the refund after the unbonding period 
         controlAddressBalance = makeAddr("2").balance;
         delegation.claim();
@@ -1330,7 +1330,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 51_000 ether / uint256(60) * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            WithdrawalQueue.unbondingPeriod()
+            delegation.unbondingPeriod()
         );
         join(BaseDelegation(delegation), depositAmount, makeAddr("2"), 2);
         (, , , , , , , , uint256 lstPrice2, , , , , , uint256 unstakedAmount2, ) = run(
@@ -1340,7 +1340,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 51_000 ether / uint256(60) * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            WithdrawalQueue.unbondingPeriod()
+            delegation.unbondingPeriod()
         );
         // control address stakes more than the validator's deposit
         vm.startPrank(makeAddr("2"));
@@ -1355,7 +1355,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         //TODO: calculate the exact amount without correction
         refund += 7_341_880;
         vm.stopPrank();
-        vm.roll(block.number + WithdrawalQueue.unbondingPeriod());
+        vm.roll(block.number + delegation.unbondingPeriod());
         // if staker claims which calls withdrawDeposit() after the unbonding period, pendingWithdrawals will be 0
         vm.startPrank(stakers[4-1]);
         delegation.claim();
@@ -1369,7 +1369,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         uint256 controlAddressBalance = makeAddr("2").balance;
         delegation.claim();
         assertEq(makeAddr("2").balance - controlAddressBalance, 0, "control address should not be able to claim refund");
-        vm.roll(block.number + WithdrawalQueue.unbondingPeriod());
+        vm.roll(block.number + delegation.unbondingPeriod());
         // control address can claim the refund after the unbonding period 
         controlAddressBalance = makeAddr("2").balance;
         delegation.claim();
@@ -1396,7 +1396,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 51_000 ether / uint256(60) * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            WithdrawalQueue.unbondingPeriod()
+            delegation.unbondingPeriod()
         );
         join(BaseDelegation(delegation), depositAmount, makeAddr("2"), 2);
         (, , , , , , , , uint256 lstPrice2, , , , , , uint256 unstakedAmount2, ) = run(
@@ -1406,7 +1406,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 51_000 ether / uint256(60) * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            WithdrawalQueue.unbondingPeriod()
+            delegation.unbondingPeriod()
         );
         // stake and unstake to make pendingWithdrawals > 0 before leaving is initiated
         vm.startPrank(owner);
@@ -1425,7 +1425,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         vm.startPrank(stakers[4-1]);
         delegation.claim();
         assertTrue(delegation.pendingWithdrawals(validator(2)), "there should be pending withdrawals");
-        vm.roll(block.number + WithdrawalQueue.unbondingPeriod());
+        vm.roll(block.number + delegation.unbondingPeriod());
         vm.stopPrank();
         // stake and unstake but pendingWithdrawals remains 0 after leaving was initiated
         vm.startPrank(owner);
@@ -1454,7 +1454,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         vm.startPrank(makeAddr("2"));
         delegation.leave(validator(2));
         assertEq(delegation.validators().length, 1, "validator leaving should be completed");
-        vm.roll(block.number + WithdrawalQueue.unbondingPeriod());
+        vm.roll(block.number + delegation.unbondingPeriod());
         // there is no refund to claim after the unbonding period 
         uint256 controlAddressBalance = makeAddr("2").balance;
         delegation.claim();
@@ -1481,7 +1481,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 51_000 ether / uint256(60) * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            WithdrawalQueue.unbondingPeriod()
+            delegation.unbondingPeriod()
         );
         join(BaseDelegation(delegation), depositAmount, makeAddr("2"), 2);
         (, , , , , , , , uint256 lstPrice2, , , , , , uint256 unstakedAmount2, ) = run(
@@ -1491,7 +1491,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 51_000 ether / uint256(60) * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            WithdrawalQueue.unbondingPeriod()
+            delegation.unbondingPeriod()
         );
         // control address stakes as much as the validator's deposit
         vm.startPrank(makeAddr("2"));
@@ -1504,7 +1504,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         vm.deal(makeAddr("2"), makeAddr("2").balance + amount);
         delegation.stake{value: amount}();
         vm.stopPrank();
-        vm.roll(block.number + WithdrawalQueue.unbondingPeriod());
+        vm.roll(block.number + delegation.unbondingPeriod());
         // if staker claims which calls withdrawDeposit() after the unbonding period, pendingWithdrawals will be 0
         vm.startPrank(stakers[4-1]);
         delegation.claim();
@@ -1514,7 +1514,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         vm.startPrank(makeAddr("2"));
         delegation.leave(validator(2));
         assertEq(delegation.validators().length, 1, "validator leaving should be completed");
-        vm.roll(block.number + WithdrawalQueue.unbondingPeriod());
+        vm.roll(block.number + delegation.unbondingPeriod());
         // there is no refund to claim after the unbonding period 
         uint256 controlAddressBalance = makeAddr("2").balance;
         delegation.claim();
@@ -1522,6 +1522,17 @@ contract LiquidDelegationTest is BaseDelegationTest {
         vm.stopPrank();
         assertLt(lstPrice1, lstPrice2, "LST price should increase");
         assertGt(unstakedAmount1, unstakedAmount2, "unstaked amount should decrease");
+    }
+
+    function test_InstantUnstakeBeforeActivation() public {
+        vm.deal(stakers[0], stakers[0].balance + 110 ether);
+        vm.startPrank(stakers[0]);
+        delegation.stake{value: 100 ether}();
+        uint256 stakerBalance = stakers[0].balance;
+        delegation.unstake(lst.balanceOf(stakers[0]));
+        delegation.claim();
+        assertEq(stakers[0].balance - stakerBalance, 100 ether, "balance must increase instantly");
+        vm.stopPrank();
     }
 
     function test_UnstakeNotTooMuch() public {
@@ -1626,7 +1637,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
             // (numberOfDelegations - 1) * rewardsAccruedAfterEach <= rewardsBeforeUnstaking
             5 * 51_000 ether / uint256(3600) * depositAmount / totalDeposit, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 51_000 ether / uint256(60) * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            WithdrawalQueue.unbondingPeriod()
+            delegation.unbondingPeriod()
         );
     }
 
@@ -1647,7 +1658,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
             1, // numberOfDelegations
             0, // rewardsAccruedAfterEach
             taxedRewardsAfterStaking + 51_000 ether / uint256(60) * depositAmount / totalDeposit, // rewardsBeforeUnstaking
-            WithdrawalQueue.unbondingPeriod()
+            delegation.unbondingPeriod()
         );
     }
 
