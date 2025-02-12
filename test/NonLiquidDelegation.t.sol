@@ -1567,6 +1567,125 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         vm.stopPrank();
     }
 
+    // run with
+    // forge test -vv --via-ir --gas-report --gas-limit 10000000000 --block-gas-limit 10000000000 --match-test AfterMany
+    function test_ReplaceAndWithdrawAfterManyStakings() public {
+        uint256 i;
+        uint256 x;
+        uint64 steps = 11_000;
+
+        deposit(BaseDelegation(delegation), 10_000_000 ether, DepositMode.Bootstrapping);
+
+        // wait 2 epochs for the change to the deposit to take affect
+        vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
+
+        for (i = 0; i < 4; i++) {
+            vm.deal(stakers[i], 200_000 ether);
+            console.log("staker %s: %s", i+1, stakers[i]);
+        }
+
+        // rewards accrued so far
+        vm.deal(address(delegation), 50_000 ether);
+        x = 100;
+        for (uint256 j = 0; j < steps / 8; j++) {
+            if (j == steps / 8 / 2)
+                for (i = 1; i <= 4; i++) {
+                    address old = stakers[i-1];
+                    vm.startPrank(old);
+                    stakers[i-1] = makeAddr(Strings.toString(i));
+                    delegation.setNewAddress(stakers[i-1]);
+                    vm.stopPrank();
+                    vm.deal(stakers[i-1], stakers[i-1].balance + 200_000 ether);
+                    vm.startPrank(stakers[i-1]);
+                    delegation.replaceOldAddress(old);
+                    vm.stopPrank();
+                }
+            for (i = 1; i <= 4; i++) {
+                vm.startPrank(stakers[i-1]);
+                vm.recordLogs();
+                vm.expectEmit(
+                    true,
+                    false,
+                    false,
+                    false,
+                    address(delegation)
+                );
+                emit IDelegation.Staked(
+                    stakers[i-1],
+                    x * 1 ether,
+                    ""
+                );
+                delegation.stake{value: x * 1 ether}();
+                // wait 2 epochs for the change to the deposit to take affect
+                vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
+                //snapshot("staker %s staked %s", i, x);
+                vm.stopPrank();
+                vm.deal(address(delegation), address(delegation).balance + 10_000 ether);
+            }
+            for (i = 1; i <= 4; i++) {
+                vm.startPrank(stakers[i-1]);
+                vm.recordLogs();
+                vm.expectEmit(
+                    true,
+                    false,
+                    false,
+                    false,
+                    address(delegation)
+                );
+                emit IDelegation.Unstaked(
+                    stakers[i-1],
+                    x * 1 ether,
+                    ""
+                );
+                delegation.unstake(x * 1 ether);
+                // wait 2 epochs for the change to the deposit to take affect
+                vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
+                //snapshot("staker %s unstaked %s", i, x);
+                vm.stopPrank();
+                vm.deal(address(delegation), address(delegation).balance + 10_000 ether);
+            }
+        }
+
+        i = 1;
+        vm.startPrank(stakers[i-1]);
+        //snapshot("staker %s withdrawing 1+%s times", i, steps);
+        //Console.log("staker balance: %s.%s%s", stakers[i-1].balance);
+        //uint256 rewards = delegation.rewards(steps);
+        uint256 rewards = delegation.rewards();
+        Console.log("staker rewards: %s.%s%s", rewards);
+        rewards = delegation.withdrawRewards(rewards, steps);
+        //rewards = delegation.withdrawAllRewards();
+        /*
+        rewards = delegation.withdrawRewards(1000000, 2000);
+        rewards += delegation.withdrawRewards(1000000, 2000);
+        rewards += delegation.withdrawRewards(1000000, 2000);
+        rewards += delegation.withdrawRewards(1000000, 2000);
+        //*/
+        Console.log("staker withdrew: %s.%s%s", rewards);
+        //Console.log("staker balance: %s.%s%s", stakers[i-1].balance);
+        vm.stopPrank();
+
+        vm.roll(block.number + WithdrawalQueue.unbondingPeriod());
+
+        i = 1;
+        vm.startPrank(stakers[i-1]);
+        vm.recordLogs();
+        vm.expectEmit(
+            true,
+            false,
+            false,
+            false,
+            address(delegation)
+        );
+        emit IDelegation.Claimed(
+            stakers[i-1],
+            steps / 8 * x * 1 ether,
+            ""
+        );
+        delegation.claim();
+        vm.stopPrank();
+    }
+
     function test_ClaimsAfterManyUnstakings() public {
         claimsAfterManyUnstakings(
             NonLiquidDelegation(proxy), //delegation

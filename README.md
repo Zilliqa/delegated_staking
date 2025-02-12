@@ -49,7 +49,7 @@ You will see an output like this:
   Proxy deployed: 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 
   Implementation deployed: 0x7C623e01c5ce2e313C223ef2aEc1Ae5C6d12D9DD
   Owner is 0x15fc323DFE5D5DCfbeEdc25CEcbf57f676634d77
-  Upgraded to version: 0.3.0
+  Upgraded to version: 0.3.5
 ```
 
 You will need the proxy address from the above output in all commands below. If you know the address of a proxy contract but don't know which variant of staking it supports, run
@@ -66,10 +66,10 @@ forge script script/Upgrade.s.sol --broadcast --legacy --sig "run(address payabl
 The output will look like this:
 ```
   Signer is 0x15fc323DFE5D5DCfbeEdc25CEcbf57f676634d77
-  Upgrading from version: 0.3.0
+  Upgrading from version: 0.3.4
   Owner is 0x15fc323DFE5D5DCfbeEdc25CEcbf57f676634d77
   New implementation deployed: 0x64Fa96a67910956141cc481a43f242C045c10165
-  Upgraded to version: 0.3.4
+  Upgraded to version: 0.3.5
 ```
 
 If you want to check the current version your contract was upgraded to, run
@@ -89,7 +89,7 @@ forge script script/Configure.s.sol --broadcast --legacy --sig "commissionRate(a
 
 The output will contain the following information:
 ```
-  Running version: 0.3.4
+  Running version: 0.3.5
   Commission rate: 0.0%
   New commission rate: 10.0%
 ```
@@ -116,7 +116,7 @@ forge script script/Configure.s.sol --broadcast --legacy --sig "commissionReceiv
 
 The output will contain the following information:
 ```
-  Running version: 0.3.4
+  Running version: 0.3.5
   Commission receiver: 0x15fc323DFE5D5DCfbeEdc25CEcbf57f676634d77
   New commission receiver: 0xeA78aAE5Be606D2D152F00760662ac321aB8F017
 ```
@@ -207,7 +207,7 @@ with the private key of delegator account. It's important to make sure the accou
 
 The output will look like this for liquid staking:
 ```
-  Running version: 0.3.4
+  Running version: 0.3.5
   Current stake: 10000000000000000000000000 wei
   Current rewards: 110314207650273223687 wei
   LST address: 0x9e5c257D1c6dF74EaA54e58CdccaCb924669dc83
@@ -216,7 +216,7 @@ The output will look like this for liquid staking:
 ```
 and like this for the non-liquid variant:
 ```
-  Running version: 0.3.4
+  Running version: 0.3.5
   Current stake: 10000000000000000000000000 wei
   Current rewards: 110314207650273223687 wei
   Staker balance before: 99899145245801454561224 wei
@@ -243,7 +243,7 @@ using the private key of an account that holds some LST in case of the liquid va
 
 The output will look like this for liquid staking:
 ```
-  Running version: 0.3.4
+  Running version: 0.3.5
   Current stake: 10000000000000000000000000 wei
   Current rewards: 331912568306010928520 wei
   LST address: 0x9e5c257D1c6dF74EaA54e58CdccaCb924669dc83
@@ -252,7 +252,7 @@ The output will look like this for liquid staking:
 ```
 and like this for the non-liquid variant:
 ```
-  Running version: 0.3.4
+  Running version: 0.3.5
   Current stake: 10000000000000000000000000 wei
   Current rewards: 331912568306010928520 wei
   Staker balance before: 99698814298179759361224 wei
@@ -267,7 +267,7 @@ with the private key of the account that unstaked in the previous step.
 
 The output will look like this:
 ```
-  Running version: 0.3.4
+  Running version: 0.3.5
   Staker balance before: 99698086421983460161224 wei
   Staker balance after: 99798095485861371162343 wei
 ```
@@ -405,6 +405,8 @@ event RewardPaid(address indexed delegator, uint256 reward);
 
 function getDelegatedAmount() external view returns(uint256 result);
 function getDelegatedTotal() external view returns(uint256 result);
+function setNewAddress(address to) external;
+function replaceOldAddress(address old) external;
 function rewards() external view returns(uint256 total);
 function withdrawAllRewards() external returns(uint256 taxedRewards);
 function withdrawRewards(uint256 amount) external returns(uint256 taxedRewards);
