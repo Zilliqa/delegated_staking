@@ -177,7 +177,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
                 10,
                 "rewards differ from calculated value"
             );
-            //TODO: add tests that withdraw an amount < delegation.rewards(step)
+            // TODO: add tests that withdraw an amount < delegation.rewards(step)
             int256 totalRewardsAfter = int256(delegation.getImmutableRewards());
             int256 delegationBalanceAfter = int256(address(delegation).balance);
             Console.log("rewards accrued until last staking: %s.%s%s", totalRewardsAfter);

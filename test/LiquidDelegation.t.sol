@@ -1287,7 +1287,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         vm.deal(makeAddr("2"), makeAddr("2").balance + amount);
         delegation.stake{value: amount}();
         uint256 refund = (lst.balanceOf(makeAddr("2")) * price - delegation.getStake(validator(2)) * 1 ether) / 1 ether;
-        //TODO: calculate the exact amount without correction
+        // TODO: calculate the exact amount without correction
         refund += 5_000_208_296_500_198_542_001;
         vm.stopPrank();
         // if staker claims which calls withdrawDeposit() after the unbonding period, pendingWithdrawals will be 0
@@ -1352,7 +1352,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         vm.deal(makeAddr("2"), makeAddr("2").balance + amount);
         delegation.stake{value: amount}();
         uint256 refund = (lst.balanceOf(makeAddr("2")) * price - delegation.getStake(validator(2)) * 1 ether) / 1 ether;
-        //TODO: calculate the exact amount without correction
+        // TODO: calculate the exact amount without correction
         refund += 7_341_880;
         vm.stopPrank();
         vm.roll(block.number + delegation.unbondingPeriod());
@@ -1440,7 +1440,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         uint256 amount =
             1_000_000_000 * (delegation.getStake(validator(2)) * 1 ether - lst.balanceOf(makeAddr("2")) * price) /
             (1_000_000_000 ether - 1_000_000_000 ether * delegation.getStake(validator(2)) / (delegation.getStake(validator(1)) + delegation.getStake(validator(2))));
-        //TODO: calculate the exact amount without correction
+        // TODO: calculate the exact amount without correction
         amount -= 9_995_742_881_778_262_244_610;
         vm.deal(makeAddr("2"), makeAddr("2").balance + amount);
         delegation.stake{value: amount}();
@@ -1499,7 +1499,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         uint256 amount =
             1_000_000_000 * (delegation.getStake(validator(2)) * 1 ether - lst.balanceOf(makeAddr("2")) * price) /
             (1_000_000_000 ether - 1_000_000_000 ether * delegation.getStake(validator(2)) / (delegation.getStake(validator(1)) + delegation.getStake(validator(2))));
-        //TODO: calculate the exact amount without correction
+        // TODO: calculate the exact amount without correction
         amount -= 14_674_125;
         vm.deal(makeAddr("2"), makeAddr("2").balance + amount);
         delegation.stake{value: amount}();

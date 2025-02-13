@@ -42,7 +42,7 @@ contract LiquidDelegation is BaseDelegation, ILiquidDelegation {
     function initialize(address initialOwner, string calldata name, string calldata symbol) public initializer {
         __BaseDelegation_init(initialOwner);
         LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
-        $.lst = address(new NonRebasingLST(address(this), name, symbol));
+        $.lst = address(new NonRebasingLST(name, symbol));
     }
 
     // called when stake withdrawn from the deposit contract is claimed

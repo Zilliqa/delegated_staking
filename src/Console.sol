@@ -5,6 +5,8 @@ pragma solidity ^0.8.26;
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {console} from "forge-std/console.sol";
 
+// This library must not be used in production. It is only meant to be used
+// in Forge tests and scripts to format values sent to the {console}.
 library Console {
 
     function convert(int256 amount, uint8 precision) internal pure returns (

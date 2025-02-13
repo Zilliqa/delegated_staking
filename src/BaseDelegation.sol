@@ -8,6 +8,18 @@ import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable/acces
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {ERC165Upgradeable} from "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165Upgradeable.sol";
 
+/**
+ * @title The contract all variants of delegated staking contracts are based on.
+ * It manages the validators of the staking pool, the unbonding period, the commision
+ * rate and the commission receiver, as well as the withdrawal of unstaked funds.
+ *
+ * @dev All variants of delegated staking contracts inherit their {version} from
+ * the {BaseDelegation} contract. Consequently, even if changes have been only made
+ * in one of the variants, all other variants can also be (but do not have to be)
+ * upgraded to the latest version. It is the only contract that calls functions of
+ * the {DEPOSIT_CONTRACT} and might need to be adjusted if the {DEPOSIT_CONTRACT}
+ * is upgraded.
+ */
 abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2StepUpgradeable, UUPSUpgradeable, ERC165Upgradeable {
 
     using WithdrawalQueue for WithdrawalQueue.Fifo;
@@ -396,7 +408,7 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     }
 
     // withdraw the pending unstaked deposits of all validators
-    //TODO: measure how much gas it wastes if there is nothing to withdraw yet
+    // TODO: measure how much gas it wastes if there is nothing to withdraw yet
     function _withdrawDeposit() internal virtual {
         // withdraw the unstaked deposit only if already activated as a validator
         if (_isActivated()) {
@@ -534,7 +546,7 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
             );
             require(success, "could not retrieve reward address");
             address rewardAddress = abi.decode(data, (address));
-            //TODO: only if no other validator had the same reward address
+            // TODO: only if no other validator had the same reward address
             //      to prevent adding its balance multiple times
             total += rewardAddress.balance;
         }
