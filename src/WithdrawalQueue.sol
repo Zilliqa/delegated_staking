@@ -3,8 +3,6 @@ pragma solidity ^0.8.26;
 
 library WithdrawalQueue {
 
-    address public constant DEPOSIT_CONTRACT = address(0x5A494C4445504F53495450524F5859);
-
     struct Item {
         uint256 blockNumber;
         uint256 amount;
@@ -16,16 +14,8 @@ library WithdrawalQueue {
         mapping(uint256 => Item) items;
     }
 
-    function unbondingPeriod() internal view returns(uint256) {
-        (bool success, bytes memory data) = DEPOSIT_CONTRACT.staticcall(
-            abi.encodeWithSignature("withdrawalPeriod()")
-        );
-        require(success, "unbonding period unknown");
-        return abi.decode(data, (uint256));
-    }
-
-    function enqueue(Fifo storage fifo, uint256 amount) internal {
-        fifo.items[fifo.last] = Item(block.number + unbondingPeriod(), amount);
+    function enqueue(Fifo storage fifo, uint256 amount, uint256 period) internal {
+        fifo.items[fifo.last] = Item(block.number + period, amount);
         fifo.last++;
     }
 

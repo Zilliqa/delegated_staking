@@ -269,7 +269,7 @@ abstract contract BaseDelegationTest is Test {
         }
         assertEq(delegation.getClaimable() + totalPending, totalUnstaked, "claims must match unstaked amount");
 
-        vm.roll(block.number + WithdrawalQueue.unbondingPeriod());
+        vm.roll(block.number + delegation.unbondingPeriod());
 
         console.log("--------------------------------------------------------------------");
         console.log("block number: %s", block.number);

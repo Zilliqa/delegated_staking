@@ -46,7 +46,7 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     }
 
     uint256 public constant MIN_DELEGATION = 10 ether;
-    address public constant DEPOSIT_CONTRACT = WithdrawalQueue.DEPOSIT_CONTRACT;
+    address public constant DEPOSIT_CONTRACT = address(0x5A494C4445504F53495450524F5859);
     uint256 public constant DENOMINATOR = 10_000;
 
     event ValidatorJoined(bytes indexed blsPubKey);
@@ -57,7 +57,7 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     // contract file names remain the same across all versions
     // so that the upgrade script does not need to be modified
     // to import the new version each time there is one
-    uint64 internal immutable VERSION = encodeVersion(0, 3, 5);
+    uint64 internal immutable VERSION = encodeVersion(0, 3, 6);
 
     function version() public view returns(uint64) {
         return _getInitializedVersion();
@@ -501,8 +501,18 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
 
     function _enqueueWithdrawal(uint256 amount) internal virtual {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
-        $.withdrawals[_msgSender()].enqueue(amount);
+        $.withdrawals[_msgSender()].enqueue(amount, unbondingPeriod());
         $.totalWithdrawals += amount;
+    }
+
+    function unbondingPeriod() public view returns(uint256) {
+        if (!_isActivated())
+            return 0;
+        (bool success, bytes memory data) = DEPOSIT_CONTRACT.staticcall(
+            abi.encodeWithSignature("withdrawalPeriod()")
+        );
+        require(success, "unbonding period unknown");
+        return abi.decode(data, (uint256));
     }
 
     function getTotalWithdrawals() public virtual view returns(uint256) {
