@@ -4,16 +4,38 @@ pragma solidity ^0.8.26;
 import {BaseDelegation} from "src/BaseDelegation.sol";
 import {NonRebasingLST} from "src/NonRebasingLST.sol";
 
-// do not change this interface, it will break the detection of
-// the staking variant of an already deployed delegation contract
+/**
+ * @notice Minimal interface with functions specific to the {LiquidDelegation} variant.
+ * There must be at least one function that makes the interface unique among all variants.
+ *
+ * @dev Do not change this interface, otherwise it will break the detection of the staking
+ * of already deployed delegation contracts.
+ */
 interface ILiquidDelegation {
     function interfaceId() external pure returns (bytes4);
     function getLST() external view returns (address);
     function getPrice() external view returns(uint256);
 }
 
+/**
+ * @notice The liquid variant of the stake delegation contract. It uses {NonRebasingLST}
+ * as liquid staking token implementation. Every time users stake ZIL they receive the
+ * corresponding amount of liquid staking tokens depending on the current token price.
+ * The liquid staking token is non-rebasing, i.e. the token balances are not adjusted
+ * to reflect the rewards earned by the staking pool. Instead, the taxed rewards, i.e.
+ * the rewards after deducting the commission are are included in the token price.
+ *
+ * @dev Since the contract is registered as the reward address of all validators in the
+ * staking pools, its balance can increase in every block. Since this does not happen
+ * in form of transactions, the {receive} function will not notice it.
+ */
 contract LiquidDelegation is BaseDelegation, ILiquidDelegation {
 
+    /**
+    * @dev `taxedRewards` is the amount of rewards accrued that the contract is aware of
+    * and has already deducted the commission (tax) from. The contract balance is higher
+    * if new (untaxed) rewards have been added to it since the last update of `taxedRewards`.
+    */
     /// @custom:storage-location erc7201:zilliqa.storage.LiquidDelegation
     struct LiquidDelegationStorage {
         address lst;
@@ -35,18 +57,26 @@ contract LiquidDelegation is BaseDelegation, ILiquidDelegation {
         _disableInitializers();
     }
 
+    /**
+    * @dev Let {BaseDelegation} migrate `fromVersion` to the current version.
+    */
     function reinitialize(uint64 fromVersion) public reinitializer(VERSION) {
         migrate(fromVersion);
     }
 
+    /**
+    * @dev TODO
+    */
     function initialize(address initialOwner, string calldata name, string calldata symbol) public initializer {
         __BaseDelegation_init(initialOwner);
         LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
         $.lst = address(new NonRebasingLST(name, symbol));
     }
 
-    // called when stake withdrawn from the deposit contract is claimed
-    // but not called when rewards are assigned to the reward address
+    /**
+    * @dev Increase {taxedRewards} to reflect the amount withdrawn from a validator's
+    * deposit and added to the contract balance.
+    */
     receive() external payable {
         require(_msgSender() == DEPOSIT_CONTRACT, "sender must be the deposit contract");
         LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
@@ -54,6 +84,9 @@ contract LiquidDelegation is BaseDelegation, ILiquidDelegation {
         $.taxedRewards += msg.value;
     }
 
+    /**
+    * @dev TODO
+    */
     // called by the contract owner to add an already deposited validator to the staking pool
     function join(bytes calldata blsPubKey, address controlAddress) public override onlyOwner {
         // deduct the commission from the yet untaxed rewards before calculating the number of shares
@@ -65,6 +98,9 @@ contract LiquidDelegation is BaseDelegation, ILiquidDelegation {
         _join(blsPubKey, controlAddress);
     }
 
+    /**
+    * @dev TODO
+    */
     function _completeLeaving(uint256 amount) internal override {
         // if there is no other validator left, the withdrawn deposit will not
         // be deposited with the remaining validators but stay in the balance
@@ -74,6 +110,9 @@ contract LiquidDelegation is BaseDelegation, ILiquidDelegation {
         }
     }
 
+    /**
+    * @dev TODO
+    */
     // called by the validator node's original control address to remove the validator from
     // the staking pool, reducing the pool's total stake by the validator's current deposit
     function leave(bytes calldata blsPubKey) public override {
@@ -92,6 +131,9 @@ contract LiquidDelegation is BaseDelegation, ILiquidDelegation {
             _initiateLeaving(blsPubKey, amount);
     }
 
+    /**
+    * @dev TODO
+    */
     // called by the contract owner to turn the staking pool's first node into a validator
     // by depositing the value sent with this transaction and the amounts delegated before 
     function deposit(
@@ -110,6 +152,9 @@ contract LiquidDelegation is BaseDelegation, ILiquidDelegation {
         );
     } 
 
+    /**
+    * @dev TODO
+    */
     function stake() public override payable whenNotPaused {
         LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
         // if we are in the fundraising phase getRewards() would return 0 and taxedRewards would
@@ -126,6 +171,9 @@ contract LiquidDelegation is BaseDelegation, ILiquidDelegation {
         _increaseDeposit(msg.value);
     }
 
+    /**
+    * @dev TODO
+    */
     function _stake(uint256 value, address staker) internal {
         require(value >= MIN_DELEGATION, "delegated amount too low");
         uint256 shares;
@@ -147,6 +195,9 @@ contract LiquidDelegation is BaseDelegation, ILiquidDelegation {
         emit Staked(staker, value, abi.encode(shares));
     }
 
+    /**
+    * @dev TODO
+    */
     function unstake(uint256 shares) public override whenNotPaused returns(uint256 amount) {
         // if we are in the fundraising phase getRewards() would return 0 and taxedRewards would
         // be greater i.e. the commission calculated in taxRewards() would be negative, therefore
@@ -159,6 +210,9 @@ contract LiquidDelegation is BaseDelegation, ILiquidDelegation {
             _decreaseDeposit(amount);
     }
 
+    /**
+    * @dev TODO
+    */
     function _unstake(uint256 shares, address staker) internal returns(uint256 amount) {
         LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
         if (NonRebasingLST($.lst).totalSupply() == 0)
@@ -172,6 +226,9 @@ contract LiquidDelegation is BaseDelegation, ILiquidDelegation {
         emit Unstaked(staker, amount, abi.encode(shares));
     }
 
+    /**
+    * @dev TODO
+    */
     // return the amount of ZIL equivalent to 1 LST (share)
     function getPrice() public view returns(uint256 amount) {
         LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
@@ -183,6 +240,9 @@ contract LiquidDelegation is BaseDelegation, ILiquidDelegation {
             amount = (getStake() + rewards - commission) * 1 ether / NonRebasingLST($.lst).totalSupply();
     }
 
+    /**
+    * @dev TODO
+    */
     function taxRewards() internal {
         LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
         uint256 rewards = getRewards();
@@ -198,6 +258,9 @@ contract LiquidDelegation is BaseDelegation, ILiquidDelegation {
         emit CommissionPaid(getCommissionReceiver(), commission);
     }
 
+    /**
+    * @dev TODO
+    */
     function claim() public override whenNotPaused {
         LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
         uint256 total = _dequeueWithdrawals();
@@ -217,11 +280,17 @@ contract LiquidDelegation is BaseDelegation, ILiquidDelegation {
         emit Claimed(_msgSender(), total, "");
     }
 
+    /**
+    * @dev TODO
+    */
     function stakeRewards() public override onlyOwner {
         require(_isActivated(), "No validator activated and rewards earned yet");
         _stakeRewards();
     }
 
+    /**
+    * @dev TODO
+    */
     function _stakeRewards() internal {
         LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
         // rewards must be taxed before deposited since
@@ -238,25 +307,40 @@ contract LiquidDelegation is BaseDelegation, ILiquidDelegation {
         }
     }
 
+    /**
+    * @dev TODO
+    */
     function collectCommission() public override onlyOwner {
         taxRewards();
     }
 
+    /**
+    * @dev TODO
+    */
     // this function was only made public for testing purposes
     function getTaxedRewards() public view returns(uint256) {
         LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
         return $.taxedRewards;
     } 
 
+    /**
+    * @dev TODO
+    */
     function getLST() public view returns(address) {
         LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
         return $.lst;
     }
 
+    /**
+    * @dev TODO
+    */
     function supportsInterface(bytes4 _interfaceId) public view override returns (bool) {
        return _interfaceId == type(ILiquidDelegation).interfaceId || super.supportsInterface(_interfaceId);
     }
 
+    /**
+    * @dev TODO
+    */
     function interfaceId() public pure returns (bytes4) {
        return type(ILiquidDelegation).interfaceId;
     }

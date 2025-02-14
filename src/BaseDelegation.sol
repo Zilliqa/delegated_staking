@@ -9,7 +9,7 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
 import {ERC165Upgradeable} from "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165Upgradeable.sol";
 
 /**
- * @title The contract all variants of delegated staking contracts are based on.
+ * @notice The contract that all variants of delegated staking contracts are based on.
  * It manages the validators of the staking pool, the unbonding period, the commision
  * rate and the commission receiver, as well as the withdrawal of unstaked funds.
  *
@@ -17,15 +17,31 @@ import {ERC165Upgradeable} from "@openzeppelin/contracts-upgradeable/utils/intro
  * the {BaseDelegation} contract. Consequently, even if changes have been only made
  * in one of the variants, all other variants can also be (but do not have to be)
  * upgraded to the latest version. It is the only contract that calls functions of
- * the {DEPOSIT_CONTRACT} and might need to be adjusted if the {DEPOSIT_CONTRACT}
+ * the `DEPOSIT_CONTRACT` and might need to be adjusted if the `DEPOSIT_CONTRACT`
  * is upgraded.
  */
 abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2StepUpgradeable, UUPSUpgradeable, ERC165Upgradeable {
 
     using WithdrawalQueue for WithdrawalQueue.Fifo;
 
+    /**
+    * @dev If a validator's status is `PreparingToLeave` then its deposit must
+    * not be decreased anymore to avoid further pending withdrawals that delay
+    * the validator's leaving. If the status is `WaitingToLeave` then there are
+    * no more pending withdrawals but the validator's deposit had to be decreased
+    * and the unbonding period is not yet over. The final status `ReadyToLeave` means
+    * the validator's deposit is exactly as much as it needs to be to complete leaving.
+    */
     enum ValidatorStatus {Active, PreparingToLeave, WaitingToLeave, ReadyToLeave}
 
+    /**
+    * @dev The validator's `futureStake` i.e. its deposit after all pending changes
+    * become effective is cached to avoid unnecessary calls to the deposit contract.
+    * The `rewardAddress` and the `controlAddress` are stored so that their original
+    * values can be restored in the deposit contract if the validator leaves the pool.
+    * The `pendingWithdrawals` is the total amount of unstaked deposit waiting for the
+    * unbonding period to end. 
+    */
     struct Validator {
         bytes blsPubKey;
         uint256 futureStake;
@@ -35,6 +51,9 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         ValidatorStatus status;
     }
 
+    /**
+    * @dev TODO
+    */
     /// @custom:storage-location erc7201:zilliqa.storage.BaseDelegation
     struct BaseDelegationStorage {
         // the actual position in the validators array is the validatorIndex - 1 
@@ -57,8 +76,13 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         }
     }
 
+    /// @dev TODO
     uint256 public constant MIN_DELEGATION = 10 ether;
+
+    /// @dev TODO
     address public constant DEPOSIT_CONTRACT = address(0x5A494C4445504F53495450524F5859);
+
+    /// @dev A power of 10 that determines the precision of the commission rate.
     uint256 public constant DENOMINATOR = 10_000;
 
     event ValidatorJoined(bytes indexed blsPubKey);
@@ -71,14 +95,23 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     // to import the new version each time there is one
     uint64 internal immutable VERSION = encodeVersion(0, 3, 6);
 
+    /**
+    * @dev TODO
+    */
     function version() public view returns(uint64) {
         return _getInitializedVersion();
     } 
 
+    /**
+    * @dev TODO
+    */
     function decodedVersion() public view returns(uint24, uint24, uint24) {
         return decodeVersion(_getInitializedVersion());
     } 
 
+    /**
+    * @dev TODO
+    */
     function encodeVersion(uint24 major, uint24 minor, uint24 patch) pure public returns(uint64) {
         require(major < 2**20, "incorrect major version");
         require(minor < 2**20, "incorrect minor version");
@@ -86,6 +119,9 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         return uint64(major * 2**40 + minor * 2**20 + patch);
     }
 
+    /**
+    * @dev TODO
+    */
     function decodeVersion(uint64 v) pure public returns(uint24 major, uint24 minor, uint24 patch) {
         patch = uint24(v & (2**20 - 1));
         minor = uint24((v >> 20) & (2**20 - 1)); 
@@ -107,11 +143,17 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         $.commissionReceiver = initialOwner;
     }
 
+    /**
+    * @dev TODO
+    */
     struct DeprecatedStorage {
         bytes blsPubKey;
         bytes peerId;
     }
 
+    /**
+    * @dev TODO
+    */
     function migrate(uint64 fromVersion) internal {
 
         // the contract has been deployed but not upgraded yet
@@ -180,6 +222,9 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
 
     function _authorizeUpgrade(address newImplementation) internal onlyOwner virtual override {}
 
+    /**
+    * @dev TODO
+    */
     function _join(bytes calldata blsPubKey, address controlAddress) internal onlyOwner virtual {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
         $.activated = true;
@@ -211,8 +256,14 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         emit ValidatorJoined(blsPubKey);
     }
 
+    /**
+    * @dev TODO
+    */
     function _completeLeaving(uint256 amount) internal virtual;
 
+    /**
+    * @dev TODO
+    */
     function completeLeaving(bytes calldata blsPubKey) public virtual {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
         uint256 i = $.validatorIndex[blsPubKey];
@@ -253,6 +304,9 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         }
     }
 
+    /**
+    * @dev TODO
+    */
     function _preparedToLeave(bytes calldata blsPubKey) internal virtual returns(bool prepared) {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
         uint256 i = $.validatorIndex[blsPubKey];
@@ -262,6 +316,9 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         emit ValidatorLeaving(blsPubKey, prepared);
     }
 
+    /**
+    * @dev TODO
+    */
     function _initiateLeaving(bytes calldata blsPubKey, uint256 leavingStake) internal virtual {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
         uint256 i = $.validatorIndex[blsPubKey];
@@ -285,6 +342,9 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         }
     }
 
+    /**
+    * @dev TODO
+    */
     function pendingWithdrawals(bytes calldata blsPubKey) public virtual view returns(bool) {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
         uint256 i = $.validatorIndex[blsPubKey];
@@ -292,11 +352,17 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         return $.validators[i].pendingWithdrawals > 0;
     }
 
+    /**
+    * @dev TODO
+    */
     function validators() public view returns(Validator[] memory) {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
         return $.validators;
     }
 
+    /**
+    * @dev TODO
+    */
     function _deposit(
         bytes calldata blsPubKey,
         bytes calldata peerId,
@@ -337,13 +403,18 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
 
     function leave(bytes calldata blsPubKey) public virtual;
 
+    /**
+    * @dev TODO
+    */
     function deposit(
         bytes calldata blsPubKey,
         bytes calldata peerId,
         bytes calldata signature
     ) public virtual payable;
 
-    // topup the deposits proportionally to the validators' current deposit
+    /**
+    * @dev Topup the deposits proportionally to the validators' current deposit.
+    */
     function _increaseDeposit(uint256 amount) internal virtual returns(bool increased) {
         // topup the deposit only if already activated as a validator
         if (_isActivated()) {
@@ -351,7 +422,7 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
             uint256[] memory contribution = new uint256[]($.validators.length);
             uint256 total;
             for (uint256 i = 0; i < $.validators.length; i++)
-                if ($.validators[i].status < ValidatorStatus.ReadyToLeave)  {
+                if ($.validators[i].status < ValidatorStatus.WaitingToLeave) {
                     contribution[i] = $.validators[i].futureStake;
                     total += contribution[i];
                 }
@@ -373,7 +444,10 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         }
     }
 
-    // unstake from the deposits proportionally to the validators' surplus exceeding the required minimum deposit
+    /**
+    * @dev Unstake from the deposits proportionally to the validators'
+    * surplus deposit exceeding the required minimum deposit.
+    */
     function _decreaseDeposit(uint256 amount) internal virtual {
         // unstake the deposit only if already activated as a validator
         if (_isActivated()) {
@@ -407,6 +481,9 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         }
     }
 
+    /**
+    * @dev TODO
+    */
     // withdraw the pending unstaked deposits of all validators
     // TODO: measure how much gas it wastes if there is nothing to withdraw yet
     function _withdrawDeposit() internal virtual {
@@ -430,6 +507,9 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         }
     }
 
+    /**
+    * @dev TODO
+    */
     // return if the first validator has been deposited already
     // otherwise we are supposed to be in the fundraising phase
     function _isActivated() internal virtual view returns(bool) {
@@ -437,33 +517,51 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         return $.activated;
     }
 
+    /**
+    * @dev TODO
+    */
     function getCommissionNumerator() public virtual view returns(uint256) {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
         return $.commissionNumerator;
     }
 
+    /**
+    * @dev TODO
+    */
     function setCommissionNumerator(uint256 _commissionNumerator) public virtual onlyOwner {
         require(_commissionNumerator < DENOMINATOR, "invalid commission");
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
         $.commissionNumerator = _commissionNumerator;
     }
 
+    /**
+    * @dev TODO
+    */
     function getCommission() public virtual view returns(uint256 numerator, uint256 denominator) {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
         numerator = $.commissionNumerator;
         denominator = DENOMINATOR;
     }
 
+    /**
+    * @dev TODO
+    */
     function getCommissionReceiver() public virtual view returns(address) {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
         return $.commissionReceiver;
     }
 
+    /**
+    * @dev TODO
+    */
     function setCommissionReceiver(address _commissionReceiver) public virtual onlyOwner {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
         $.commissionReceiver = _commissionReceiver;
     }
 
+    /**
+    * @dev TODO
+    */
     function getMinDelegation() public virtual view returns(uint256) {
         return MIN_DELEGATION;
     }
@@ -478,6 +576,9 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
 
     function stakeRewards() public virtual;
 
+    /**
+    * @dev TODO
+    */
     function getClaimable() public virtual view returns(uint256 total) {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
         WithdrawalQueue.Fifo storage fifo = $.withdrawals[_msgSender()];
@@ -488,6 +589,9 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         }
     }
 
+    /**
+    * @dev TODO
+    */
     function getPendingClaims() public virtual view returns(uint256[2][] memory claims) {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
         WithdrawalQueue.Fifo storage fifo = $.withdrawals[_msgSender()];
@@ -503,6 +607,9 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         }
     }
 
+    /**
+    * @dev TODO
+    */
     function _dequeueWithdrawals() internal virtual returns (uint256 total) {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
         WithdrawalQueue.Fifo storage fifo = $.withdrawals[_msgSender()];
@@ -511,12 +618,18 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         $.totalWithdrawals -= total;
     }
 
+    /**
+    * @dev TODO
+    */
     function _enqueueWithdrawal(uint256 amount) internal virtual {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
         $.withdrawals[_msgSender()].enqueue(amount, unbondingPeriod());
         $.totalWithdrawals += amount;
     }
 
+    /**
+    * @dev TODO
+    */
     function unbondingPeriod() public view returns(uint256) {
         if (!_isActivated())
             return 0;
@@ -527,11 +640,17 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         return abi.decode(data, (uint256));
     }
 
+    /**
+    * @dev TODO
+    */
     function getTotalWithdrawals() public virtual view returns(uint256) {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
         return $.totalWithdrawals;
     }
 
+    /**
+    * @dev TODO
+    */
     function getRewards() public virtual view returns(uint256 total) {
         if (!_isActivated())
             return 0;
@@ -553,6 +672,9 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         */
     }
 
+    /**
+    * @dev TODO
+    */
     function getStake() public virtual view returns(uint256 total) {
         if (!_isActivated())
             return address(this).balance;
@@ -561,6 +683,9 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
             total += $.validators[i].futureStake;
     }
 
+    /**
+    * @dev TODO
+    */
     function getStake(bytes calldata blsPubKey) public virtual view returns(uint256) {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
         uint256 i = $.validatorIndex[blsPubKey];

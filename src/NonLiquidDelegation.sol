@@ -4,55 +4,79 @@ pragma solidity ^0.8.26;
 import {BaseDelegation} from "src/BaseDelegation.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
-// do not change this interface, it will break the detection of
-// the staking variant of an already deployed delegation contract
+/**
+ * @notice Minimal interface with functions specific to the {NonLiquidDelegation} variant.
+ * There must be at least one function that makes the interface unique among all variants.
+ *
+ * @dev Do not change this interface, otherwise it will break the detection of the staking
+ * of already deployed delegation contracts.
+ */
 interface INonLiquidDelegation {
     function interfaceId() external pure returns (bytes4);
     function getDelegatedAmount() external view returns(uint256);
     function rewards() external view returns(uint256);
 }
 
+/**
+ * @notice The non-liquid variant of the stake delegation contract. It record every change
+ * to the delegated stake in the {Staking} history. Based on the entries in the history
+ * it calculates the rewards due to each delegator.
+ *
+ * @dev Every time a delegator stakes or unstakes, the stake proportions of all delegators
+ * change. It is essential to record the rewards accrued between two {Staking} events in
+ * order to be able to calculate each delegator's share of the rewards during that period.
+ * Note that the rewards accrued since the last {Staking} event are in the contract balance
+ * which is increasing in every block.
+ */
 contract NonLiquidDelegation is BaseDelegation, INonLiquidDelegation {
     using SafeCast for int256;
 
+    /**
+    * @dev `staker` is the address of the delegator who staked or
+    * unstaked, after which the delegator had `amount` and the pool
+    * had `total` staked ZIL, and the `rewards` were earned since
+    * the previous {Staking} event or the since the launch of the
+    * pool if this is the first {Staking} event.
+    */
     struct Staking {
         address staker;
-        // the currently staked amount of the staker
-        // after the staking/unstaking
         uint256 amount;
-        // the currently staked total of all stakers
-        // after the staking/unstaking
         uint256 total;
-        // the rewards accrued since the last staking/unstaking
-        // note that the current staker's share of these rewards
-        // is NOT to be calculated based on the new amount and
-        // total since those apply only to future rewards
         uint256 rewards;
     }
 
+    /**
+    * @dev `stakings` stores the append-only history of {Staking} events.
+    *
+    * `stakingIndices` maps delegator addresses to arrays of indices in `stakings`
+    * in ascending order that the respective delegator performed.
+    *
+    * `firstStakingIndex` is the index of the element in a validator's
+    * `stakingIndices` array from which their outstanding rewards are calculated.
+    *
+    * `availableTaxedRewards` is the portion of a delegator's rewards from which the
+    * commission was already deducted.
+    *
+    * `lastTaxedStakingIndex` is the `nextStakingIndex` returned from {_rewards} up to
+    * which the delegator's rewards have already been included in `availableTaxedRewards`.
+    *
+    * `taxedSinceLastStaking` are a validator's taxed rewards accrued since the last
+    * entry in the {Staking} history.
+    *
+    * `immutableRewards` is the total of rewards in the {Staking} history after deducting
+    * the commission, that has not been withdrawn or staked yet.
+    *
+    * `newAddress` maps a delegator's address to another address that replaces it as soon
+    * as that other address calls {replaceOldAddress}.
+    */
     /// @custom:storage-location erc7201:zilliqa.storage.NonLiquidDelegation
     struct NonLiquidDelegationStorage {
-        // the history of all stakings and unstakings
         Staking[] stakings;
-        // indices of (un)stakings by the respective staker
         mapping(address => uint64[]) stakingIndices;
-        // the first among the stakingIndices of the respective staker
-        // based on which new rewards can be withdrawn
         mapping(address => uint64) firstStakingIndex;
-        // already calculated portion of the rewards of the
-        // respective staker that can be fully/partially
-        // transferred to the staker
-        mapping(address => uint256) allWithdrawnRewards;
-        // the last staking nextStakingIndex up to which the rewards
-        // of the respective staker have been calculated
-        // and added to allWithdrawnRewards
-        mapping(address => uint64) lastWithdrawnStakingIndex;
-        // the amount that has already been withdrawn from the
-        // constantly growing rewards accrued since the last staking
-        mapping(address => uint256) withdrawnAfterLastStaking;
-        // all rewards accrued until the last staking whereas the balance
-        // also reflects the rewards accrued since then; the immutable
-        // rewards only change when some of it is withdrawn or staked 
+        mapping(address => uint256) availableTaxedRewards;
+        mapping(address => uint64) lastTaxedStakingIndex;
+        mapping(address => uint256) taxedSinceLastStaking;
         int256 immutableRewards;
         mapping(address => address) newAddress;
     }
@@ -72,16 +96,24 @@ contract NonLiquidDelegation is BaseDelegation, INonLiquidDelegation {
         _disableInitializers();
     }
 
+    /**
+    * @dev Let {BaseDelegation} migrate `fromVersion` to the current version.
+    */
     function reinitialize(uint64 fromVersion) public reinitializer(VERSION) {
         migrate(fromVersion);
     }
 
+    /**
+    * @dev TODO
+    */
     function initialize(address initialOwner) public initializer {
         __BaseDelegation_init(initialOwner);
     }
 
-    // called when stake withdrawn from the deposit contract is claimed
-    // but not called when rewards are assigned to the reward address
+    /**
+    * @dev Increase {immutableRewards} to reflect the amount withdrawn from a validator's
+    * deposit and added to the contract balance.
+    */
     receive() external payable {
         require(_msgSender() == DEPOSIT_CONTRACT, "sender must be the deposit contract");
         NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
@@ -89,31 +121,43 @@ contract NonLiquidDelegation is BaseDelegation, INonLiquidDelegation {
         $.immutableRewards += int256(msg.value);
     }
 
+    /**
+    * @dev TODO
+    */
     function getImmutableRewards() public view returns(int256) {
         NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
         return $.immutableRewards;
     }
 
+    /**
+    * @dev TODO
+    */
     function getStakingHistory() public view returns(Staking[] memory) {
         NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
         return $.stakings;
     }
 
+    /**
+    * @dev TODO
+    */
     function getStakingData() public view returns(
         uint64[] memory stakingIndices,
         uint64 firstStakingIndex,
-        uint256 allWithdrawnRewards,
-        uint64 lastWithdrawnStakingIndex,
-        uint256 withdrawnAfterLastStaking
+        uint256 availableTaxedRewards,
+        uint64 lastTaxedStakingIndex,
+        uint256 taxedSinceLastStaking
     ) {
         NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
         stakingIndices = $.stakingIndices[_msgSender()];
         firstStakingIndex = $.firstStakingIndex[_msgSender()];
-        allWithdrawnRewards = $.allWithdrawnRewards[_msgSender()];
-        lastWithdrawnStakingIndex = $.lastWithdrawnStakingIndex[_msgSender()];
-        withdrawnAfterLastStaking = $.withdrawnAfterLastStaking[_msgSender()];
+        availableTaxedRewards = $.availableTaxedRewards[_msgSender()];
+        lastTaxedStakingIndex = $.lastTaxedStakingIndex[_msgSender()];
+        taxedSinceLastStaking = $.taxedSinceLastStaking[_msgSender()];
     }
 
+    /**
+    * @dev TODO
+    */
     function getDelegatedAmount() public view returns(uint256 result) {
         NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
         uint64[] storage stakingIndices = $.stakingIndices[_msgSender()];
@@ -121,22 +165,34 @@ contract NonLiquidDelegation is BaseDelegation, INonLiquidDelegation {
             result = $.stakings[stakingIndices[stakingIndices.length - 1]].amount;
     }
 
+    /**
+    * @dev TODO
+    */
     function getDelegatedTotal() public view returns(uint256 result) {
         NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
         if ($.stakings.length > 0)
             result = $.stakings[$.stakings.length - 1].total;
     }
 
+    /**
+    * @dev TODO
+    */
     function getNewAddress() public view returns(address) {
         NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
         return $.newAddress[_msgSender()];
     }
 
+    /**
+    * @dev TODO
+    */
     function setNewAddress(address to) public {
         NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
         $.newAddress[_msgSender()] = to;
     }
 
+    /**
+    * @dev TODO
+    */
     function replaceOldAddress(address old) public {
         NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
         address sender = _msgSender();
@@ -148,18 +204,24 @@ contract NonLiquidDelegation is BaseDelegation, INonLiquidDelegation {
         $.stakingIndices[sender] = $.stakingIndices[old];
         delete $.stakingIndices[old];
         $.firstStakingIndex[sender] = $.firstStakingIndex[old];
-        $.allWithdrawnRewards[sender] = $.allWithdrawnRewards[old];
-        $.lastWithdrawnStakingIndex[sender] = $.lastWithdrawnStakingIndex[old];
-        $.withdrawnAfterLastStaking[sender] = $.withdrawnAfterLastStaking[old];
+        $.availableTaxedRewards[sender] = $.availableTaxedRewards[old];
+        $.lastTaxedStakingIndex[sender] = $.lastTaxedStakingIndex[old];
+        $.taxedSinceLastStaking[sender] = $.taxedSinceLastStaking[old];
         delete $.firstStakingIndex[old];
-        delete $.allWithdrawnRewards[old];
-        delete $.lastWithdrawnStakingIndex[old];
-        delete $.withdrawnAfterLastStaking[old];
+        delete $.availableTaxedRewards[old];
+        delete $.lastTaxedStakingIndex[old];
+        delete $.taxedSinceLastStaking[old];
         delete $.newAddress[old];
     } 
 
+    /**
+    * @dev TODO
+    */
     event RewardPaid(address indexed delegator, uint256 reward);
 
+    /**
+    * @dev TODO
+    */
     // called by the contract owner to add an already deposited validator to the staking pool
     function join(bytes calldata blsPubKey, address controlAddress) public override onlyOwner {
         _join(blsPubKey, controlAddress);
@@ -169,6 +231,9 @@ contract NonLiquidDelegation is BaseDelegation, INonLiquidDelegation {
         _append(int256(getStake(blsPubKey)), controlAddress);
     }
 
+    /**
+    * @dev TODO
+    */
     function _completeLeaving(uint256 amount) internal override {
         // if there is no other validator left, the withdrawn deposit will not
         // be deposited with the remaining validators but stay in the balance
@@ -178,6 +243,9 @@ contract NonLiquidDelegation is BaseDelegation, INonLiquidDelegation {
         }
     }
 
+    /**
+    * @dev TODO
+    */
     // called by the validator node's original control address to remove the validator from
     // the staking pool, reducing the pool's total stake by the validator's current deposit
     function leave(bytes calldata blsPubKey) public override {
@@ -196,6 +264,9 @@ contract NonLiquidDelegation is BaseDelegation, INonLiquidDelegation {
             _initiateLeaving(blsPubKey, amount);
     }
 
+    /**
+    * @dev TODO
+    */
     // called by the contract owner to turn the staking pool's first node into a validator
     // by depositing the value sent with this transaction and the amounts delegated before 
     function deposit(
@@ -216,6 +287,9 @@ contract NonLiquidDelegation is BaseDelegation, INonLiquidDelegation {
             _append(int256(msg.value), _msgSender());
     }
 
+    /**
+    * @dev TODO
+    */
     function claim() public override whenNotPaused {
         NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
         uint256 total = _dequeueWithdrawals();
@@ -231,12 +305,18 @@ contract NonLiquidDelegation is BaseDelegation, INonLiquidDelegation {
         emit Claimed(_msgSender(), total, "");
     }
 
+    /**
+    * @dev TODO
+    */
     function stake() public override payable whenNotPaused {
         _increaseDeposit(msg.value);
         _append(int256(msg.value), _msgSender());
         emit Staked(_msgSender(), msg.value, "");
     }
 
+    /**
+    * @dev TODO
+    */
     function unstake(uint256 value) public override whenNotPaused returns(uint256 amount) {
         _append(-int256(value), _msgSender());
         if (validators().length > 0)
@@ -246,6 +326,9 @@ contract NonLiquidDelegation is BaseDelegation, INonLiquidDelegation {
         return value;
     }
 
+    /**
+    * @dev TODO
+    */
     function _append(int256 value, address staker) internal {
         if (value > 0)
             require(uint256(value) >= MIN_DELEGATION, "delegated amount too low");
@@ -264,20 +347,29 @@ contract NonLiquidDelegation is BaseDelegation, INonLiquidDelegation {
         $.stakingIndices[staker].push(uint64($.stakings.length - 1));
     }
 
+    /**
+    * @dev TODO
+    */
     function rewards(uint64 additionalSteps) public view returns(uint256) {
         NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
         (uint256 resultInTotal, , , ) = _rewards(additionalSteps);
-        resultInTotal -= $.withdrawnAfterLastStaking[_msgSender()];
-        return resultInTotal - resultInTotal * getCommissionNumerator() / DENOMINATOR + $.allWithdrawnRewards[_msgSender()];
+        resultInTotal -= $.taxedSinceLastStaking[_msgSender()];
+        return resultInTotal - resultInTotal * getCommissionNumerator() / DENOMINATOR + $.availableTaxedRewards[_msgSender()];
     }
 
+    /**
+    * @dev TODO
+    */
     function rewards() public view returns(uint256) {
         NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
         (uint256 resultInTotal, , , ) = _rewards();
-        resultInTotal -= $.withdrawnAfterLastStaking[_msgSender()];
-        return resultInTotal - resultInTotal * getCommissionNumerator() / DENOMINATOR + $.allWithdrawnRewards[_msgSender()];
+        resultInTotal -= $.taxedSinceLastStaking[_msgSender()];
+        return resultInTotal - resultInTotal * getCommissionNumerator() / DENOMINATOR + $.availableTaxedRewards[_msgSender()];
     }
 
+    /**
+    * @dev TODO
+    */
     function taxRewards(uint256 untaxedRewards) internal returns (uint256) {
         NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
         uint256 commission = untaxedRewards * getCommissionNumerator() / DENOMINATOR;
@@ -293,18 +385,30 @@ contract NonLiquidDelegation is BaseDelegation, INonLiquidDelegation {
         return untaxedRewards - commission;
     }
 
+    /**
+    * @dev TODO
+    */
     function withdrawAllRewards(uint64 additionalSteps) public whenNotPaused returns(uint256) {
         return withdrawRewards(type(uint256).max, additionalSteps);
     }
 
+    /**
+    * @dev TODO
+    */
     function withdrawAllRewards() public whenNotPaused returns(uint256) {
         return withdrawRewards(type(uint256).max, type(uint64).max);
     }
 
+    /**
+    * @dev TODO
+    */
     function withdrawRewards(uint256 amount) public whenNotPaused returns(uint256) {
         return withdrawRewards(amount, type(uint64).max);
     }
 
+    /**
+    * @dev TODO
+    */
     function withdrawRewards(uint256 amount, uint64 additionalSteps) public whenNotPaused returns(uint256 taxedRewards) {
         (amount, taxedRewards) = _useRewards(amount, additionalSteps);
         (bool success, ) = _msgSender().call{value: amount}("");
@@ -312,13 +416,19 @@ contract NonLiquidDelegation is BaseDelegation, INonLiquidDelegation {
         emit RewardPaid(_msgSender(), amount);
     }
 
-    function stakeRewards() public override {
+    /**
+    * @dev TODO
+    */
+    function stakeRewards() public whenNotPaused override {
         (uint256 amount, ) = _useRewards(type(uint256).max, type(uint64).max);
         _increaseDeposit(amount);
         _append(int256(amount), _msgSender());
         emit Staked(_msgSender(), amount, "");
     }
 
+    /**
+    * @dev TODO
+    */
     // if there have been more than 11,000 stakings or unstakings since the delegator's last reward
     // withdrawal, calling withdrawAllRewards() would exceed the block gas limit additionalSteps is
     // the number of additional stakings from which the rewards are withdrawn if zero, the rewards
@@ -339,22 +449,25 @@ contract NonLiquidDelegation is BaseDelegation, INonLiquidDelegation {
         // store the rewards accrued since the last staking (`resultAfterLastStaking`)
         // in order to know next time how much the caller has already withdrawn, and
         // reduce the current withdrawal (`resultInTotal`) by the amount that was stored
-        // last time (`withdrawnAfterLastStaking`) - this is essential because the reward
+        // last time (`taxedSinceLastStaking`) - this is essential because the reward
         // amount since the last staking is growing all the time, but only the delta accrued
         // since the last withdrawal shall be taken into account in the current withdrawal
-        ($.withdrawnAfterLastStaking[_msgSender()], resultInTotal) = (resultAfterLastStaking, resultInTotal - $.withdrawnAfterLastStaking[_msgSender()]);
+        ($.taxedSinceLastStaking[_msgSender()], resultInTotal) = (resultAfterLastStaking, resultInTotal - $.taxedSinceLastStaking[_msgSender()]);
         uint256 taxedRewards = taxRewards(resultInTotal);
-        $.allWithdrawnRewards[_msgSender()] += taxedRewards;
+        $.availableTaxedRewards[_msgSender()] += taxedRewards;
         $.firstStakingIndex[_msgSender()] = posInStakingIndices;
-        $.lastWithdrawnStakingIndex[_msgSender()] = nextStakingIndex - 1;
+        $.lastTaxedStakingIndex[_msgSender()] = nextStakingIndex - 1;
         if (amount == type(uint256).max)
-            amount = $.allWithdrawnRewards[_msgSender()];
-        require(amount <= $.allWithdrawnRewards[_msgSender()], "can not withdraw more than accrued");
-        $.allWithdrawnRewards[_msgSender()] -= amount;
+            amount = $.availableTaxedRewards[_msgSender()];
+        require(amount <= $.availableTaxedRewards[_msgSender()], "can not withdraw more than accrued");
+        $.availableTaxedRewards[_msgSender()] -= amount;
         $.immutableRewards -= int256(amount);
         return (amount, taxedRewards);
     }
 
+    /**
+    * @dev TODO
+    */
     function _rewards() internal view returns (
         uint256 resultInTotal,
         uint256 resultAfterLastStaking,
@@ -364,6 +477,9 @@ contract NonLiquidDelegation is BaseDelegation, INonLiquidDelegation {
         return _rewards(type(uint64).max);
     }
 
+    /**
+    * @dev TODO
+    */
     function _rewards(uint64 additionalSteps) internal view returns (
         uint256 resultInTotal,
         uint256 resultAfterLastStaking,
@@ -381,8 +497,8 @@ contract NonLiquidDelegation is BaseDelegation, INonLiquidDelegation {
         ) {
             nextStakingIndex = $.stakingIndices[_msgSender()][posInStakingIndices];
             amount = $.stakings[nextStakingIndex].amount;
-            if (nextStakingIndex < $.lastWithdrawnStakingIndex[_msgSender()])
-                nextStakingIndex = $.lastWithdrawnStakingIndex[_msgSender()];
+            if (nextStakingIndex < $.lastTaxedStakingIndex[_msgSender()])
+                nextStakingIndex = $.lastTaxedStakingIndex[_msgSender()];
             total = $.stakings[nextStakingIndex].total;
             nextStakingIndex++;
             if (firstStakingIndex == 0)
@@ -417,12 +533,21 @@ contract NonLiquidDelegation is BaseDelegation, INonLiquidDelegation {
             posInStakingIndices--;
     }
 
+    /**
+    * @dev TODO
+    */
     function collectCommission() public override {}
 
+    /**
+    * @dev TODO
+    */
     function supportsInterface(bytes4 _interfaceId) public view override returns (bool) {
        return _interfaceId == type(INonLiquidDelegation).interfaceId || super.supportsInterface(_interfaceId);
     }
 
+    /**
+    * @dev TODO
+    */
     function interfaceId() public pure returns (bytes4) {
        return type(INonLiquidDelegation).interfaceId;
     }
