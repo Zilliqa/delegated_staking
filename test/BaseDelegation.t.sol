@@ -81,7 +81,7 @@ abstract contract BaseDelegationTest is Test {
         BaseDelegation delegation,
         uint256 depositAmount,
         DepositMode mode
-    ) internal {
+    ) public {
         bytes memory blsPubKey;
         currentDeploymentId = bytes1(uint8(currentDeploymentId) + 1);
         uint256 preStaked = (mode == DepositMode.Fundraising) ? depositAmount / 10 : 0;
@@ -106,7 +106,7 @@ abstract contract BaseDelegationTest is Test {
                 }();
                 vm.stopPrank();
             }
-
+            
         if (mode == DepositMode.Fundraising || mode == DepositMode.Bootstrapping) {
             vm.deal(owner, owner.balance + depositAmount - (mode == DepositMode.Fundraising ? 2 : 0) * preStaked);
             vm.startPrank(owner);

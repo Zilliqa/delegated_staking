@@ -63,9 +63,11 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     * - `commissionNumerator` is the commission rate multiplied by `DENOMINATOR`
     * and `commissionReceiver` is the address the deducted commissions are sent to.
     *
-    * - `withdrawals` holds the withdrawal queues of addresses that unstaked and
-    * `totalWithdrawals` is the total amount of pending withdrawals that needs to
-    * be covered from the staking pool contract's balance.
+    * - `withdrawals` holds the withdrawal queues of addresses that unstaked.
+    *
+    * - `pendingDepositReductions` is the total amount of pending withdrawals
+    * initiated to reduce the deposits of leaving validators to match the stake
+    * of their control address.
     *
     * - `validators` holds the current {Validator} list of the staking pool.
     *
@@ -80,7 +82,7 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         bool activated;
         uint256 commissionNumerator;
         mapping(address => WithdrawalQueue.Fifo) withdrawals;
-        uint256 totalWithdrawals;
+        uint256 pendingDepositReductions;
         Validator[] validators;
         address commissionReceiver;
         uint256 undepositedStake;
@@ -202,8 +204,8 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
 
         if (fromVersion < encodeVersion(0, 4, 0))
             // the contract has been upgraded to a version which may have
-            // changed the total withdrawals which has to be zero initially
-            $.totalWithdrawals = 0;
+            // changed the totalWithdrawals which has to be zero initially
+            $.pendingDepositReductions = 0;
 
         if (fromVersion < encodeVersion(0, 3, 0))
             // the contract has been upgraded to a version which did not
@@ -333,8 +335,7 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         if (amount == 0)
             return;
         if (amount == $.validators[i].pendingWithdrawals) {
-//TODO: let's misuse the totalWithdrawals to store how much deposit reduction is pending
-            $.totalWithdrawals -= $.validators[i].pendingWithdrawals;
+            $.pendingDepositReductions -= $.validators[i].pendingWithdrawals;
             $.validators[i].pendingWithdrawals = 0;
             _increaseDeposit(amount);
         } else
@@ -404,8 +405,7 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
             require(success, "deposit decrease failed");
             $.validators[i].pendingWithdrawals = $.validators[i].futureStake - leavingStake;
             $.validators[i].futureStake = leavingStake;
-//TODO: let's misuse the totalWithdrawals to store how much deposit reduction is pending
-            $.totalWithdrawals += $.validators[i].pendingWithdrawals;
+            $.pendingDepositReductions += $.validators[i].pendingWithdrawals;
         } else
             _leave(i);
     }
@@ -775,11 +775,14 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         total = address(this).balance - $.undepositedStake;
     }
 
-//TODO: rename function and add natspec comment
-function _test() public view returns(uint256) {
-    BaseDelegationStorage storage $ = _getBaseDelegationStorage();
-    return $.undepositedStake;
-}
+    /**
+    * @dev Return the staked amount that is currently not deposited
+    * with any of the validators in the pool. 
+    */
+    function getUndepositedStake() public view returns(uint256) {
+        BaseDelegationStorage storage $ = _getBaseDelegationStorage();
+        return $.undepositedStake;
+    }
 
     /// @inheritdoc IDelegation
     function getStake() public virtual view returns(uint256 total) {
@@ -788,9 +791,7 @@ function _test() public view returns(uint256) {
         for (uint256 i = 0; i < $.validators.length; i++)
             if ($.validators[i].status < ValidatorStatus.ReadyToLeave)
                 total += $.validators[i].futureStake;
-//TODO: let's misuse the totalWithdrawals to store how much deposit reduction is pending
-//      rename totalWithdrawals to pendingDepositReductions and move this to BaseDelegation.getStake()
-        total += $.totalWithdrawals;
+        total += $.pendingDepositReductions;
     }
 
     /**

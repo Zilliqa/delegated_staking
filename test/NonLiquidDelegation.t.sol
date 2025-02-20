@@ -1475,7 +1475,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         assertEq(delegation.getStake(validator(4)), 10 * depositAmount / 10, "validator deposits are decreased equally");
     }
 
-    function testFail_UnstakeTooMuch() public {
+    function test_RevertWhen_UnstakeTooMuch() public {
         uint256 depositAmount = 10_000_000 ether;
         deposit(BaseDelegation(delegation), 2 * depositAmount, DepositMode.Bootstrapping);
         stakers.push(owner);
@@ -1499,6 +1499,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         assertEq(delegation.getStake(validator(2)), 10 * depositAmount / 10, "validator deposits are decreased equally");
         assertEq(delegation.getStake(validator(3)), 10 * depositAmount / 10, "validator deposits are decreased equally");
         assertEq(delegation.getStake(validator(4)), 10 * depositAmount / 10, "validator deposits are decreased equally");
+        vm.expectRevert("insufficient undeposited stake");
         vm.startPrank(makeAddr("4"));
         delegation.unstake(2 * depositAmount);
         vm.stopPrank();
@@ -1511,17 +1512,19 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
     }
 
 //TODO: adjust the test so that the first validator leaves and run the fundraising afterwards
-    function testFail_DepositTwice_Bootstrapping_Fundraising() public {
+    function test_RevertWhen_DepositTwice_Bootstrapping_Fundraising() public {
         uint256 depositAmount = 10_000_000 ether;
-        deposit(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
-        deposit(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
+        this.deposit(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        vm.expectRevert("deposit failed");
+        this.deposit(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
     }
 
 //TODO: adjust the test so that the first validator leaves and run the fundraising afterwards
-    function testFail_DepositTwice_Fundraising_Fundraising() public {
+    function test_RevertWhen_DepositTwice_Fundraising_Fundraising() public {
         uint256 depositAmount = 10_000_000 ether;
-        deposit(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
-        deposit(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
+        this.deposit(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
+        vm.expectRevert("deposit failed");
+        this.deposit(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
     }
 
     function test_DepositTwice_Fundraising_Bootstrapping() public {
@@ -1537,10 +1540,11 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
     }
 
 //TODO: adjust the test so that the first validator leaves and run the fundraising afterwards
-    function testFail_DepositTwice_Transforming_Fundraising() public {
+    function test_RevertWhen_DepositTwice_Transforming_Fundraising() public {
         uint256 depositAmount = 10_000_000 ether;
-        deposit(BaseDelegation(delegation), depositAmount, DepositMode.Transforming);
-        deposit(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
+        this.deposit(BaseDelegation(delegation), depositAmount, DepositMode.Transforming);
+        vm.expectRevert("deposit failed");
+        this.deposit(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
     }
 
     // run with
