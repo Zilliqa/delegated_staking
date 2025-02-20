@@ -78,7 +78,6 @@ contract LiquidDelegation is IDelegation, BaseDelegation, ILiquidDelegation {
     /// @inheritdoc BaseDelegation
     function join(bytes calldata blsPubKey, address controlAddress) public override onlyOwner {
         // deduct the commission from the yet untaxed rewards before calculating the number of shares
-//TODO: what if we call join in the middle of the fundraising phase => add test case !!!!!!!!!!!!
         taxRewards();
         _stake(getStake(blsPubKey), controlAddress);
         // increases the deposited stake hence it must be called after calculating the shares
