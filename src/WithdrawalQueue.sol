@@ -2,9 +2,9 @@
 pragma solidity ^0.8.26;
 
 /**
- * @notice Queue of pending withdrawals requests. Unstaked amounts are enqueued for
- * withdrawal after the unbonding period. When users claim their available unstaked
- * funds, the corresponding {Item}s are dequeued.
+ * @notice Queue of pending withdrawals. Unstaked amounts are enqueued for withdrawal
+ * after the unbonding period. When users claim their available unstaked funds, the
+ * corresponding {Item}s are dequeued.
  */
 library WithdrawalQueue {
 
@@ -37,7 +37,7 @@ library WithdrawalQueue {
     }
 
     /**
-    * @dev Remove an {Item} from the front of the queue.
+    * @dev Remove an {Item} from the front of the queue and returns it.
     */
     function dequeue(Fifo storage fifo) internal returns(Item memory result) {
         require(fifo.first < fifo.last, "queue empty");
@@ -47,7 +47,7 @@ library WithdrawalQueue {
     }
 
     /**
-    * @dev Returns if an {Item} at `index` has already been enqueued and is now
+    * @dev Returns whether an {Item} at `index` has already been enqueued and is now
     * ready to be dequeued i.e. its unbonding period is over.
     */
     function ready(Fifo storage fifo, uint256 index) internal view returns(bool) {
@@ -55,15 +55,15 @@ library WithdrawalQueue {
     }
 
     /**
-    * @dev Returns if an {Item} at `index` has already been enqueued but is not yet
-    * ready to be dequeued i.e. its unbonding period is not over.
+    * @dev Returns whether an {Item} at `index` has already been enqueued but is not
+    * yet ready to be dequeued i.e. its unbonding period is not over.
     */
     function notReady(Fifo storage fifo, uint256 index) internal view returns(bool) {
         return index < fifo.last && fifo.items[index].blockNumber > block.number;
     }
 
     /**
-    * @dev Returns if the first {Item} is ready to be dequeued i.e. its unbonding
+    * @dev Returns whether the first {Item} is ready to be dequeued i.e. its unbonding
     * period is over.
     */
     function ready(Fifo storage fifo) internal view returns(bool) {

@@ -1380,6 +1380,75 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         vm.stopPrank();
     }
 
+    function test_StakeRemainingAfterAllValidatorsLeft() public {
+        uint256 depositAmount = 10_000_000 ether;
+        deposit(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        stakers.push(owner);
+        join(BaseDelegation(delegation), depositAmount, makeAddr("2"), 2);
+        stakers.push(makeAddr("2"));
+        join(BaseDelegation(delegation), depositAmount, makeAddr("3"), 3);
+        stakers.push(makeAddr("3"));
+        join(BaseDelegation(delegation), depositAmount, makeAddr("4"), 4);
+        stakers.push(makeAddr("4"));
+        vm.deal(stakers[0], stakers[0].balance + 110 ether);
+        uint256 totalStaked = delegation.getStake();
+        assertEq(totalStaked, 4 * depositAmount, "Incorrect total stake");
+        vm.startPrank(stakers[0]);
+        delegation.stake{value: 100 ether}();
+        vm.stopPrank();
+        totalStaked = delegation.getStake();
+        assertEq(totalStaked, 4 * depositAmount + 100 ether, "Incorrect total stake");
+        vm.startPrank(makeAddr("2"));
+        delegation.leave(validator(2));
+        vm.stopPrank();
+        totalStaked = delegation.getStake();
+        assertEq(totalStaked, 3 * depositAmount + 100 ether, "Incorrect total stake");
+        vm.startPrank(owner);
+        delegation.leave(validator(1));
+        vm.stopPrank();
+        totalStaked = delegation.getStake();
+        assertEq(totalStaked, 2 * depositAmount + 100 ether, "Incorrect total stake");
+        vm.startPrank(makeAddr("4"));
+        delegation.leave(validator(4));
+        vm.stopPrank();
+        totalStaked = delegation.getStake();
+        assertEq(totalStaked, 1 * depositAmount + 100 ether, "Incorrect total stake");
+        vm.roll(block.number + delegation.unbondingPeriod());
+        totalStaked = delegation.getStake();
+        assertEq(totalStaked, 1 * depositAmount + 100 ether, "Incorrect total stake");
+        vm.startPrank(makeAddr("2"));
+        delegation.completeLeaving(validator(2));
+        vm.stopPrank();
+        totalStaked = delegation.getStake();
+        assertEq(totalStaked, 1 * depositAmount + 100 ether, "Incorrect total stake");
+        vm.startPrank(makeAddr("3"));
+        delegation.leave(validator(3));
+        vm.stopPrank();
+        totalStaked = delegation.getStake();
+        assertEq(totalStaked, 100 ether, "Incorrect total stake");
+        vm.roll(block.number + delegation.unbondingPeriod());
+        totalStaked = delegation.getStake();
+        assertEq(totalStaked, 100 ether, "Incorrect total stake");
+        vm.startPrank(owner);
+        delegation.completeLeaving(validator(1));
+        vm.stopPrank();
+        totalStaked = delegation.getStake();
+        assertEq(totalStaked, 100 ether, "Incorrect total stake");
+        vm.startPrank(makeAddr("4"));
+        delegation.completeLeaving(validator(4));
+        vm.stopPrank();
+        totalStaked = delegation.getStake();
+        assertEq(totalStaked, 100 ether, "Incorrect total stake");
+        vm.startPrank(makeAddr("3"));
+        delegation.completeLeaving(validator(3));
+        vm.stopPrank();
+        totalStaked = delegation.getStake();
+        assertEq(totalStaked, 100 ether, "Incorrect total stake");
+//TODO: add a test in which a node joins and increases its deposit by 100 ether
+//TODO: add a test in which a new node is deposited using 9_999_900 ether
+//TODO: add a test in which stakers[0] stakes another 1000 ether and a new node is deposited using 9_998_900 ether
+    }
+
     function test_UnstakeNotTooMuch() public {
         uint256 depositAmount = 10_000_000 ether;
         deposit(BaseDelegation(delegation), 2 * depositAmount, DepositMode.Bootstrapping);
@@ -1435,36 +1504,39 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         vm.stopPrank();
     }
 
-    function testFail_DepositTwice_Bootstrapping_Bootstrapping() public {
+    function test_DepositTwice_Bootstrapping_Bootstrapping() public {
         uint256 depositAmount = 10_000_000 ether;
         deposit(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
         deposit(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
     }
 
+//TODO: adjust the test so that the first validator leaves and run the fundraising afterwards
     function testFail_DepositTwice_Bootstrapping_Fundraising() public {
         uint256 depositAmount = 10_000_000 ether;
         deposit(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
         deposit(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
     }
 
+//TODO: adjust the test so that the first validator leaves and run the fundraising afterwards
     function testFail_DepositTwice_Fundraising_Fundraising() public {
         uint256 depositAmount = 10_000_000 ether;
         deposit(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
         deposit(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
     }
 
-    function testFail_DepositTwice_Fundraising_Bootstrapping() public {
+    function test_DepositTwice_Fundraising_Bootstrapping() public {
         uint256 depositAmount = 10_000_000 ether;
         deposit(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
         deposit(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
     }
 
-    function testFail_DepositTwice_Transforming_Bootstrapping() public {
+    function test_DepositTwice_Transforming_Bootstrapping() public {
         uint256 depositAmount = 10_000_000 ether;
         deposit(BaseDelegation(delegation), depositAmount, DepositMode.Transforming);
         deposit(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
     }
 
+//TODO: adjust the test so that the first validator leaves and run the fundraising afterwards
     function testFail_DepositTwice_Transforming_Fundraising() public {
         uint256 depositAmount = 10_000_000 ether;
         deposit(BaseDelegation(delegation), depositAmount, DepositMode.Transforming);

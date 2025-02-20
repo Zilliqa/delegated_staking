@@ -16,8 +16,6 @@ abstract contract BaseDelegationTest is Test {
     address payable internal proxy;
     address internal implementation;
     bytes internal initializerCall;
-//    address payable internal newImplementation;
-//    bytes internal reinitializerCall;
     bytes1 internal currentDeploymentId;
     address internal owner = 0x15fc323DFE5D5DCfbeEdc25CEcbf57f676634d77;
     address[] internal stakers = [
