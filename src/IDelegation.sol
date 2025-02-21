@@ -91,7 +91,7 @@ interface IDelegation {
     function getClaimable() external view returns(uint256);
 
     /**
-    * @notice Returns an array of tuples whose first element is the unstaked amount
+    * @notice Return an array of tuples whose first element is the unstaked amount
     * in ZIL and the second element is the block number at which the unbonding
     * period is over and amount can be withdrawn using {claim}.
     */

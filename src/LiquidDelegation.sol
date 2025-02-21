@@ -10,7 +10,7 @@ import {NonRebasingLST} from "src/NonRebasingLST.sol";
  * There must be at least one function that makes the interface unique among all variants.
  *
  * @dev Do not change this interface, otherwise it will break the detection of the staking
- * variant of already deployed delegation contracts.
+ * variant of already deployed delegation contracts used in the `Upgrade` script.
  */
 interface ILiquidDelegation {
     function interfaceId() external pure returns (bytes4);
@@ -35,7 +35,7 @@ contract LiquidDelegation is IDelegation, BaseDelegation, ILiquidDelegation {
     /**
     * @dev `lst` is the address of the {NonRebasingLST} token issued by the {LiquidDelegation}.
     * `taxedRewards` is the amount of rewards accrued that the {LiquidDelegation} contract is
-    * aware of and has already deducted the commission (tax) from. The contract balance is higher
+    * aware of and has already deducted the commission from. The contract balance is higher
     * if new (untaxed) rewards have been added to it since the last update of `taxedRewards`.
     */
     /// @custom:storage-location erc7201:zilliqa.storage.LiquidDelegation
@@ -142,8 +142,8 @@ contract LiquidDelegation is IDelegation, BaseDelegation, ILiquidDelegation {
     }
 
     /**
-    * @dev Calculate the shares of the `staker` based on the delegated `value` and mint the corresponding
-    * liquid staking tokens.
+    * @dev Calculate the shares of the `staker` based on the delegated `value` and mint the
+    * corresponding amount of liquid staking tokens.
     */
     function _stake(uint256 value, address staker) internal {
         require(value >= MIN_DELEGATION, DelegatedAmountTooLow(value));
@@ -159,9 +159,9 @@ contract LiquidDelegation is IDelegation, BaseDelegation, ILiquidDelegation {
 
     /**
     * @inheritdoc IDelegation
-    * @dev Deduct the commission from the yet untaxed rewards before calculating the amount corresponding
-    * to the unstaked liquid staking tokens. Decrease the deposit of the validators in the staking pool
-    * by the calculated amount.
+    * @dev Deduct the commission from the yet untaxed rewards before calculating the amount
+    * corresponding to the unstaked liquid staking tokens. Decrease the deposit of the validators
+    * in the staking pool by the calculated amount.
     */
     function unstake(uint256 shares) public override(BaseDelegation, IDelegation) whenNotPaused returns(uint256 amount) {
         // if we are in the fundraising phase getRewards() would return 0 and taxedRewards would
@@ -175,8 +175,8 @@ contract LiquidDelegation is IDelegation, BaseDelegation, ILiquidDelegation {
     }
 
     /**
-    * @dev Calculate and return the `amount` of ZIL corresponding to the unstaked `shares` i.e. liquid
-    * staking tokens of the `staker` and burn the unstaked liquid staking tokens.
+    * @dev Calculate and return the `amount` of ZIL corresponding to the unstaked `shares` i.e.
+    * liquid staking tokens of the `staker` and burn the unstaked liquid staking tokens.
     */
     function _unstake(uint256 shares, address staker) internal returns(uint256 amount) {
         LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
@@ -294,7 +294,7 @@ contract LiquidDelegation is IDelegation, BaseDelegation, ILiquidDelegation {
     }
 
     /**
-    * @dev Returns the interface id that can be used to identify which delegated staking
+    * @dev Return the interface id that can be used to identify which delegated staking
     * variant the contract implements.  
     */
     function interfaceId() public pure returns (bytes4) {

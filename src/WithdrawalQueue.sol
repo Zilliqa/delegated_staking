@@ -52,7 +52,7 @@ library WithdrawalQueue {
     }
 
     /**
-    * @dev Returns whether an {Item} at `index` has already been enqueued and is now
+    * @dev Return whether an {Item} at `index` has already been enqueued and is now
     * ready to be dequeued i.e. its unbonding period is over.
     */
     function ready(Fifo storage fifo, uint256 index) internal view returns(bool) {
@@ -60,7 +60,7 @@ library WithdrawalQueue {
     }
 
     /**
-    * @dev Returns whether an {Item} at `index` has already been enqueued but is not
+    * @dev Return whether an {Item} at `index` has already been enqueued but is not
     * yet ready to be dequeued i.e. its unbonding period is not over.
     */
     function notReady(Fifo storage fifo, uint256 index) internal view returns(bool) {
@@ -68,7 +68,7 @@ library WithdrawalQueue {
     }
 
     /**
-    * @dev Returns whether the first {Item} is ready to be dequeued i.e. its unbonding
+    * @dev Return whether the first {Item} is ready to be dequeued i.e. its unbonding
     * period is over.
     */
     function ready(Fifo storage fifo) internal view returns(bool) {

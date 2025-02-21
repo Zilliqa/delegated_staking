@@ -10,7 +10,7 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
  * There must be at least one function that makes the interface unique among all variants.
  *
  * @dev Do not change this interface, otherwise it will break the detection of the staking
- * variant of already deployed delegation contracts.
+ * variant of already deployed delegation contracts used in the `Upgrade` script.
  */
 interface INonLiquidDelegation {
     function interfaceId() external pure returns (bytes4);
@@ -130,7 +130,7 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation, INonLiquidDelegatio
     }
 
     /**
-    * @dev Return the data stored about the caller as delegated.
+    * @dev Return the data stored about the caller as delegator.
     * See {NonLiquidDelegationStorage}.
     */
     function getStakingData() public view returns(
@@ -326,7 +326,7 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation, INonLiquidDelegatio
     }
 
     /**
-    * @dev Returns the taxed rewards the caller can withdraw by traversing the {Staking} history
+    * @dev Return the taxed rewards the caller can withdraw by traversing the {Staking} history
     * in `1 + additionalSteps`.
     */
     function rewards(uint64 additionalSteps) public view returns(uint256) {
@@ -465,7 +465,7 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation, INonLiquidDelegatio
     }
 
     /**
-    * @dev Returns the untaxed rewards of the caller by traversing the {Staking} history
+    * @dev Return the untaxed rewards of the caller by traversing the {Staking} history
     * in `1 + additionalSteps`.
     */
     function _rewards(uint64 additionalSteps) internal view returns (
@@ -541,7 +541,7 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation, INonLiquidDelegatio
     }
 
     /**
-    * @dev Returns the interface id that can be used to identify which delegated staking
+    * @dev Return the interface id that can be used to identify which delegated staking
     * variant the contract implements.  
     */
     function interfaceId() public pure returns (bytes4) {
