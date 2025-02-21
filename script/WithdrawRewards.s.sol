@@ -5,7 +5,7 @@ pragma solidity ^0.8.26;
 import {Script} from "forge-std/Script.sol";
 import {NonLiquidDelegation} from "src/NonLiquidDelegation.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
-import {console} from "forge-std/console.sol";
+import {Console} from "script/Console.sol";
 
 contract WithdrawRewards is Script {
     using Strings for string;
@@ -18,13 +18,13 @@ contract WithdrawRewards is Script {
             );
 
         (uint24 major, uint24 minor, uint24 patch) = delegation.decodedVersion();
-        console.log("Running version: %s.%s.%s",
+        Console.log("Running version: %s.%s.%s",
             uint256(major),
             uint256(minor),
             uint256(patch)
         );
 
-        console.log("Staker balance before: %s wei",
+        Console.log("Staker balance before: %s wei",
             staker.balance
         );
 
@@ -41,7 +41,7 @@ contract WithdrawRewards is Script {
             else
                 delegation.withdrawRewards(vm.parseUint(amount), uint64(vm.parseUint(additionalSteps)));
 
-        console.log("Staker balance after: %s wei",
+        Console.log("Staker balance after: %s wei",
             staker.balance
         );
     }

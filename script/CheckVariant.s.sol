@@ -6,7 +6,7 @@ import {Script} from "forge-std/Script.sol";
 import {ILiquidDelegation} from "src/LiquidDelegation.sol";
 import {INonLiquidDelegation} from "src/NonLiquidDelegation.sol";
 import {ERC165Checker} from "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
-import {console} from "forge-std/console.sol";
+import {Console} from "script/Console.sol";
 
 contract CheckVariant is Script {
     using ERC165Checker for address;
@@ -14,10 +14,10 @@ contract CheckVariant is Script {
     function run(address proxy) external view {
 
         if (proxy.supportsInterface(type(ILiquidDelegation).interfaceId))
-            console.log("ILiquidDelegation");
+            Console.log("ILiquidDelegation");
 
         if (proxy.supportsInterface(type(INonLiquidDelegation).interfaceId))
-            console.log("INonLiquidDelegation");
+            Console.log("INonLiquidDelegation");
 
     }
 }

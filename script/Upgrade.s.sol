@@ -7,7 +7,7 @@ import {BaseDelegation} from "src/BaseDelegation.sol";
 import {ILiquidDelegation, LiquidDelegation} from "src/LiquidDelegation.sol";
 import {INonLiquidDelegation, NonLiquidDelegation} from "src/NonLiquidDelegation.sol";
 import {ERC165Checker} from "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
-import {console} from "forge-std/console.sol";
+import {Console} from "script/Console.sol";
 
 contract Upgrade is Script {
     using ERC165Checker for address;
@@ -15,8 +15,7 @@ contract Upgrade is Script {
     function run(address payable proxy) external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         address owner = vm.addr(deployerPrivateKey);
-        console.log("Signer is %s", owner);
-
+        Console.log("Signer is %s", owner);
         BaseDelegation oldDelegation = BaseDelegation(
             proxy
         );
@@ -29,21 +28,21 @@ contract Upgrade is Script {
         // the contract has been already upgraded to a version that supports semver 
         if (oldVersion >= 2**20) {
             (major, minor, patch) = oldDelegation.decodedVersion();
-            console.log("Upgrading from version: %s.%s.%s",
+            Console.log("Upgrading from version: %s.%s.%s",
                 uint256(major),
                 uint256(minor),
                 uint256(patch)
             );
         } else if (oldVersion == 1)
-            console.log("Upgrading from initial version",
+            Console.log("Upgrading from initial version",
                 oldVersion
             );
         else
-            console.log("Upgrading from version: %s",
+            Console.log("Upgrading from version: %s",
                 oldVersion
             );
 
-        console.log("Owner is %s",
+        Console.log("Owner is %s",
             oldDelegation.owner()
         );
 
@@ -58,7 +57,7 @@ contract Upgrade is Script {
         else
             return;
 
-        console.log("New implementation deployed: %s",
+        Console.log("New implementation deployed: %s",
             newImplementation
         );
 
@@ -77,7 +76,7 @@ contract Upgrade is Script {
         );
 
         (major, minor, patch) = newDelegation.decodedVersion();
-        console.log("Upgraded to version: %s.%s.%s",
+        Console.log("Upgraded to version: %s.%s.%s",
             uint256(major),
             uint256(minor),
             uint256(patch)

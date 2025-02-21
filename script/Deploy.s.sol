@@ -8,7 +8,7 @@ import {LiquidDelegation} from "src/LiquidDelegation.sol";
 import {NonLiquidDelegation} from "src/NonLiquidDelegation.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
-import {console} from "forge-std/console.sol";
+import {Console} from "script/Console.sol";
 
 contract Deploy is Script {
     using Strings for string;
@@ -16,7 +16,7 @@ contract Deploy is Script {
     function liquidDelegation(string calldata name, string calldata symbol) external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         address owner = vm.addr(deployerPrivateKey);
-        console.log("Signer is %s", owner);
+        Console.log("Signer is %s", owner);
 
         vm.startBroadcast(deployerPrivateKey);
 
@@ -36,7 +36,7 @@ contract Deploy is Script {
             new ERC1967Proxy(implementation, initializerCall)
         );
 
-        console.log(
+        Console.log(
             "Proxy deployed: %s \r\n  Implementation deployed: %s",
             proxy,
             implementation
@@ -46,12 +46,12 @@ contract Deploy is Script {
                 proxy
             );
 
-        console.log("Owner is %s",
+        Console.log("Owner is %s",
             delegation.owner()
         );
 
         (uint24 major, uint24 minor, uint24 patch) = delegation.decodedVersion();
-        console.log("Upgraded to version: %s.%s.%s",
+        Console.log("Upgraded to version: %s.%s.%s",
             uint256(major),
             uint256(minor),
             uint256(patch)
@@ -64,7 +64,7 @@ contract Deploy is Script {
     function nonLiquidDelegation() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         address owner = vm.addr(deployerPrivateKey);
-        console.log("Signer is %s", owner);
+        Console.log("Signer is %s", owner);
 
         vm.startBroadcast(deployerPrivateKey);
 
@@ -82,7 +82,7 @@ contract Deploy is Script {
             new ERC1967Proxy(implementation, initializerCall)
         );
 
-        console.log(
+        Console.log(
             "Proxy deployed: %s \r\n  Implementation deployed: %s",
             proxy,
             implementation
@@ -92,7 +92,7 @@ contract Deploy is Script {
                 proxy
             );
 
-        console.log("Owner is %s",
+        Console.log("Owner is %s",
             delegation.owner()
         );
 
@@ -107,7 +107,7 @@ contract Deploy is Script {
         );
 
         (uint24 major, uint24 minor, uint24 patch) = delegation.decodedVersion();
-        console.log("Upgraded to version: %s.%s.%s",
+        Console.log("Upgraded to version: %s.%s.%s",
             uint256(major),
             uint256(minor),
             uint256(patch)
