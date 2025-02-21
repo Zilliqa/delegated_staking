@@ -81,7 +81,7 @@ echo validator deposit: $(cast to-unit $stake ether) ZIL
 validatorBalance=$(cast rpc eth_getBalance $1 $block | tr -d '"' | cast to-dec --base-in 16)
 echo validator balance: $(cast to-unit $validatorBalance ether) ZIL
 
-pendingWithdrawals=$(cast call $1 "getTotalWithdrawals()(uint256)" --block $block_num | sed 's/\[[^]]*\]//g')
+pendingWithdrawals=$(cast call $1 "totalPendingWithdrawals()(uint256)" --block $block_num | sed 's/\[[^]]*\]//g')
 echo pending withdrawals: $(cast to-unit $pendingWithdrawals ether) ZIL
 
 totalStake=$(cast call 0x00000000005A494C4445504F53495450524F5859 "getFutureTotalStake()(uint256)" --block $block_num | sed 's/\[[^]]*\]//g')

@@ -8,7 +8,7 @@ import {BaseDelegation} from "src/BaseDelegation.sol";
 import {WithdrawalQueue} from "src/WithdrawalQueue.sol";
 import {IDelegation} from "src/IDelegation.sol";
 import {Deposit} from "@zilliqa/zq2/deposit_v4.sol";
-import {Console} from "src/Console.sol";
+import {Console} from "script/Console.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {console} from "forge-std/console.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
@@ -89,13 +89,13 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         (
             uint64[] memory stakingIndices,
             uint64 firstStakingIndex,
-            uint256 allWithdrawnRewards,
+            uint256 availableTaxedRewards,
             uint64 lastWithdrawnRewardIndex,
-            uint256 withdrawnAfterLastStaking
+            uint256 taxedSinceLastStaking
         ) = delegation.getStakingData();
         Console.log("stakingIndices = [ %s]", stakingIndices);
         console.log("firstStakingIndex = %s   lastWithdrawnRewardIndex = %s", uint256(firstStakingIndex), uint256(lastWithdrawnRewardIndex));
-        console.log("allWithdrawnRewards = %s   withdrawnAfterLastStaking = %s", allWithdrawnRewards, withdrawnAfterLastStaking);
+        console.log("availableTaxedRewards = %s   taxedSinceLastStaking = %s", availableTaxedRewards, taxedSinceLastStaking);
     } 
 
     function run(
@@ -177,7 +177,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
                 10,
                 "rewards differ from calculated value"
             );
-            //TODO: add tests that withdraw an amount < delegation.rewards(step)
+            // TODO: add tests that withdraw an amount < delegation.rewards(step)
             int256 totalRewardsAfter = int256(delegation.getImmutableRewards());
             int256 delegationBalanceAfter = int256(address(delegation).balance);
             Console.log("rewards accrued until last staking: %s.%s%s", totalRewardsAfter);
@@ -219,10 +219,10 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
     ) {
         stakerIndicesBeforeWithdrawals = abi.decode(_stakerIndicesBeforeWithdrawals, (uint256[]));
         relativeAmountsBeforeWithdrawals = abi.decode(_relativeAmountsBeforeWithdrawals, (int256[]));
-        require(stakerIndicesBeforeWithdrawals.length == relativeAmountsBeforeWithdrawals.length, "array length mismatch");
+        assert(stakerIndicesBeforeWithdrawals.length == relativeAmountsBeforeWithdrawals.length);
         stakerIndicesAfterWithdrawals = abi.decode(_stakerIndicesAfterWithdrawals, (uint256[]));
         relativeAmountsAfterWithdrawals = abi.decode(_relativeAmountsAfterWithdrawals, (int256[]));
-        require(stakerIndicesAfterWithdrawals.length == relativeAmountsAfterWithdrawals.length, "array length mismatch");
+        assert(stakerIndicesAfterWithdrawals.length == relativeAmountsAfterWithdrawals.length);
 
         for (uint256 i = 0; i < stakers.length; i++) {
             vm.deal(stakers[i], 20 * depositAmount);
@@ -1380,6 +1380,111 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         vm.stopPrank();
     }
 
+    function test_JoinDuringFundraising() public {
+        uint256 depositAmount = 10_000_000 ether;
+        vm.deal(stakers[0], stakers[0].balance + 1000 ether);
+        vm.startPrank(stakers[0]);
+        delegation.stake{value: 1000 ether}();
+        vm.stopPrank();
+        join(BaseDelegation(delegation), depositAmount, makeAddr("2"), 2);
+        assertEq(delegation.getStake(validator(2)), depositAmount + 1000 ether, "Incorrect validator deposit");
+    }
+
+    function beforeTestSetup(bytes4 testSelector) public pure returns (bytes[] memory beforeTestCalldata) {
+        if (
+            testSelector == this.test_UseStakeForFirstJoinerAfterAllValidatorsLeft.selector ||
+            testSelector == this.test_UseStakeForNewDepositAfterAllValidatorsLeft.selector
+        ) {
+            beforeTestCalldata = new bytes[](1);
+            beforeTestCalldata[0] = abi.encodePacked(this.test_StakeRemainingAfterAllValidatorsLeft.selector);
+        }
+    }
+
+    function test_UseStakeForFirstJoinerAfterAllValidatorsLeft() public {
+        uint256 depositAmount = 10_000_000 ether;
+        vm.deal(stakers[0], stakers[0].balance + 1000 ether);
+        vm.startPrank(stakers[0]);
+        delegation.stake{value: 1000 ether}();
+        vm.stopPrank();
+        join(BaseDelegation(delegation), depositAmount, makeAddr("5"), 5);
+        assertEq(delegation.getStake(validator(5)), depositAmount + 1100 ether, "Incorrect validator deposit");
+    }
+
+    function test_UseStakeForNewDepositAfterAllValidatorsLeft() public {
+        uint256 depositAmount = 9_998_900 ether;
+        vm.deal(stakers[0], stakers[0].balance + 1000 ether);
+        vm.startPrank(stakers[0]);
+        delegation.stake{value: 1000 ether}();
+        vm.stopPrank();
+        deposit(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+    }
+
+    function test_StakeRemainingAfterAllValidatorsLeft() public {
+        uint256 depositAmount = 10_000_000 ether;
+        deposit(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        stakers.push(owner);
+        join(BaseDelegation(delegation), depositAmount, makeAddr("2"), 2);
+        stakers.push(makeAddr("2"));
+        join(BaseDelegation(delegation), depositAmount, makeAddr("3"), 3);
+        stakers.push(makeAddr("3"));
+        join(BaseDelegation(delegation), depositAmount, makeAddr("4"), 4);
+        stakers.push(makeAddr("4"));
+        vm.deal(stakers[0], stakers[0].balance + 100 ether);
+        uint256 totalStaked = delegation.getStake();
+        assertEq(totalStaked, 4 * depositAmount, "Incorrect total stake");
+        vm.startPrank(stakers[0]);
+        delegation.stake{value: 100 ether}();
+        vm.stopPrank();
+        totalStaked = delegation.getStake();
+        assertEq(totalStaked, 4 * depositAmount + 100 ether, "Incorrect total stake");
+        vm.startPrank(makeAddr("2"));
+        delegation.leave(validator(2));
+        vm.stopPrank();
+        totalStaked = delegation.getStake();
+        assertEq(totalStaked, 3 * depositAmount + 100 ether, "Incorrect total stake");
+        vm.startPrank(owner);
+        delegation.leave(validator(1));
+        vm.stopPrank();
+        totalStaked = delegation.getStake();
+        assertEq(totalStaked, 2 * depositAmount + 100 ether, "Incorrect total stake");
+        vm.startPrank(makeAddr("4"));
+        delegation.leave(validator(4));
+        vm.stopPrank();
+        totalStaked = delegation.getStake();
+        assertEq(totalStaked, 1 * depositAmount + 100 ether, "Incorrect total stake");
+        vm.roll(block.number + delegation.unbondingPeriod());
+        totalStaked = delegation.getStake();
+        assertEq(totalStaked, 1 * depositAmount + 100 ether, "Incorrect total stake");
+        vm.startPrank(makeAddr("2"));
+        delegation.completeLeaving(validator(2));
+        vm.stopPrank();
+        totalStaked = delegation.getStake();
+        assertEq(totalStaked, 1 * depositAmount + 100 ether, "Incorrect total stake");
+        vm.startPrank(makeAddr("3"));
+        delegation.leave(validator(3));
+        vm.stopPrank();
+        totalStaked = delegation.getStake();
+        assertEq(totalStaked, 100 ether, "Incorrect total stake");
+        vm.roll(block.number + delegation.unbondingPeriod());
+        totalStaked = delegation.getStake();
+        assertEq(totalStaked, 100 ether, "Incorrect total stake");
+        vm.startPrank(owner);
+        delegation.completeLeaving(validator(1));
+        vm.stopPrank();
+        totalStaked = delegation.getStake();
+        assertEq(totalStaked, 100 ether, "Incorrect total stake");
+        vm.startPrank(makeAddr("4"));
+        delegation.completeLeaving(validator(4));
+        vm.stopPrank();
+        totalStaked = delegation.getStake();
+        assertEq(totalStaked, 100 ether, "Incorrect total stake");
+        vm.startPrank(makeAddr("3"));
+        delegation.completeLeaving(validator(3));
+        vm.stopPrank();
+        totalStaked = delegation.getStake();
+        assertEq(totalStaked, 100 ether, "Incorrect total stake");
+    }
+
     function test_UnstakeNotTooMuch() public {
         uint256 depositAmount = 10_000_000 ether;
         deposit(BaseDelegation(delegation), 2 * depositAmount, DepositMode.Bootstrapping);
@@ -1406,7 +1511,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         assertEq(delegation.getStake(validator(4)), 10 * depositAmount / 10, "validator deposits are decreased equally");
     }
 
-    function testFail_UnstakeTooMuch() public {
+    function test_RevertWhen_UnstakeTooMuch() public {
         uint256 depositAmount = 10_000_000 ether;
         deposit(BaseDelegation(delegation), 2 * depositAmount, DepositMode.Bootstrapping);
         stakers.push(owner);
@@ -1430,45 +1535,67 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         assertEq(delegation.getStake(validator(2)), 10 * depositAmount / 10, "validator deposits are decreased equally");
         assertEq(delegation.getStake(validator(3)), 10 * depositAmount / 10, "validator deposits are decreased equally");
         assertEq(delegation.getStake(validator(4)), 10 * depositAmount / 10, "validator deposits are decreased equally");
+        vm.expectRevert(); //vm.expectPartialRevert(BaseDelegation.InsufficientUndepositedStak.selector);
         vm.startPrank(makeAddr("4"));
         delegation.unstake(2 * depositAmount);
         vm.stopPrank();
     }
 
-    function testFail_DepositTwice_Bootstrapping_Bootstrapping() public {
+    function test_DepositTwice_Bootstrapping_Bootstrapping() public {
         uint256 depositAmount = 10_000_000 ether;
         deposit(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
         deposit(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
     }
 
-    function testFail_DepositTwice_Bootstrapping_Fundraising() public {
+    function test_DepositLeaveDeposit_Bootstrapping_Fundraising() public {
         uint256 depositAmount = 10_000_000 ether;
         deposit(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        vm.startPrank(owner);
+        delegation.leave(validator(1));
+        vm.stopPrank();
         deposit(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
     }
 
-    function testFail_DepositTwice_Fundraising_Fundraising() public {
+    function test_RevertWhen_DepositTwice_Bootstrapping_Fundraising() public {
         uint256 depositAmount = 10_000_000 ether;
-        deposit(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
-        deposit(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
+        this.deposit(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        vm.expectRevert(); //vm.expectPartialRevert(BaseDelegation.DepositContractCallFailed.selector);
+        this.deposit(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
     }
 
-    function testFail_DepositTwice_Fundraising_Bootstrapping() public {
+    function test_RevertWhen_DepositTwice_Fundraising_Fundraising() public {
+        uint256 depositAmount = 10_000_000 ether;
+        this.deposit(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
+        vm.expectRevert(); //vm.expectPartialRevert(BaseDelegation.DepositContractCallFailed.selector);
+        this.deposit(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
+    }
+
+    function test_DepositTwice_Fundraising_Bootstrapping() public {
         uint256 depositAmount = 10_000_000 ether;
         deposit(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
         deposit(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
     }
 
-    function testFail_DepositTwice_Transforming_Bootstrapping() public {
+    function test_DepositTwice_Transforming_Bootstrapping() public {
         uint256 depositAmount = 10_000_000 ether;
         deposit(BaseDelegation(delegation), depositAmount, DepositMode.Transforming);
         deposit(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
     }
 
-    function testFail_DepositTwice_Transforming_Fundraising() public {
+    function test_DepositLeaveDeposit_Transforming_Fundraising() public {
         uint256 depositAmount = 10_000_000 ether;
         deposit(BaseDelegation(delegation), depositAmount, DepositMode.Transforming);
+        vm.startPrank(owner);
+        delegation.leave(validator(1));
+        vm.stopPrank();
         deposit(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
+    }
+
+    function test_RevertWhen_DepositTwice_Transforming_Fundraising() public {
+        uint256 depositAmount = 10_000_000 ether;
+        this.deposit(BaseDelegation(delegation), depositAmount, DepositMode.Transforming);
+        vm.expectRevert(); //vm.expectPartialRevert(BaseDelegation.DepositContractCallFailed.selector);
+        this.deposit(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
     }
 
     // run with
@@ -1754,13 +1881,13 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         (
         uint64[] memory stakingIndices,
         uint64 firstStakingIndex,
-        uint256 allWithdrawnRewards,
+        uint256 availableTaxedRewards,
         uint64 lastWithdrawnRewardIndex,
-        uint256 withdrawnAfterLastStaking
+        uint256 taxedSinceLastStaking
         ) = delegation.getStakingData();
         Console.log("stakingIndices = [ %s]", stakingIndices);
         console.log("firstStakingIndex = %s   lastWithdrawnRewardIndex = %s", uint256(firstStakingIndex), uint256(lastWithdrawnRewardIndex));
-        console.log("allWithdrawnRewards = %s   withdrawnAfterLastStaking = %s", allWithdrawnRewards, withdrawnAfterLastStaking);
+        console.log("availableTaxedRewards = %s   taxedSinceLastStaking = %s", availableTaxedRewards, taxedSinceLastStaking);
 
         vm.recordLogs();
         vm.expectEmit(
@@ -1779,13 +1906,13 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         (
         stakingIndices,
         firstStakingIndex,
-        allWithdrawnRewards,
+        availableTaxedRewards,
         lastWithdrawnRewardIndex,
-        withdrawnAfterLastStaking
+        taxedSinceLastStaking
         ) = delegation.getStakingData();
         Console.log("stakingIndices = [ %s]", stakingIndices);
         console.log("firstStakingIndex = %s   lastWithdrawnRewardIndex = %s", uint256(firstStakingIndex), uint256(lastWithdrawnRewardIndex));
-        console.log("allWithdrawnRewards = %s   withdrawnAfterLastStaking = %s", allWithdrawnRewards, withdrawnAfterLastStaking);
+        console.log("availableTaxedRewards = %s   taxedSinceLastStaking = %s", availableTaxedRewards, taxedSinceLastStaking);
 
         Console.log("contract balance: %s.%s%s", address(delegation).balance);
         Console.log("staker balance: %s.%s%s", stakers[i-1].balance);

@@ -16,8 +16,6 @@ abstract contract BaseDelegationTest is Test {
     address payable internal proxy;
     address internal implementation;
     bytes internal initializerCall;
-//    address payable internal newImplementation;
-//    bytes internal reinitializerCall;
     bytes1 internal currentDeploymentId;
     address internal owner = 0x15fc323DFE5D5DCfbeEdc25CEcbf57f676634d77;
     address[] internal stakers = [
@@ -83,7 +81,7 @@ abstract contract BaseDelegationTest is Test {
         BaseDelegation delegation,
         uint256 depositAmount,
         DepositMode mode
-    ) internal {
+    ) public {
         bytes memory blsPubKey;
         currentDeploymentId = bytes1(uint8(currentDeploymentId) + 1);
         uint256 preStaked = (mode == DepositMode.Fundraising) ? depositAmount / 10 : 0;
@@ -108,7 +106,7 @@ abstract contract BaseDelegationTest is Test {
                 }();
                 vm.stopPrank();
             }
-
+            
         if (mode == DepositMode.Fundraising || mode == DepositMode.Bootstrapping) {
             vm.deal(owner, owner.balance + depositAmount - (mode == DepositMode.Fundraising ? 2 : 0) * preStaked);
             vm.startPrank(owner);

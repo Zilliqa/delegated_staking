@@ -335,7 +335,7 @@ echo -n "🟢 taxed rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "ge
 echo -n "🟢 total rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
 echo -n "🟠 lst price: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getPrice()(uint256)" | sed 's/\[[^]]*\]//g') ether
 echo -n "🟢 lst supply: " && cast to-unit $(cast call $(cast call $CONTRACT_ADDRESS "getLST()(address)") "totalSupply()(uint256)" | sed 's/\[[^]]*\]//g') ether
-echo -n "🟢 total withdrawals: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getTotalWithdrawals()(uint256)" | sed 's/\[[^]]*\]//g') ether
+echo -n "🟢 total withdrawals: " && cast to-unit $(cast call $CONTRACT_ADDRESS "totalPendingWithdrawals()(uint256)" | sed 's/\[[^]]*\]//g') ether
 
 
 

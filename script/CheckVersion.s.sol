@@ -8,7 +8,7 @@ import {console} from "forge-std/console.sol";
 
 contract CheckVersion is Script {
 
-    function run(address proxy) external view {
+    function run(address payable proxy) external view {
 
         BaseDelegation delegation = BaseDelegation(
             proxy

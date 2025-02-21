@@ -9,7 +9,7 @@ import {BaseDelegation} from "src/BaseDelegation.sol";
 import {WithdrawalQueue} from "src/WithdrawalQueue.sol";
 import {IDelegation} from "src/IDelegation.sol";
 import {Deposit} from "@zilliqa/zq2/deposit_v4.sol";
-import {Console} from "src/Console.sol";
+import {Console} from "script/Console.sol";
 import {Vm} from "forge-std/Test.sol";
 import {console} from "forge-std/console.sol";
 
@@ -1126,12 +1126,13 @@ contract LiquidDelegationTest is BaseDelegationTest {
             taxedRewardsAfterStaking + 51_000 ether / uint256(60) * depositAmount / totalDeposit, // rewardsBeforeUnstaking
             delegation.unbondingPeriod()
         );
+        address staker = stakers[4-1];
         // stake and unstake to make pendingWithdrawals > 0 before leaving is initiated
-        vm.startPrank(owner);
-        uint256 lstBalance = lst.balanceOf(owner);
-        vm.deal(owner, owner.balance + 10_000 ether);
+        vm.startPrank(staker);
+        uint256 lstBalance = lst.balanceOf(staker);
+        vm.deal(staker, staker.balance + 10_000 ether);
         delegation.stake{value: 10_000 ether}();
-        delegation.unstake(lst.balanceOf(owner) - lstBalance);
+        delegation.unstake(lst.balanceOf(staker) - lstBalance);
         vm.stopPrank();
         // initiate leaving but it can't be completed because of pending withdrawals
         vm.startPrank(makeAddr("2"));
@@ -1140,20 +1141,20 @@ contract LiquidDelegationTest is BaseDelegationTest {
         assertTrue(delegation.pendingWithdrawals(validator(2)), "there should be pending withdrawals");
         vm.stopPrank();
         // if staker claims which calls withdrawDeposit() before the unbonding period, pendingWithdrawals will not be 0
-        vm.startPrank(stakers[4-1]);
+        vm.startPrank(staker);
         delegation.claim();
         assertTrue(delegation.pendingWithdrawals(validator(2)), "there should be pending withdrawals");
         vm.roll(block.number + delegation.unbondingPeriod());
         vm.stopPrank();
         // stake and unstake but pendingWithdrawals remains 0 after leaving was initiated
-        vm.startPrank(owner);
-        lstBalance = lst.balanceOf(owner);
-        vm.deal(owner, owner.balance + 10_000 ether);
+        vm.startPrank(staker);
+        lstBalance = lst.balanceOf(staker);
+        vm.deal(staker, staker.balance + 10_000 ether);
         delegation.stake{value: 10_000 ether}();
-        delegation.unstake(lst.balanceOf(owner) - lstBalance);
+        delegation.unstake(lst.balanceOf(staker) - lstBalance);
         vm.stopPrank();
         // if staker claims which calls withdrawDeposit() after the unbonding period, pendingWithdrawals will be 0
-        vm.startPrank(stakers[4-1]);
+        vm.startPrank(staker);
         delegation.claim();
         assertFalse(delegation.pendingWithdrawals(validator(2)), "there should not be pending withdrawals");
         vm.stopPrank();
@@ -1202,8 +1203,9 @@ contract LiquidDelegationTest is BaseDelegationTest {
             delegation.unbondingPeriod()
         );
         vm.roll(block.number + delegation.unbondingPeriod());
+        address staker = stakers[4-1];
         // if staker claims which calls withdrawDeposit() after the unbonding period, pendingWithdrawals will be 0
-        vm.startPrank(stakers[4-1]);
+        vm.startPrank(staker);
         delegation.claim();
         assertFalse(delegation.pendingWithdrawals(validator(2)), "there should not be pending withdrawals");
         vm.stopPrank();
@@ -1251,12 +1253,13 @@ contract LiquidDelegationTest is BaseDelegationTest {
             taxedRewardsAfterStaking + 51_000 ether / uint256(60) * depositAmount / totalDeposit, // rewardsBeforeUnstaking
             delegation.unbondingPeriod()
         );
+        address staker = stakers[4-1];
         // stake and unstake to make pendingWithdrawals > 0 before leaving is initiated
-        vm.startPrank(owner);
-        uint256 lstBalance = lst.balanceOf(owner);
-        vm.deal(owner, owner.balance + 10_000 ether);
+        vm.startPrank(staker);
+        uint256 lstBalance = lst.balanceOf(staker);
+        vm.deal(staker, staker.balance + 10_000 ether);
         delegation.stake{value: 10_000 ether}();
-        delegation.unstake(lst.balanceOf(owner) - lstBalance);
+        delegation.unstake(lst.balanceOf(staker) - lstBalance);
         vm.stopPrank();
         // initiate leaving but it can't be completed because of pending withdrawals
         vm.startPrank(makeAddr("2"));
@@ -1265,33 +1268,28 @@ contract LiquidDelegationTest is BaseDelegationTest {
         assertTrue(delegation.pendingWithdrawals(validator(2)), "there should be pending withdrawals");
         vm.stopPrank();
         // if staker claims which calls withdrawDeposit() before the unbonding period, pendingWithdrawals will not be 0
-        vm.startPrank(stakers[4-1]);
+        vm.startPrank(staker);
         delegation.claim();
         assertTrue(delegation.pendingWithdrawals(validator(2)), "there should be pending withdrawals");
         vm.roll(block.number + delegation.unbondingPeriod());
         vm.stopPrank();
         // stake and unstake but pendingWithdrawals remains 0 after leaving was initiated
-        vm.startPrank(owner);
-        lstBalance = lst.balanceOf(owner);
-        vm.deal(owner, owner.balance + 10_000 ether);
+        vm.startPrank(staker);
+        lstBalance = lst.balanceOf(staker);
+        vm.deal(staker, staker.balance + 10_000 ether);
         delegation.stake{value: 10_000 ether}();
-        delegation.unstake(lst.balanceOf(owner) - lstBalance);
+        delegation.unstake(lst.balanceOf(staker) - lstBalance);
         vm.stopPrank();
-        // control address stakes more than the validator's deposit
-        vm.startPrank(makeAddr("2"));
+        // control address buys LST to match the validator's deposit
         uint256 price = delegation.getPrice();
-        uint256 amount =
-            100 ether +
-            1_000_000_000 * (delegation.getStake(validator(2)) * 1 ether - lst.balanceOf(makeAddr("2")) * price) /
-            (1_000_000_000 ether - 1_000_000_000 ether * delegation.getStake(validator(2)) / (delegation.getStake(validator(1)) + delegation.getStake(validator(2))));
-        vm.deal(makeAddr("2"), makeAddr("2").balance + amount);
-        delegation.stake{value: amount}();
-        uint256 refund = (lst.balanceOf(makeAddr("2")) * price - delegation.getStake(validator(2)) * 1 ether) / 1 ether;
-        //TODO: calculate the exact amount without correction
-        refund += 5_000_208_296_500_198_542_001;
+        uint256 amount = (delegation.getStake(validator(2)) * 1 ether - lst.balanceOf(makeAddr("2")) * price) / price;
+        uint256 unstaked = (delegation.getStake() + delegation.getTaxedRewards()) * (amount + lst.balanceOf(makeAddr("2"))) / lst.totalSupply();
+        uint256 refund = unstaked - delegation.getStake(validator(2)) - 1;
+        vm.startPrank(owner);
+        lst.transfer(makeAddr("2"), amount);
         vm.stopPrank();
         // if staker claims which calls withdrawDeposit() after the unbonding period, pendingWithdrawals will be 0
-        vm.startPrank(stakers[4-1]);
+        vm.startPrank(staker);
         delegation.claim();
         assertFalse(delegation.pendingWithdrawals(validator(2)), "there should not be pending withdrawals");
         vm.stopPrank();
@@ -1342,22 +1340,18 @@ contract LiquidDelegationTest is BaseDelegationTest {
             taxedRewardsAfterStaking + 51_000 ether / uint256(60) * depositAmount / totalDeposit, // rewardsBeforeUnstaking
             delegation.unbondingPeriod()
         );
-        // control address stakes more than the validator's deposit
-        vm.startPrank(makeAddr("2"));
+        address staker = stakers[4-1];
+        // control address buys LST to match the validator's deposit
         uint256 price = delegation.getPrice();
-        uint256 amount =
-            100 ether +
-            1_000_000_000 * (delegation.getStake(validator(2)) * 1 ether - lst.balanceOf(makeAddr("2")) * price) /
-            (1_000_000_000 ether - 1_000_000_000 ether * delegation.getStake(validator(2)) / (delegation.getStake(validator(1)) + delegation.getStake(validator(2))));
-        vm.deal(makeAddr("2"), makeAddr("2").balance + amount);
-        delegation.stake{value: amount}();
-        uint256 refund = (lst.balanceOf(makeAddr("2")) * price - delegation.getStake(validator(2)) * 1 ether) / 1 ether;
-        //TODO: calculate the exact amount without correction
-        refund += 7_341_880;
+        uint256 amount = (delegation.getStake(validator(2)) * 1 ether - lst.balanceOf(makeAddr("2")) * price) / price;
+        uint256 unstaked = (delegation.getStake() + delegation.getTaxedRewards()) * (amount + lst.balanceOf(makeAddr("2"))) / lst.totalSupply();
+        uint256 refund = unstaked - delegation.getStake(validator(2));
+        vm.startPrank(owner);
+        lst.transfer(makeAddr("2"), amount);
         vm.stopPrank();
         vm.roll(block.number + delegation.unbondingPeriod());
         // if staker claims which calls withdrawDeposit() after the unbonding period, pendingWithdrawals will be 0
-        vm.startPrank(stakers[4-1]);
+        vm.startPrank(staker);
         delegation.claim();
         assertFalse(delegation.pendingWithdrawals(validator(2)), "there should not be pending withdrawals");
         vm.stopPrank();
@@ -1408,12 +1402,13 @@ contract LiquidDelegationTest is BaseDelegationTest {
             taxedRewardsAfterStaking + 51_000 ether / uint256(60) * depositAmount / totalDeposit, // rewardsBeforeUnstaking
             delegation.unbondingPeriod()
         );
+        address staker = stakers[4-1];
         // stake and unstake to make pendingWithdrawals > 0 before leaving is initiated
-        vm.startPrank(owner);
-        uint256 lstBalance = lst.balanceOf(owner);
-        vm.deal(owner, owner.balance + 10_000 ether);
+        vm.startPrank(staker);
+        uint256 lstBalance = lst.balanceOf(staker);
+        vm.deal(staker, staker.balance + 10_000 ether);
         delegation.stake{value: 10_000 ether}();
-        delegation.unstake(lst.balanceOf(owner) - lstBalance);
+        delegation.unstake(lst.balanceOf(staker) - lstBalance);
         vm.stopPrank();
         // initiate leaving but it can't be completed because of pending withdrawals
         vm.startPrank(makeAddr("2"));
@@ -1422,31 +1417,29 @@ contract LiquidDelegationTest is BaseDelegationTest {
         assertTrue(delegation.pendingWithdrawals(validator(2)), "there should be pending withdrawals");
         vm.stopPrank();
         // if staker claims which calls withdrawDeposit() before the unbonding period, pendingWithdrawals will not be 0
-        vm.startPrank(stakers[4-1]);
+        vm.startPrank(staker);
         delegation.claim();
         assertTrue(delegation.pendingWithdrawals(validator(2)), "there should be pending withdrawals");
         vm.roll(block.number + delegation.unbondingPeriod());
         vm.stopPrank();
         // stake and unstake but pendingWithdrawals remains 0 after leaving was initiated
-        vm.startPrank(owner);
-        lstBalance = lst.balanceOf(owner);
-        vm.deal(owner, owner.balance + 10_000 ether);
+        vm.startPrank(staker);
+        lstBalance = lst.balanceOf(staker);
+        vm.deal(staker, staker.balance + 10_000 ether);
         delegation.stake{value: 10_000 ether}();
-        delegation.unstake(lst.balanceOf(owner) - lstBalance);
+        delegation.unstake(lst.balanceOf(staker) - lstBalance);
         vm.stopPrank();
-        // control address stakes as much as the validator's deposit
-        vm.startPrank(makeAddr("2"));
+        // control address buys LST to match the validator's deposit
         uint256 price = delegation.getPrice();
-        uint256 amount =
-            1_000_000_000 * (delegation.getStake(validator(2)) * 1 ether - lst.balanceOf(makeAddr("2")) * price) /
-            (1_000_000_000 ether - 1_000_000_000 ether * delegation.getStake(validator(2)) / (delegation.getStake(validator(1)) + delegation.getStake(validator(2))));
-        //TODO: calculate the exact amount without correction
-        amount -= 9_995_742_881_778_262_244_610;
-        vm.deal(makeAddr("2"), makeAddr("2").balance + amount);
-        delegation.stake{value: amount}();
+        uint256 amount = (delegation.getStake(validator(2)) * 1 ether - lst.balanceOf(makeAddr("2")) * price) / price;
+        uint256 unstaked = (delegation.getStake() + delegation.getTaxedRewards()) * (amount + lst.balanceOf(makeAddr("2"))) / lst.totalSupply();
+        uint256 refund = unstaked - delegation.getStake(validator(2)) - 1;
+        amount = (delegation.getStake(validator(2)) * 1 ether - refund * 1 ether - lst.balanceOf(makeAddr("2")) * price) / price;
+        vm.startPrank(owner);
+        lst.transfer(makeAddr("2"), amount);
         vm.stopPrank();
         // if staker claims which calls withdrawDeposit() after the unbonding period, pendingWithdrawals will be 0
-        vm.startPrank(stakers[4-1]);
+        vm.startPrank(staker);
         delegation.claim();
         assertFalse(delegation.pendingWithdrawals(validator(2)), "there should not be pending withdrawals");
         vm.stopPrank();
@@ -1493,20 +1486,19 @@ contract LiquidDelegationTest is BaseDelegationTest {
             taxedRewardsAfterStaking + 51_000 ether / uint256(60) * depositAmount / totalDeposit, // rewardsBeforeUnstaking
             delegation.unbondingPeriod()
         );
-        // control address stakes as much as the validator's deposit
-        vm.startPrank(makeAddr("2"));
+        address staker = stakers[4-1];
+        // control address buys LST to match the validator's deposit
         uint256 price = delegation.getPrice();
-        uint256 amount =
-            1_000_000_000 * (delegation.getStake(validator(2)) * 1 ether - lst.balanceOf(makeAddr("2")) * price) /
-            (1_000_000_000 ether - 1_000_000_000 ether * delegation.getStake(validator(2)) / (delegation.getStake(validator(1)) + delegation.getStake(validator(2))));
-        //TODO: calculate the exact amount without correction
-        amount -= 14_674_125;
-        vm.deal(makeAddr("2"), makeAddr("2").balance + amount);
-        delegation.stake{value: amount}();
+        uint256 amount = (delegation.getStake(validator(2)) * 1 ether - lst.balanceOf(makeAddr("2")) * price) / price;
+        uint256 unstaked = (delegation.getStake() + delegation.getTaxedRewards()) * (amount + lst.balanceOf(makeAddr("2"))) / lst.totalSupply();
+        uint256 refund = unstaked - delegation.getStake(validator(2)) + 1;
+        amount = (delegation.getStake(validator(2)) * 1 ether - refund * 1 ether - lst.balanceOf(makeAddr("2")) * price) / price;
+        vm.startPrank(owner);
+        lst.transfer(makeAddr("2"), amount);
         vm.stopPrank();
         vm.roll(block.number + delegation.unbondingPeriod());
         // if staker claims which calls withdrawDeposit() after the unbonding period, pendingWithdrawals will be 0
-        vm.startPrank(stakers[4-1]);
+        vm.startPrank(staker);
         delegation.claim();
         assertFalse(delegation.pendingWithdrawals(validator(2)), "there should not be pending withdrawals");
         vm.stopPrank();
@@ -1535,6 +1527,107 @@ contract LiquidDelegationTest is BaseDelegationTest {
         vm.stopPrank();
     }
 
+    function test_JoinDuringFundraising() public {
+        uint256 depositAmount = 10_000_000 ether;
+        vm.deal(stakers[0], stakers[0].balance + 1000 ether);
+        vm.startPrank(stakers[0]);
+        delegation.stake{value: 1000 ether}();
+        vm.stopPrank();
+        join(BaseDelegation(delegation), depositAmount, makeAddr("2"), 2);
+        assertEq(delegation.getStake(validator(2)), depositAmount + 1000 ether, "Incorrect validator deposit");
+    }
+
+    function beforeTestSetup(bytes4 testSelector) public pure returns (bytes[] memory beforeTestCalldata) {
+        if (
+            testSelector == this.test_UseStakeForFirstJoinerAfterAllValidatorsLeft.selector ||
+            testSelector == this.test_UseStakeForNewDepositAfterAllValidatorsLeft.selector
+        ) {
+            beforeTestCalldata = new bytes[](1);
+            beforeTestCalldata[0] = abi.encodePacked(this.test_StakeRemainingAfterAllValidatorsLeft.selector);
+        }
+    }
+
+    function test_UseStakeForFirstJoinerAfterAllValidatorsLeft() public {
+        uint256 depositAmount = 10_000_000 ether;
+        vm.deal(stakers[0], stakers[0].balance + 1000 ether);
+        vm.startPrank(stakers[0]);
+        delegation.stake{value: 1000 ether}();
+        vm.stopPrank();
+        join(BaseDelegation(delegation), depositAmount, makeAddr("5"), 5);
+        assertEq(delegation.getStake(validator(5)), depositAmount + 1100 ether, "Incorrect validator deposit");
+    }
+
+    function test_UseStakeForNewDepositAfterAllValidatorsLeft() public {
+        uint256 depositAmount = 9_998_900 ether;
+        vm.deal(stakers[0], stakers[0].balance + 1000 ether);
+        vm.startPrank(stakers[0]);
+        delegation.stake{value: 1000 ether}();
+        vm.stopPrank();
+        deposit(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+    }
+
+    function test_StakeRemainingAfterAllValidatorsLeft() public {
+        uint256 depositAmount = 10_000_000 ether;
+        deposit(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        join(BaseDelegation(delegation), depositAmount, makeAddr("2"), 2);
+        join(BaseDelegation(delegation), depositAmount, makeAddr("3"), 3);
+        join(BaseDelegation(delegation), depositAmount, makeAddr("4"), 4);
+        vm.deal(stakers[0], stakers[0].balance + 100 ether);
+        uint256 totalStaked = delegation.getStake();
+        assertEq(totalStaked, 4 * depositAmount, "Incorrect total stake");
+        vm.startPrank(stakers[0]);
+        delegation.stake{value: 100 ether}();
+        vm.stopPrank();
+        totalStaked = delegation.getStake();
+        assertEq(totalStaked, 4 * depositAmount + 100 ether, "Incorrect total stake");
+        vm.startPrank(makeAddr("2"));
+        delegation.leave(validator(2));
+        vm.stopPrank();
+        totalStaked = delegation.getStake();
+        assertEq(totalStaked, 3 * depositAmount + 100 ether, "Incorrect total stake");
+        vm.startPrank(owner);
+        delegation.leave(validator(1));
+        vm.stopPrank();
+        totalStaked = delegation.getStake();
+        assertEq(totalStaked, 2 * depositAmount + 100 ether, "Incorrect total stake");
+        vm.startPrank(makeAddr("4"));
+        delegation.leave(validator(4));
+        vm.stopPrank();
+        totalStaked = delegation.getStake();
+        assertEq(totalStaked, 1 * depositAmount + 100 ether, "Incorrect total stake");
+        vm.roll(block.number + delegation.unbondingPeriod());
+        totalStaked = delegation.getStake();
+        assertEq(totalStaked, 1 * depositAmount + 100 ether, "Incorrect total stake");
+        vm.startPrank(makeAddr("2"));
+        delegation.completeLeaving(validator(2));
+        vm.stopPrank();
+        totalStaked = delegation.getStake();
+        assertEq(totalStaked, 1 * depositAmount + 100 ether, "Incorrect total stake");
+        vm.startPrank(makeAddr("3"));
+        delegation.leave(validator(3));
+        vm.stopPrank();
+        totalStaked = delegation.getStake();
+        assertEq(totalStaked, 100 ether, "Incorrect total stake");
+        vm.roll(block.number + delegation.unbondingPeriod());
+        totalStaked = delegation.getStake();
+        assertEq(totalStaked, 100 ether, "Incorrect total stake");
+        vm.startPrank(owner);
+        delegation.completeLeaving(validator(1));
+        vm.stopPrank();
+        totalStaked = delegation.getStake();
+        assertEq(totalStaked, 100 ether, "Incorrect total stake");
+        vm.startPrank(makeAddr("4"));
+        delegation.completeLeaving(validator(4));
+        vm.stopPrank();
+        totalStaked = delegation.getStake();
+        assertEq(totalStaked, 100 ether, "Incorrect total stake");
+        vm.startPrank(makeAddr("3"));
+        delegation.completeLeaving(validator(3));
+        vm.stopPrank();
+        totalStaked = delegation.getStake();
+        assertEq(totalStaked, 100 ether, "Incorrect total stake");
+    }
+
     function test_UnstakeNotTooMuch() public {
         uint256 depositAmount = 10_000_000 ether;
         deposit(BaseDelegation(delegation), 2 * depositAmount, DepositMode.Bootstrapping);
@@ -1557,7 +1650,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         assertEq(delegation.getStake(validator(4)), 10 * depositAmount / 10, "validator deposits are decreased equally");
     }
 
-    function testFail_UnstakeTooMuch() public {
+    function test_RevertWhen_UnstakeTooMuch() public {
         uint256 depositAmount = 10_000_000 ether;
         deposit(BaseDelegation(delegation), 2 * depositAmount, DepositMode.Bootstrapping);
         join(BaseDelegation(delegation), 2 * depositAmount, makeAddr("2"), 2);
@@ -1577,45 +1670,68 @@ contract LiquidDelegationTest is BaseDelegationTest {
         assertEq(delegation.getStake(validator(2)), 10 * depositAmount / 10, "validator deposits are decreased equally");
         assertEq(delegation.getStake(validator(3)), 10 * depositAmount / 10, "validator deposits are decreased equally");
         assertEq(delegation.getStake(validator(4)), 10 * depositAmount / 10, "validator deposits are decreased equally");
+        uint256 lstBalance = lst.balanceOf(makeAddr("4"));
+        vm.expectRevert(); //vm.expectPartialRevert(BaseDelegation.InsufficientUndepositedStak.selector);
         vm.startPrank(makeAddr("4"));
-        delegation.unstake(lst.balanceOf(makeAddr("4")));
+        delegation.unstake(lstBalance);
         vm.stopPrank();
     }
 
-    function testFail_DepositTwice_Bootstrapping_Bootstrapping() public {
+    function test_DepositTwice_Bootstrapping_Bootstrapping() public {
         uint256 depositAmount = 10_000_000 ether;
         deposit(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
         deposit(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
     }
 
-    function testFail_DepositTwice_Bootstrapping_Fundraising() public {
+    function test_DepositLeaveDeposit_Bootstrapping_Fundraising() public {
         uint256 depositAmount = 10_000_000 ether;
         deposit(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        vm.startPrank(owner);
+        delegation.leave(validator(1));
+        vm.stopPrank();
         deposit(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
     }
 
-    function testFail_DepositTwice_Fundraising_Fundraising() public {
+    function test_RevertWhen_DepositTwice_Bootstrapping_Fundraising() public {
         uint256 depositAmount = 10_000_000 ether;
-        deposit(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
-        deposit(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
+        this.deposit(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        vm.expectRevert(); //vm.expectPartialRevert(BaseDelegation.DepositContractCallFailed.selector);
+        this.deposit(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
     }
 
-    function testFail_DepositTwice_Fundraising_Bootstrapping() public {
+    function test_RevertWhen_DepositTwice_Fundraising_Fundraising() public {
+        uint256 depositAmount = 10_000_000 ether;
+        this.deposit(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
+        vm.expectRevert(); //vm.expectPartialRevert(BaseDelegation.DepositContractCallFailed.selector);
+        this.deposit(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
+    }
+
+    function test_DepositTwice_Fundraising_Bootstrapping() public {
         uint256 depositAmount = 10_000_000 ether;
         deposit(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
         deposit(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
     }
 
-    function testFail_DepositTwice_Transforming_Bootstrapping() public {
+    function test_DepositTwice_Transforming_Bootstrapping() public {
         uint256 depositAmount = 10_000_000 ether;
         deposit(BaseDelegation(delegation), depositAmount, DepositMode.Transforming);
         deposit(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
     }
 
-    function testFail_DepositTwice_Transforming_Fundraising() public {
+    function test_DepositLeaveDeposit_Transforming_Fundraising() public {
         uint256 depositAmount = 10_000_000 ether;
         deposit(BaseDelegation(delegation), depositAmount, DepositMode.Transforming);
+        vm.startPrank(owner);
+        delegation.leave(validator(1));
+        vm.stopPrank();
         deposit(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
+    }
+
+    function test_RevertWhen_DepositTwice_Transforming_Fundraising() public {
+        uint256 depositAmount = 10_000_000 ether;
+        this.deposit(BaseDelegation(delegation), depositAmount, DepositMode.Transforming);
+        vm.expectRevert(); //vm.expectPartialRevert(BaseDelegation.DepositContractCallFailed.selector);
+        this.deposit(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
     }
 
     function test_ManyVsOneStake_UnstakeAll() public {
