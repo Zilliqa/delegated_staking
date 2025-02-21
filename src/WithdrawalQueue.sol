@@ -29,6 +29,11 @@ library WithdrawalQueue {
     }
 
     /**
+    * @dev Thrown if the operation requires a non-empty queue.
+    */
+    error EmptyQueue();
+
+    /**
     * @dev Add a new {Item} to the back of the queue.
     */
     function enqueue(Fifo storage fifo, uint256 amount, uint256 period) internal {
@@ -40,7 +45,7 @@ library WithdrawalQueue {
     * @dev Remove an {Item} from the front of the queue and returns it.
     */
     function dequeue(Fifo storage fifo) internal returns(Item memory result) {
-        require(fifo.first < fifo.last, "queue empty");
+        require(fifo.first < fifo.last, EmptyQueue());
         result = fifo.items[fifo.first];
         delete fifo.items[fifo.first];
         fifo.first++;

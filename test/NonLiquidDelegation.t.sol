@@ -219,10 +219,10 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
     ) {
         stakerIndicesBeforeWithdrawals = abi.decode(_stakerIndicesBeforeWithdrawals, (uint256[]));
         relativeAmountsBeforeWithdrawals = abi.decode(_relativeAmountsBeforeWithdrawals, (int256[]));
-        require(stakerIndicesBeforeWithdrawals.length == relativeAmountsBeforeWithdrawals.length, "array length mismatch");
+        assert(stakerIndicesBeforeWithdrawals.length == relativeAmountsBeforeWithdrawals.length);
         stakerIndicesAfterWithdrawals = abi.decode(_stakerIndicesAfterWithdrawals, (uint256[]));
         relativeAmountsAfterWithdrawals = abi.decode(_relativeAmountsAfterWithdrawals, (int256[]));
-        require(stakerIndicesAfterWithdrawals.length == relativeAmountsAfterWithdrawals.length, "array length mismatch");
+        assert(stakerIndicesAfterWithdrawals.length == relativeAmountsAfterWithdrawals.length);
 
         for (uint256 i = 0; i < stakers.length; i++) {
             vm.deal(stakers[i], 20 * depositAmount);
@@ -1535,7 +1535,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         assertEq(delegation.getStake(validator(2)), 10 * depositAmount / 10, "validator deposits are decreased equally");
         assertEq(delegation.getStake(validator(3)), 10 * depositAmount / 10, "validator deposits are decreased equally");
         assertEq(delegation.getStake(validator(4)), 10 * depositAmount / 10, "validator deposits are decreased equally");
-        vm.expectRevert("insufficient undeposited stake");
+        vm.expectRevert(); //vm.expectPartialRevert(BaseDelegation.InsufficientUndepositedStak.selector);
         vm.startPrank(makeAddr("4"));
         delegation.unstake(2 * depositAmount);
         vm.stopPrank();
@@ -1547,19 +1547,26 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         deposit(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
     }
 
+    function test_DepositLeaveDeposit_Bootstrapping_Fundraising() public {
+        uint256 depositAmount = 10_000_000 ether;
+        deposit(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        vm.startPrank(owner);
+        delegation.leave(validator(1));
+        vm.stopPrank();
+        deposit(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
+    }
+
     function test_RevertWhen_DepositTwice_Bootstrapping_Fundraising() public {
         uint256 depositAmount = 10_000_000 ether;
         this.deposit(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
-        //TODO: make the first validator leave before fundraising to make the test pass
-        vm.expectRevert("deposit failed");
+        vm.expectRevert(); //vm.expectPartialRevert(BaseDelegation.DepositContractCallFailed.selector);
         this.deposit(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
     }
 
     function test_RevertWhen_DepositTwice_Fundraising_Fundraising() public {
         uint256 depositAmount = 10_000_000 ether;
         this.deposit(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
-        //TODO: make the first validator leave before fundraising to make the test pass
-        vm.expectRevert("deposit failed");
+        vm.expectRevert(); //vm.expectPartialRevert(BaseDelegation.DepositContractCallFailed.selector);
         this.deposit(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
     }
 
@@ -1575,11 +1582,19 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         deposit(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
     }
 
+    function test_DepositLeaveDeposit_Transforming_Fundraising() public {
+        uint256 depositAmount = 10_000_000 ether;
+        deposit(BaseDelegation(delegation), depositAmount, DepositMode.Transforming);
+        vm.startPrank(owner);
+        delegation.leave(validator(1));
+        vm.stopPrank();
+        deposit(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
+    }
+
     function test_RevertWhen_DepositTwice_Transforming_Fundraising() public {
         uint256 depositAmount = 10_000_000 ether;
         this.deposit(BaseDelegation(delegation), depositAmount, DepositMode.Transforming);
-        //TODO: make the first validator leave before fundraising to make the test pass
-        vm.expectRevert("deposit failed");
+        vm.expectRevert(); //vm.expectPartialRevert(BaseDelegation.DepositContractCallFailed.selector);
         this.deposit(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
     }
 

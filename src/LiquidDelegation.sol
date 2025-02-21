@@ -146,7 +146,7 @@ contract LiquidDelegation is IDelegation, BaseDelegation, ILiquidDelegation {
     * liquid staking tokens.
     */
     function _stake(uint256 value, address staker) internal {
-        require(value >= MIN_DELEGATION, "delegated amount too low");
+        require(value >= MIN_DELEGATION, DelegatedAmountTooLow(value));
         uint256 shares;
         LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
         if (NonRebasingLST($.lst).totalSupply() == 0)
@@ -217,7 +217,7 @@ contract LiquidDelegation is IDelegation, BaseDelegation, ILiquidDelegation {
         (bool success, ) = getCommissionReceiver().call{
             value: commission
         }("");
-        require(success, "transfer of commission failed");
+        require(success, TransferFailed(getCommissionReceiver(), commission));
         emit CommissionPaid(getCommissionReceiver(), commission);
     }
 
@@ -236,7 +236,7 @@ contract LiquidDelegation is IDelegation, BaseDelegation, ILiquidDelegation {
         (bool success, ) = _msgSender().call{
             value: total
         }("");
-        require(success, "transfer of funds failed");
+        require(success, TransferFailed(_msgSender(), total));
         emit Claimed(_msgSender(), total, "");
     }
 
@@ -244,7 +244,7 @@ contract LiquidDelegation is IDelegation, BaseDelegation, ILiquidDelegation {
     * @inheritdoc IDelegation
     */
     function stakeRewards() public override(BaseDelegation, IDelegation) onlyOwner {
-        require(_isActivated(), "No validator activated and rewards earned yet");
+        require(_isActivated(), StakingPoolNotActivated());
         _stakeRewards();
     }
 

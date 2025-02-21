@@ -191,7 +191,10 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation, INonLiquidDelegatio
     function replaceOldAddress(address old) public {
         NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
         address sender = _msgSender();
-        require($.newAddress[old] == sender, "must be called by the new address");
+        require(
+            sender == $.newAddress[old],
+            InvalidCaller(sender, $.newAddress[old])
+        );
         /* keep the original staking addresses to save gas
         for (uint64 i = 0; i < $.stakingIndices[old].length; i++)
             $.stakings[$.stakingIndices[old][i]].staker = sender;
@@ -228,7 +231,7 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation, INonLiquidDelegatio
         if (!_preparedToLeave(blsPubKey))
             return;
         NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
-        require($.stakingIndices[_msgSender()].length > 0, "staker not found");
+        require($.stakingIndices[_msgSender()].length > 0, StakerNotFound(_msgSender()));
         uint256 amount = $.stakings[$.stakingIndices[_msgSender()][$.stakingIndices[_msgSender()].length - 1]].amount;
         _append(-int256(amount), _msgSender());
         uint256 currentDeposit = getStake(blsPubKey);
@@ -271,7 +274,7 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation, INonLiquidDelegatio
         (bool success, ) = _msgSender().call{
             value: total
         }("");
-        require(success, "transfer of funds failed");
+        require(success, TransferFailed(_msgSender(), total));
         emit Claimed(_msgSender(), total, "");
     }
 
@@ -302,12 +305,16 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation, INonLiquidDelegatio
     */
     function _append(int256 value, address staker) internal {
         if (value > 0)
-            require(uint256(value) >= MIN_DELEGATION, "delegated amount too low");
+            require(uint256(value) >= MIN_DELEGATION, DelegatedAmountTooLow(uint256(value)));
         NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
         int256 amount = value;
         if ($.stakingIndices[staker].length > 0)
             amount += int256($.stakings[$.stakingIndices[staker][$.stakingIndices[staker].length - 1]].amount);
-        require(amount >= 0, "can not unstake more than staked before");
+        if (value < 0)
+            require(
+                amount >= 0,
+                RequestedAmountTooHigh(uint256(-value), $.stakings[$.stakingIndices[staker][$.stakingIndices[staker].length - 1]].amount)
+            );
         uint256 newRewards; // no rewards before the first staker is added
         if ($.stakings.length > 0) {
             value += int256($.stakings[$.stakings.length - 1].total);
@@ -353,7 +360,7 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation, INonLiquidDelegatio
         (bool success, ) = getCommissionReceiver().call{
             value: commission
         }("");
-        require(success, "transfer of commission failed");
+        require(success, TransferFailed(getCommissionReceiver(), commission));
         emit CommissionPaid(getCommissionReceiver(), commission);
         return untaxedRewards - commission;
     }
@@ -388,7 +395,7 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation, INonLiquidDelegatio
     function withdrawRewards(uint256 amount, uint64 additionalSteps) public whenNotPaused returns(uint256 taxedRewards) {
         (amount, taxedRewards) = _useRewards(amount, additionalSteps);
         (bool success, ) = _msgSender().call{value: amount}("");
-        require(success, "transfer of rewards failed");
+        require(success, TransferFailed(_msgSender(), amount));
         emit RewardPaid(_msgSender(), amount);
     }
 
@@ -436,7 +443,10 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation, INonLiquidDelegatio
         $.lastTaxedStakingIndex[_msgSender()] = nextStakingIndex - 1;
         if (amount == type(uint256).max)
             amount = $.availableTaxedRewards[_msgSender()];
-        require(amount <= $.availableTaxedRewards[_msgSender()], "can not withdraw more than accrued");
+        require(
+            amount <= $.availableTaxedRewards[_msgSender()], 
+            RequestedAmountTooHigh(amount, $.availableTaxedRewards[_msgSender()])
+        );
         $.availableTaxedRewards[_msgSender()] -= amount;
         $.immutableRewards -= int256(amount);
         return (amount, taxedRewards);
@@ -520,7 +530,7 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation, INonLiquidDelegatio
     /// @inheritdoc IDelegation
     function getStake() public override(BaseDelegation, IDelegation) view returns(uint256 total) {
         total = super.getStake();
-        require(!_isActivated() || total == getDelegatedTotal(), "Delegated stake mismatch");
+        assert(!_isActivated() || total == getDelegatedTotal());
     }
 
     /**
