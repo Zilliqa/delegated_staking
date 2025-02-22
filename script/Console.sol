@@ -6,8 +6,8 @@ import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {console} from "forge-std/console.sol";
 import {console2} from "forge-std/console2.sol";
 
-// A library wrapping and extending Hardhat's console.sol and forge-std
-// console2.sol. It is only meant to be used in Forge tests and scripts.
+// A library wrapping and extending console.sol from Hardhat and console2.sol from
+// the Forge Standard Library. It is only meant to be used in Forge tests and scripts.
 library Console {
 
     function convert(int256 amount, uint8 precision) internal pure returns (
