@@ -7,10 +7,10 @@ import {NonLiquidDelegation} from "src/NonLiquidDelegation.sol";
 import {BaseDelegation} from "src/BaseDelegation.sol";
 import {WithdrawalQueue} from "src/WithdrawalQueue.sol";
 import {IDelegation} from "src/IDelegation.sol";
-import {Deposit} from "@zilliqa/zq2/deposit_v4.sol";
+import {Deposit} from "@zilliqa/zq2/deposit_v5.sol";
 import {Console} from "script/Console.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
-import {console} from "forge-std/console.sol";
+import {Console} from "script/Console.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 /* solhint-disable func-name-mixedcase */
@@ -45,8 +45,8 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
     }  
 
     function snapshot(string memory s, uint256 i, uint256 x) internal view returns(uint256 calculatedRewards) {
-        console.log("-----------------------------------------------");
-        console.log(s, i, x);
+        Console.log("-----------------------------------------------");
+        Console.log(s, i, x);
         uint256[] memory shares = new uint256[](stakers.length + 1);
         NonLiquidDelegation.Staking[] memory stakings = delegation.getStakingHistory();
         for (uint256 k = 0; k < stakings.length; k++) {
@@ -80,7 +80,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
                     s = string.concat(s, s0);
                 } else
                     s = string.concat(s, "0.0%\t\t");
-            console.log(s);
+            Console.log(s);
             if (k < stakings.length - 1)
                 calculatedRewards += stakings[k+1].rewards * shares[i-1] / stakings[k].total;
             else
@@ -94,8 +94,8 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
             uint256 taxedSinceLastStaking
         ) = delegation.getStakingData();
         Console.log("stakingIndices = [ %s]", stakingIndices);
-        console.log("firstStakingIndex = %s   lastWithdrawnRewardIndex = %s", uint256(firstStakingIndex), uint256(lastWithdrawnRewardIndex));
-        console.log("availableTaxedRewards = %s   taxedSinceLastStaking = %s", availableTaxedRewards, taxedSinceLastStaking);
+        Console.log("firstStakingIndex = %s   lastWithdrawnRewardIndex = %s", uint256(firstStakingIndex), uint256(lastWithdrawnRewardIndex));
+        Console.log("availableTaxedRewards = %s   taxedSinceLastStaking = %s", availableTaxedRewards, taxedSinceLastStaking);
     } 
 
     function run(
@@ -151,26 +151,26 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
                 steps == 123_456_789 ?
                 snapshot("staker %s withdrawing all, remaining rewards:", i, 0) :
                 snapshot("staker %s withdrawing 1+%s times", i, steps);
-            Console.log("_calculatedRewards = %s.%s%s", _calculatedRewards);
-            Console.log("_availableRewards = %s.%s%s", _availableRewards);
-            Console.log("_withdrawnRewards = %s.%s%s", _withdrawnRewards);
+            Console.log18("_calculatedRewards = %s.%s%s", _calculatedRewards);
+            Console.log18("_availableRewards = %s.%s%s", _availableRewards);
+            Console.log18("_withdrawnRewards = %s.%s%s", _withdrawnRewards);
             int256 temp = int256(calculatedRewards[i-1]) - int256(withdrawnRewards[i-1] * delegation.DENOMINATOR() / (delegation.DENOMINATOR() - delegation.getCommissionNumerator()));
             calculatedRewards[i-1] = (temp > 0 ? temp : -temp).toUint256();
             int256 totalRewardsBefore = int256(delegation.getImmutableRewards());
             int256 delegationBalanceBefore = int256(address(delegation).balance);
-            Console.log("rewards accrued until last staking: %s.%s%s", totalRewardsBefore);
-            Console.log("delegation contract balance: %s.%s%s", delegationBalanceBefore);
-            //Console.log("staker balance: %s.%s%s", stakers[i-1].balance);
-            Console.log("calculated rewards: %s.%s%s", calculatedRewards[i-1] * (delegation.DENOMINATOR() - delegation.getCommissionNumerator()) / delegation.DENOMINATOR());
+            Console.log18("rewards accrued until last staking: %s.%s%s", totalRewardsBefore);
+            Console.log18("delegation contract balance: %s.%s%s", delegationBalanceBefore);
+            //Console.log18("staker balance: %s.%s%s", stakers[i-1].balance);
+            Console.log18("calculated rewards: %s.%s%s", calculatedRewards[i-1] * (delegation.DENOMINATOR() - delegation.getCommissionNumerator()) / delegation.DENOMINATOR());
             availableRewards[i-1] = delegation.rewards();
-            Console.log("staker rewards: %s.%s%s", availableRewards[i-1]);
+            Console.log18("staker rewards: %s.%s%s", availableRewards[i-1]);
             uint256 withdrawnReward =
                 steps == 123_456_789 ?
                 delegation.withdrawAllRewards() :
                 delegation.withdrawRewards(delegation.rewards(steps), steps);
-            Console.log("staker withdrew now: %s.%s%s", withdrawnReward);
+            Console.log18("staker withdrew now: %s.%s%s", withdrawnReward);
             withdrawnRewards[i-1] += withdrawnReward;
-            Console.log("staker withdrew altogether: %s.%s%s", withdrawnRewards[i-1]);
+            Console.log18("staker withdrew altogether: %s.%s%s", withdrawnRewards[i-1]);
             assertApproxEqAbs(
                 calculatedRewards[i-1] * (delegation.DENOMINATOR() - delegation.getCommissionNumerator()) / delegation.DENOMINATOR(),
                 availableRewards[i-1],
@@ -180,14 +180,14 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
             // TODO: add tests that withdraw an amount < delegation.rewards(step)
             int256 totalRewardsAfter = int256(delegation.getImmutableRewards());
             int256 delegationBalanceAfter = int256(address(delegation).balance);
-            Console.log("rewards accrued until last staking: %s.%s%s", totalRewardsAfter);
-            Console.log("delegation contract balance: %s.%s%s", delegationBalanceAfter);
+            Console.log18("rewards accrued until last staking: %s.%s%s", totalRewardsAfter);
+            Console.log18("delegation contract balance: %s.%s%s", delegationBalanceAfter);
             assertEq(
                 delegationBalanceBefore - totalRewardsBefore,
                 delegationBalanceAfter - totalRewardsAfter,
                 "total rewards mismatch"
             );
-            //Console.log("staker balance: %s.%s%s", stakers[i-1].balance);
+            //Console.log18("staker balance: %s.%s%s", stakers[i-1].balance);
             vm.stopPrank();
         }
     }
@@ -226,7 +226,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
 
         for (uint256 i = 0; i < stakers.length; i++) {
             vm.deal(stakers[i], 20 * depositAmount);
-            console.log("staker %s: %s", i+1, stakers[i]);
+            Console.log("staker %s: %s", i+1, stakers[i]);
         } 
 
         // rewards accrued so far
@@ -546,7 +546,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         uint256 total1;
         for (uint256 i = 0; i < stakers.length; i++)
             total1 += withdrawnRewards1[i];
-        console.log("====================================================================");
+        Console.log("====================================================================");
         stakers = temp;
         // delegation points to the last element of delegations by default
         delegation = delegations[0];
@@ -591,7 +591,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         uint256 total1;
         for (uint256 i = 0; i < stakers.length; i++)
             total1 += withdrawnRewards1[i];
-        console.log("====================================================================");
+        Console.log("====================================================================");
         stakers = temp;
         // delegation points to the last element of delegations by default
         delegation = delegations[0];
@@ -631,7 +631,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         uint256 total1;
         for (uint256 i = 0; i < stakers.length; i++)
             total1 += withdrawnRewards1[i];
-        console.log("====================================================================");
+        Console.log("====================================================================");
         stakers = temp;
         // delegation points to the last element of delegations by default
         delegation = delegations[0];
@@ -671,7 +671,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         uint256 total1;
         for (uint256 i = 0; i < stakers.length; i++)
             total1 += withdrawnRewards1[i];
-        console.log("====================================================================");
+        Console.log("====================================================================");
         stakers = temp;
         // delegation points to the last element of delegations by default
         delegation = delegations[0];
@@ -711,7 +711,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         uint256 total1;
         for (uint256 i = 0; i < stakers.length; i++)
             total1 += withdrawnRewards1[i];
-        console.log("====================================================================");
+        Console.log("====================================================================");
         stakers = temp;
         // delegation points to the last element of delegations by default
         delegation = delegations[0];
@@ -756,7 +756,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         uint256 total1;
         for (uint256 i = 0; i < stakers.length; i++)
             total1 += withdrawnRewards1[i];
-        console.log("====================================================================");
+        Console.log("====================================================================");
         stakers = temp;
         // delegation points to the last element of delegations by default
         delegation = delegations[0];
@@ -801,7 +801,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         uint256 total1;
         for (uint256 i = 0; i < stakers.length; i++)
             total1 += withdrawnRewards1[i];
-        console.log("====================================================================");
+        Console.log("====================================================================");
         stakers = temp;
         // delegation points to the last element of delegations by default
         delegation = delegations[0];
@@ -1612,7 +1612,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
 
         for (i = 0; i < 4; i++) {
             vm.deal(stakers[i], 200_000 ether);
-            console.log("staker %s: %s", i+1, stakers[i]);
+            Console.log("staker %s: %s", i+1, stakers[i]);
         }
 
         // rewards accrued so far
@@ -1668,10 +1668,10 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         i = 1;
         vm.startPrank(stakers[i-1]);
         //snapshot("staker %s withdrawing 1+%s times", i, steps);
-        //Console.log("staker balance: %s.%s%s", stakers[i-1].balance);
+        //Console.log18("staker balance: %s.%s%s", stakers[i-1].balance);
         //uint256 rewards = delegation.rewards(steps);
         uint256 rewards = delegation.rewards();
-        Console.log("staker rewards: %s.%s%s", rewards);
+        Console.log18("staker rewards: %s.%s%s", rewards);
         rewards = delegation.withdrawRewards(rewards, steps);
         //rewards = delegation.withdrawAllRewards();
         /*
@@ -1680,8 +1680,8 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         rewards += delegation.withdrawRewards(1000000, 2000);
         rewards += delegation.withdrawRewards(1000000, 2000);
         //*/
-        Console.log("staker withdrew: %s.%s%s", rewards);
-        //Console.log("staker balance: %s.%s%s", stakers[i-1].balance);
+        Console.log18("staker withdrew: %s.%s%s", rewards);
+        //Console.log18("staker balance: %s.%s%s", stakers[i-1].balance);
         vm.stopPrank();
 
         vm.roll(block.number + delegation.unbondingPeriod());
@@ -1719,7 +1719,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
 
         for (i = 0; i < 4; i++) {
             vm.deal(stakers[i], 200_000 ether);
-            console.log("staker %s: %s", i+1, stakers[i]);
+            Console.log("staker %s: %s", i+1, stakers[i]);
         }
 
         // rewards accrued so far
@@ -1787,10 +1787,10 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         i = 1;
         vm.startPrank(stakers[i-1]);
         //snapshot("staker %s withdrawing 1+%s times", i, steps);
-        //Console.log("staker balance: %s.%s%s", stakers[i-1].balance);
+        //Console.log18("staker balance: %s.%s%s", stakers[i-1].balance);
         //uint256 rewards = delegation.rewards(steps);
         uint256 rewards = delegation.rewards();
-        Console.log("staker rewards: %s.%s%s", rewards);
+        Console.log18("staker rewards: %s.%s%s", rewards);
         rewards = delegation.withdrawRewards(rewards, steps);
         //rewards = delegation.withdrawAllRewards();
         /*
@@ -1799,8 +1799,8 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         rewards += delegation.withdrawRewards(1000000, 2000);
         rewards += delegation.withdrawRewards(1000000, 2000);
         //*/
-        Console.log("staker withdrew: %s.%s%s", rewards);
-        //Console.log("staker balance: %s.%s%s", stakers[i-1].balance);
+        Console.log18("staker withdrew: %s.%s%s", rewards);
+        //Console.log18("staker balance: %s.%s%s", stakers[i-1].balance);
         vm.stopPrank();
 
         vm.roll(block.number + delegation.unbondingPeriod());
@@ -1871,12 +1871,12 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         vm.deal(address(delegation), address(delegation).balance + 10_000 ether);
         vm.startPrank(stakers[i-1]);
         snapshot("staker %s withdrawing all, remaining rewards:", i, 0);
-        console.log("-----------------------------------------------");
+        Console.log("-----------------------------------------------");
 
-        Console.log("contract balance: %s.%s%s", address(delegation).balance);
-        Console.log("staker balance: %s.%s%s", stakers[i-1].balance);
+        Console.log18("contract balance: %s.%s%s", address(delegation).balance);
+        Console.log18("staker balance: %s.%s%s", stakers[i-1].balance);
         uint256 rewards = delegation.rewards();
-        Console.log("staker rewards: %s.%s%s", rewards);
+        Console.log18("staker rewards: %s.%s%s", rewards);
 
         (
         uint64[] memory stakingIndices,
@@ -1886,8 +1886,8 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         uint256 taxedSinceLastStaking
         ) = delegation.getStakingData();
         Console.log("stakingIndices = [ %s]", stakingIndices);
-        console.log("firstStakingIndex = %s   lastWithdrawnRewardIndex = %s", uint256(firstStakingIndex), uint256(lastWithdrawnRewardIndex));
-        console.log("availableTaxedRewards = %s   taxedSinceLastStaking = %s", availableTaxedRewards, taxedSinceLastStaking);
+        Console.log("firstStakingIndex = %s   lastWithdrawnRewardIndex = %s", uint256(firstStakingIndex), uint256(lastWithdrawnRewardIndex));
+        Console.log("availableTaxedRewards = %s   taxedSinceLastStaking = %s", availableTaxedRewards, taxedSinceLastStaking);
 
         vm.recordLogs();
         vm.expectEmit(
@@ -1911,13 +1911,13 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         taxedSinceLastStaking
         ) = delegation.getStakingData();
         Console.log("stakingIndices = [ %s]", stakingIndices);
-        console.log("firstStakingIndex = %s   lastWithdrawnRewardIndex = %s", uint256(firstStakingIndex), uint256(lastWithdrawnRewardIndex));
-        console.log("availableTaxedRewards = %s   taxedSinceLastStaking = %s", availableTaxedRewards, taxedSinceLastStaking);
+        Console.log("firstStakingIndex = %s   lastWithdrawnRewardIndex = %s", uint256(firstStakingIndex), uint256(lastWithdrawnRewardIndex));
+        Console.log("availableTaxedRewards = %s   taxedSinceLastStaking = %s", availableTaxedRewards, taxedSinceLastStaking);
 
-        Console.log("contract balance: %s.%s%s", address(delegation).balance);
-        Console.log("staker balance: %s.%s%s", stakers[i-1].balance);
-        Console.log("staker rewards: %s.%s%s", delegation.rewards());
-        Console.log("staker should have received: %s.%s%s", rewards);
+        Console.log18("contract balance: %s.%s%s", address(delegation).balance);
+        Console.log18("staker balance: %s.%s%s", stakers[i-1].balance);
+        Console.log18("staker rewards: %s.%s%s", delegation.rewards());
+        Console.log18("staker should have received: %s.%s%s", rewards);
         vm.stopPrank();
     }
 

@@ -6,10 +6,10 @@ import {BlsVerifyPrecompile} from "test/BlsVerifyPrecompile.t.sol";
 import {BaseDelegation} from "src/BaseDelegation.sol";
 import {WithdrawalQueue} from "src/WithdrawalQueue.sol";
 import {IDelegation} from "src/IDelegation.sol";
-import {Deposit} from "@zilliqa/zq2/deposit_v4.sol";
+import {Deposit} from "@zilliqa/zq2/deposit_v5.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {Test} from "forge-std/Test.sol";
-import {console} from "forge-std/console.sol";
+import {Console} from "script/Console.sol";
 
 /* solhint-disable one-contract-per-file */
 abstract contract BaseDelegationTest is Test {
@@ -64,10 +64,12 @@ abstract contract BaseDelegationTest is Test {
         vm.store(delegation.DEPOSIT_CONTRACT(), bytes32(uint256(0x958a6cf6390bd7165e3519675caa670ab90f0161508a9ee714d3db7edc50740c)), bytes32(uint256(10_000_000 ether)));
         vm.store(delegation.DEPOSIT_CONTRACT(), bytes32(uint256(0x958a6cf6390bd7165e3519675caa670ab90f0161508a9ee714d3db7edc50740d)), bytes32(uint256(256)));
         vm.store(delegation.DEPOSIT_CONTRACT(), bytes32(uint256(0x958a6cf6390bd7165e3519675caa670ab90f0161508a9ee714d3db7edc50740e)), bytes32(uint256(10)));
+        vm.store(delegation.DEPOSIT_CONTRACT(), bytes32(uint256(0x958a6cf6390bd7165e3519675caa670ab90f0161508a9ee714d3db7edc50740f)), bytes32(uint256(300)));
         /*
-        console.log("Deposit.minimimStake() =", Deposit(delegation.DEPOSIT_CONTRACT()).minimumStake());
-        console.log("Deposit.maximumStakers() =", Deposit(delegation.DEPOSIT_CONTRACT()).maximumStakers());
-        console.log("Deposit.blocksPerEpoch() =", Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch());
+        Console.log("Deposit.minimimStake() =", Deposit(delegation.DEPOSIT_CONTRACT()).minimumStake());
+        Console.log("Deposit.maximumStakers() =", Deposit(delegation.DEPOSIT_CONTRACT()).maximumStakers());
+        Console.log("Deposit.blocksPerEpoch() =", Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch());
+        Console.log("Deposit.withdrawalPeriod() =", Deposit(delegation.DEPOSIT_CONTRACT()).withdrawalPeriod());
         //*/
 
         vm.etch(address(0x5a494c81), address(new BlsVerifyPrecompile()).code);
@@ -182,7 +184,7 @@ abstract contract BaseDelegationTest is Test {
 
         for (i = 0; i < 4; i++) {
             vm.deal(stakers[i], 100_000 ether);
-            console.log("staker %s: %s", i+1, stakers[i]);
+            Console.log("staker %s: %s", i+1, stakers[i]);
         }
 
         // rewards accrued so far
@@ -215,20 +217,20 @@ abstract contract BaseDelegationTest is Test {
         uint256[2][] memory claims;
 
         for (uint256 j = 0; j < steps; j++) {
-            console.log("--------------------------------------------------------------------");
+            Console.log("--------------------------------------------------------------------");
             vm.startPrank(stakers[i-1]);
 
             uint256 amount = delegation.unstake(x * 1 ether);
-            console.log("%s unstaked %s in block %s", stakers[i-1], amount, block.number);
+            Console.log("%s unstaked %s in block %s", stakers[i-1], amount, block.number);
             totalUnstaked += amount;
 
-            //console.log("block number: %s", block.number);
-            console.log("claimable: %s", delegation.getClaimable());
+            //Console.log("block number: %s", block.number);
+            Console.log("claimable: %s", delegation.getClaimable());
             claims = delegation.getPendingClaims();
-            console.log("%s pending claims:", claims.length);
+            Console.log("%s pending claims:", claims.length);
             totalPending = 0;
             for (uint256 k = 0; k < claims.length; k++) {
-                console.log("%s can claim %s in block %s", stakers[i-1], claims[k][1], claims[k][0]);
+                Console.log("%s can claim %s in block %s", stakers[i-1], claims[k][1], claims[k][0]);
                 totalPending += claims[k][1];
             }
             assertEq(delegation.getClaimable() + totalPending, totalUnstaked, "claims must match unstaked amount");
@@ -241,42 +243,42 @@ abstract contract BaseDelegationTest is Test {
 
         vm.startPrank(stakers[i-1]);
 
-        console.log("--------------------------------------------------------------------");
-        console.log("block number: %s", block.number);
-        console.log("claimable: %s", delegation.getClaimable());
+        Console.log("--------------------------------------------------------------------");
+        Console.log("block number: %s", block.number);
+        Console.log("claimable: %s", delegation.getClaimable());
         claims = delegation.getPendingClaims();
-        console.log("%s pending claims:", claims.length);
+        Console.log("%s pending claims:", claims.length);
         totalPending = 0;
         for (uint256 j = 0; j < claims.length; j++) {
-            console.log("%s can claim %s in block %s", stakers[i-1], claims[j][1], claims[j][0]);
+            Console.log("%s can claim %s in block %s", stakers[i-1], claims[j][1], claims[j][0]);
             totalPending += claims[j][1];
         }
         assertEq(delegation.getClaimable() + totalPending, totalUnstaked, "claims must match unstaked amount");
 
         vm.roll(block.number + 100);
 
-        console.log("--------------------------------------------------------------------");
-        console.log("block number: %s", block.number);
-        console.log("claimable: %s", delegation.getClaimable());
+        Console.log("--------------------------------------------------------------------");
+        Console.log("block number: %s", block.number);
+        Console.log("claimable: %s", delegation.getClaimable());
         claims = delegation.getPendingClaims();
-        console.log("%s pending claims:", claims.length);
+        Console.log("%s pending claims:", claims.length);
         totalPending = 0;
         for (uint256 j = 0; j < claims.length; j++) {
-            console.log("%s can claim %s in block %s", stakers[i-1], claims[j][1], claims[j][0]);
+            Console.log("%s can claim %s in block %s", stakers[i-1], claims[j][1], claims[j][0]);
             totalPending += claims[j][1];
         }
         assertEq(delegation.getClaimable() + totalPending, totalUnstaked, "claims must match unstaked amount");
 
         vm.roll(block.number + delegation.unbondingPeriod());
 
-        console.log("--------------------------------------------------------------------");
-        console.log("block number: %s", block.number);
-        console.log("claimable: %s", delegation.getClaimable());
+        Console.log("--------------------------------------------------------------------");
+        Console.log("block number: %s", block.number);
+        Console.log("claimable: %s", delegation.getClaimable());
         claims = delegation.getPendingClaims();
-        console.log("%s pending claims:", claims.length);
+        Console.log("%s pending claims:", claims.length);
         totalPending = 0;
         for (uint256 j = 0; j < claims.length; j++) {
-            console.log("%s can claim %s in block %s", stakers[i-1], claims[j][1], claims[j][0]);
+            Console.log("%s can claim %s in block %s", stakers[i-1], claims[j][1], claims[j][0]);
             totalPending += claims[j][1];
         }
         assertEq(delegation.getClaimable() + totalPending, totalUnstaked, "claims must match unstaked amount");

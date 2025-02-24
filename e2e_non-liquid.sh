@@ -181,7 +181,14 @@ cd ../zq2/
 docker-compose down
 docker-compose up -d
 cd ../delegated_staking/
-sleep 5s
+errors=1
+while [ $errors -gt 0 ]; do
+    echo "🔴 block production has not started"
+    sleep 5s
+    temp=$(cast block-number 2>&1)
+    errors=$(echo $temp | grep -o -i -e "error" | wc -l)
+done
+echo "🟢 block production has started"
 
 
 

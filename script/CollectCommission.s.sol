@@ -6,7 +6,7 @@ import {Script} from "forge-std/Script.sol";
 import {BaseDelegation} from "src/BaseDelegation.sol";
 import {Console} from "script/Console.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
-import {console} from "forge-std/console.sol";
+import {Console} from "script/Console.sol";
 
 contract CollectCommission is Script {
     using Strings for string;
@@ -19,13 +19,13 @@ contract CollectCommission is Script {
         );
 
         (uint24 major, uint24 minor, uint24 patch) = delegation.decodedVersion();
-        console.log("Running version: %s.%s.%s",
+        Console.log("Running version: %s.%s.%s",
             uint256(major),
             uint256(minor),
             uint256(patch)
         );
 
-        Console.log("Commission rate: %s.%s%s%%",
+        Console.logP("Commission rate: %s.%s%s%%",
             delegation.getCommissionNumerator(),
             2
         );
@@ -34,6 +34,6 @@ contract CollectCommission is Script {
 
         delegation.collectCommission();
 
-        console.log("Outstanding commission transferred");
+        Console.log("Outstanding commission transferred");
     }
 }

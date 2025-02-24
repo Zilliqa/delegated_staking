@@ -4,7 +4,7 @@ pragma solidity ^0.8.26;
 /* solhint-disable no-console */
 import {Script} from "forge-std/Script.sol";
 import {BaseDelegation} from "src/BaseDelegation.sol";
-import {console} from "forge-std/console.sol";
+import {Console} from "script/Console.sol";
 
 contract CheckVersion is Script {
 
@@ -19,17 +19,17 @@ contract CheckVersion is Script {
         // the contract has been already upgraded to a version that supports semver 
         if (version >= 2**20) {
             (uint24 major, uint24 minor, uint24 patch) = delegation.decodedVersion();
-            console.log("%s.%s.%s",
+            Console.log("%s.%s.%s",
                 uint256(major),
                 uint256(minor),
                 uint256(patch)
             );
         } else if (version == 1)
-            console.log("Contract hasn't been upgraded to any version yet",
+            Console.log("Contract hasn't been upgraded to any version yet",
                 version
             );
         else
-            console.log("%s",
+            Console.log("%s",
                 version
             );
 

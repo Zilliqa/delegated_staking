@@ -4,7 +4,7 @@ pragma solidity ^0.8.26;
 /* solhint-disable no-console */
 import {Script} from "forge-std/Script.sol";
 import {BaseDelegation} from "src/BaseDelegation.sol";
-import {console} from "forge-std/console.sol";
+import {Console} from "script/Console.sol";
 
 contract StakeRewards is Script {
 
@@ -15,13 +15,13 @@ contract StakeRewards is Script {
             );
 
         (uint24 major, uint24 minor, uint24 patch) = delegation.decodedVersion();
-        console.log("Running version: %s.%s.%s",
+        Console.log("Running version: %s.%s.%s",
             uint256(major),
             uint256(minor),
             uint256(patch)
         );
 
-        console.log("Current stake: %s wei \r\n  Current rewards: %s wei",
+        Console.log("Current stake: %s wei \r\n  Current rewards: %s wei",
             delegation.getStake(),
             delegation.getRewards()
         );
@@ -30,7 +30,7 @@ contract StakeRewards is Script {
 
         delegation.stakeRewards();
 
-        console.log("New stake: %s wei \r\n  New rewards: %s wei",
+        Console.log("New stake: %s wei \r\n  New rewards: %s wei",
             delegation.getStake(),
             delegation.getRewards()
         );

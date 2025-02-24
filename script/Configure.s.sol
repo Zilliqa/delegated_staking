@@ -6,7 +6,7 @@ import {Script} from "forge-std/Script.sol";
 import {BaseDelegation} from "src/BaseDelegation.sol";
 import {Console} from "script/Console.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
-import {console} from "forge-std/console.sol";
+import {Console} from "script/Console.sol";
 
 contract Configure is Script {
     using Strings for string;
@@ -17,13 +17,13 @@ contract Configure is Script {
         );
 
         (uint24 major, uint24 minor, uint24 patch) = delegation.decodedVersion();
-        console.log("Running version: %s.%s.%s",
+        Console.log("Running version: %s.%s.%s",
             uint256(major),
             uint256(minor),
             uint256(patch)
         );
 
-        Console.log("Commission rate: %s.%s%s%%",
+        Console.logP("Commission rate: %s.%s%s%%",
             delegation.getCommissionNumerator(),
             2
         );
@@ -37,13 +37,13 @@ contract Configure is Script {
         );
 
         (uint24 major, uint24 minor, uint24 patch) = delegation.decodedVersion();
-        console.log("Running version: %s.%s.%s",
+        Console.log("Running version: %s.%s.%s",
             uint256(major),
             uint256(minor),
             uint256(patch)
         );
 
-        Console.log("Commission rate: %s.%s%s%%",
+        Console.logP("Commission rate: %s.%s%s%%",
             delegation.getCommissionNumerator(),
             2
         );
@@ -52,7 +52,7 @@ contract Configure is Script {
 
         delegation.setCommissionNumerator(commissionNumerator);
 
-        Console.log("New commission rate: %s.%s%s%%",
+        Console.logP("New commission rate: %s.%s%s%%",
             delegation.getCommissionNumerator(),
             2
         );
@@ -64,13 +64,13 @@ contract Configure is Script {
         );
 
         (uint24 major, uint24 minor, uint24 patch) = delegation.decodedVersion();
-        console.log("Running version: %s.%s.%s",
+        Console.log("Running version: %s.%s.%s",
             uint256(major),
             uint256(minor),
             uint256(patch)
         );
 
-        console.log("Commission receiver: %s",
+        Console.log("Commission receiver: %s",
             delegation.getCommissionReceiver()
         );
     }
@@ -83,13 +83,13 @@ contract Configure is Script {
         );
 
         (uint24 major, uint24 minor, uint24 patch) = delegation.decodedVersion();
-        console.log("Running version: %s.%s.%s",
+        Console.log("Running version: %s.%s.%s",
             uint256(major),
             uint256(minor),
             uint256(patch)
         );
 
-        console.log("Commission receiver: %s",
+        Console.log("Commission receiver: %s",
             delegation.getCommissionReceiver()
         );
 
@@ -97,7 +97,7 @@ contract Configure is Script {
 
         delegation.setCommissionReceiver(commissionAddress);
 
-        console.log("New commission receiver: %s",
+        Console.log("New commission receiver: %s",
             delegation.getCommissionReceiver()
         );
     }

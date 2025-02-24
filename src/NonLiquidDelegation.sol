@@ -530,12 +530,13 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation, INonLiquidDelegatio
     /// @inheritdoc IDelegation
     function getStake() public override(BaseDelegation, IDelegation) view returns(uint256 total) {
         total = super.getStake();
-        //assert(!_isActivated() || total == getDelegatedTotal());
+        //assert(!_isActivated() || total == getDelegatedTotal() + getUndepositedStake());
     }
 
-    //TODO: Remove this function, it's only for testing purposes
+    //TODO: Remove this function and uncomment the assert statement in getStake() above
     function getStake2() public view returns(uint256 total) {
         total = getDelegatedTotal();
+        total += getUndepositedStake();
     }
 
     /**

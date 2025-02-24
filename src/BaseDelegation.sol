@@ -203,7 +203,7 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     /**
     * @dev The current version of all upgradeable contracts in the repository.
     */
-    uint64 internal immutable VERSION = encodeVersion(0, 4, 1);
+    uint64 internal immutable VERSION = encodeVersion(0, 5, 0);
 
     /**
     * @dev Return the contracts' version.
@@ -724,9 +724,11 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
             );
             totalContribution = amount;
         }
+        uint256 totalUndeposited;
         for (uint256 i = 0; i < $.validators.length; i++)
             if (contribution[i] > 0) {
                 uint256 value = amount * contribution[i] / totalContribution;
+                totalUndeposited += value;
                 $.validators[i].futureStake -= value;
                 $.validators[i].pendingWithdrawals += value;
                 callData =
