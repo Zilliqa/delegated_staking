@@ -724,9 +724,11 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
             );
             totalContribution = amount;
         }
+        uint256 totalUndeposited;
         for (uint256 i = 0; i < $.validators.length; i++)
             if (contribution[i] > 0) {
                 uint256 value = amount * contribution[i] / totalContribution;
+                totalUndeposited += value;
                 $.validators[i].futureStake -= value;
                 $.validators[i].pendingWithdrawals += value;
                 callData =

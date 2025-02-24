@@ -69,6 +69,7 @@ abstract contract BaseDelegationTest is Test {
         Console.log("Deposit.minimimStake() =", Deposit(delegation.DEPOSIT_CONTRACT()).minimumStake());
         Console.log("Deposit.maximumStakers() =", Deposit(delegation.DEPOSIT_CONTRACT()).maximumStakers());
         Console.log("Deposit.blocksPerEpoch() =", Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch());
+        Console.log("Deposit.withdrawalPeriod() =", Deposit(delegation.DEPOSIT_CONTRACT()).withdrawalPeriod());
         //*/
 
         vm.etch(address(0x5a494c81), address(new BlsVerifyPrecompile()).code);
