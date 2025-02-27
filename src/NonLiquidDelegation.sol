@@ -269,7 +269,7 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation, INonLiquidDelegatio
         if (total == 0)
             return;
         // withdraw the unstaked deposit once the unbonding period is over
-        _withdrawDeposit();
+        /*uint256 withdrawn = */_withdrawDeposit();
         _decreaseStake(total);
         (bool success, ) = _msgSender().call{
             value: total
@@ -530,10 +530,16 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation, INonLiquidDelegatio
     /// @inheritdoc IDelegation
     function getStake() public override(BaseDelegation, IDelegation) view returns(uint256 total) {
         total = super.getStake();
-        //assert(!_isActivated() || total == getDelegatedTotal() + getUndepositedStake());
+//TODO: it revert if there are no validators left but would it also fail if all validators were in the state of leaving?
+//        assert(!_isActivated() || total == getDelegatedTotal() + getUndepositedStake());
     }
 
-    //TODO: Remove this function and uncomment the assert statement in getStake() above
+//TODO: Remove this function
+    function getStake1() public view returns(uint256 total) {
+        total = super.getStake();
+    }
+
+//TODO: Remove this function
     function getStake2() public view returns(uint256 total) {
         total = getDelegatedTotal();
         total += getUndepositedStake();
