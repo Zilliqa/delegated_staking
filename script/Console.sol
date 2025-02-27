@@ -65,6 +65,10 @@ library Console {
         console.log(format, s);
     }
 
+    function log(address first, uint256 second, uint256 third, uint256 fourth) internal pure {
+        return console.log(first, Strings.toString(second), Strings.toString(third), Strings.toString(fourth));
+    }
+
     function log(string memory format, uint256 first, uint256 second, uint256 third) internal pure {
         return console.log(format, Strings.toString(first), Strings.toString(second), Strings.toString(third));
     }

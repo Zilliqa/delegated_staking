@@ -66,7 +66,7 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     *
     * - `withdrawals` holds the withdrawal queues of addresses that unstaked.
     *
-    * - `pendingDepositReductions` is the total amount of pending withdrawals
+    * - `pendingRebalancedDeposit` is the total amount of pending withdrawals
     * initiated to reduce the deposits of leaving validators to match the stake
     * of their control address.
     *
@@ -83,7 +83,7 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         bool activated;
         uint256 commissionNumerator;
         mapping(address => WithdrawalQueue.Fifo) withdrawals;
-        uint256 pendingDepositReductions;
+        uint256 pendingRebalancedDeposit;
         Validator[] validators;
         address commissionReceiver;
         uint256 undepositedStake;
@@ -281,7 +281,7 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         if (fromVersion < encodeVersion(0, 4, 0))
             // the contract has been upgraded to a version which may have
             // changed the totalWithdrawals which has to be zero initially
-            $.pendingDepositReductions = 0;
+            $.pendingRebalancedDeposit = 0;
 
         if (fromVersion < encodeVersion(0, 3, 0))
             // the contract has been upgraded to a version which did not
@@ -406,6 +406,8 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         $.validatorIndex[blsPubKey] = $.validators.length;
         emit ValidatorJoined(blsPubKey);
 
+//TODO: undepositedStake does not contain pending withdrawals, they are only added to undepositedStake when received but it
+//      does contain the already withdrawn deposits that are waiting to be claimed plus new stake that can't be deposited
         if ($.undepositedStake > totalPendingWithdrawals())
             _increaseDeposit($.undepositedStake - totalPendingWithdrawals());
     }
@@ -442,7 +444,7 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         if (amount == 0)
             return;
         if (amount == $.validators[i].pendingWithdrawals) {
-            $.pendingDepositReductions -= $.validators[i].pendingWithdrawals;
+            $.pendingRebalancedDeposit -= $.validators[i].pendingWithdrawals;
             $.validators[i].pendingWithdrawals = 0;
             _increaseDeposit(amount);
         } else
@@ -531,7 +533,7 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
             require(success, DepositContractCallFailed(callData, data));
             $.validators[i].pendingWithdrawals = $.validators[i].futureStake - leavingStake;
             $.validators[i].futureStake = leavingStake;
-            $.pendingDepositReductions += $.validators[i].pendingWithdrawals;
+            $.pendingRebalancedDeposit += $.validators[i].pendingWithdrawals;
         } else
             _leave(i);
     }
@@ -722,7 +724,9 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
                 $.undepositedStake >= amount - totalContribution,
                 InsufficientUndepositedStake($.undepositedStake, amount - totalContribution)
             );
-            totalContribution = amount;
+//TODO: ensure that getStake() is reduced by amount and not only by totalContribution
+            amount = totalContribution;
+//            totalContribution = amount;
         }
         uint256 totalUndeposited;
         for (uint256 i = 0; i < $.validators.length; i++)
@@ -925,7 +929,7 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         for (uint256 i = 0; i < $.validators.length; i++)
             if ($.validators[i].status < ValidatorStatus.ReadyToLeave)
                 total += $.validators[i].futureStake;
-        total += $.pendingDepositReductions;
+        total += $.pendingRebalancedDeposit;
     }
 
     /**

@@ -152,7 +152,7 @@ contract LiquidDelegation is IDelegation, BaseDelegation, ILiquidDelegation {
         if (NonRebasingLST($.lst).totalSupply() == 0)
             shares = value;
         else
-            shares = NonRebasingLST($.lst).totalSupply() * value / (getStake() + $.taxedRewards);
+            shares = NonRebasingLST($.lst).totalSupply() * value / (getStake2() + $.taxedRewards);
         NonRebasingLST($.lst).mint(staker, shares);
         emit Staked(staker, value, abi.encode(shares));
     }
@@ -183,7 +183,7 @@ contract LiquidDelegation is IDelegation, BaseDelegation, ILiquidDelegation {
         if (NonRebasingLST($.lst).totalSupply() == 0)
             amount = shares;
         else
-            amount = (getStake() + $.taxedRewards) * shares / NonRebasingLST($.lst).totalSupply();
+            amount = (getStake2() + $.taxedRewards) * shares / NonRebasingLST($.lst).totalSupply();
         _stakeRewards();
         NonRebasingLST($.lst).burn(staker, shares);
         emit Unstaked(staker, amount, abi.encode(shares));
@@ -199,7 +199,7 @@ contract LiquidDelegation is IDelegation, BaseDelegation, ILiquidDelegation {
         if (NonRebasingLST($.lst).totalSupply() == 0)
             amount = 1 ether;
         else
-            amount = (getStake() + rewards - commission) * 1 ether / NonRebasingLST($.lst).totalSupply();
+            amount = (getStake2() + rewards - commission) * 1 ether / NonRebasingLST($.lst).totalSupply();
     }
 
     /**
@@ -228,10 +228,8 @@ contract LiquidDelegation is IDelegation, BaseDelegation, ILiquidDelegation {
         uint256 total = _dequeueWithdrawals();
         if (total == 0)
             return;
-        // before the balance changes deduct the commission from the yet untaxed rewards
-        taxRewards();
         // withdraw the unstaked deposit once the unbonding period is over
-        _withdrawDeposit();
+        /*uint256 withdrawn = */_withdrawDeposit();
         _decreaseStake(total);
         (bool success, ) = _msgSender().call{
             value: total
@@ -284,6 +282,15 @@ contract LiquidDelegation is IDelegation, BaseDelegation, ILiquidDelegation {
     function getLST() public view returns(address) {
         LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
         return $.lst;
+    }
+
+//TODO: rename and write natspec comment
+    function getStake2() public view returns(uint256 total) {
+        total = getStake();
+//TODO: are these the right conditions? do they cover the case when all validators left or are in the process of leaving
+//      and there is no validator whose deposit could be topped up?
+        if (_isActivated() && total > getUndepositedStake())
+            total -= getUndepositedStake();
     }
 
     /**
