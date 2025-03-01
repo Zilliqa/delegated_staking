@@ -212,6 +212,8 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation, INonLiquidDelegatio
         delete $.newAddress[old];
     } 
 
+//TODO: describe in the readme how to replace the non-liquid staker address
+
     /**
     * @dev Emit the event when `reward` was transferred to `delegator`. 
     */
@@ -259,23 +261,6 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation, INonLiquidDelegatio
         // the owner would not benefit from the rewards accrued by the deposit
         if (msg.value > 0)
             _append(int256(msg.value), _msgSender());
-    }
-
-    /**
-    * @inheritdoc IDelegation
-    */
-    function claim() public override(BaseDelegation, IDelegation) whenNotPaused {
-        uint256 total = _dequeueWithdrawals();
-        if (total == 0)
-            return;
-        // withdraw the unstaked deposit once the unbonding period is over
-        /*uint256 withdrawn = */_withdrawDeposit();
-        _decreaseStake(total);
-        (bool success, ) = _msgSender().call{
-            value: total
-        }("");
-        require(success, TransferFailed(_msgSender(), total));
-        emit Claimed(_msgSender(), total, "");
     }
 
     /**
@@ -526,24 +511,6 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation, INonLiquidDelegatio
     * @dev Commission is deducted when delegators withdraw their share of the rewards.
     */
     function collectCommission() public override(BaseDelegation, IDelegation) {}
-
-    /// @inheritdoc IDelegation
-    function getStake() public override(BaseDelegation, IDelegation) view returns(uint256 total) {
-        total = super.getStake();
-//TODO: it revert if there are no validators left but would it also fail if all validators were in the state of leaving?
-//        assert(!_isActivated() || total == getDelegatedTotal() + getUndepositedStake());
-    }
-
-//TODO: Remove this function
-    function getStake1() public view returns(uint256 total) {
-        total = super.getStake();
-    }
-
-//TODO: Remove this function
-    function getStake2() public view returns(uint256 total) {
-        total = getDelegatedTotal();
-        total += getUndepositedStake();
-    }
 
     /**
     * @dev See https://eips.ethereum.org/EIPS/eip-165

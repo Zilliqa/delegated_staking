@@ -1284,7 +1284,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         uint256 price = delegation.getPrice();
         uint256 amount = (delegation.getStake(validator(2)) * 1 ether - lst.balanceOf(makeAddr("2")) * price) / price;
         uint256 unstaked = (delegation.getStake() + delegation.getTaxedRewards()) * (amount + lst.balanceOf(makeAddr("2"))) / lst.totalSupply();
-        uint256 refund = unstaked - delegation.getStake(validator(2)) - 2;
+        uint256 refund = unstaked - delegation.getStake(validator(2)) + 0;
         vm.startPrank(owner);
         lst.transfer(makeAddr("2"), amount);
         vm.stopPrank();
@@ -1433,7 +1433,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         uint256 price = delegation.getPrice();
         uint256 amount = (delegation.getStake(validator(2)) * 1 ether - lst.balanceOf(makeAddr("2")) * price) / price;
         uint256 unstaked = (delegation.getStake() + delegation.getTaxedRewards()) * (amount + lst.balanceOf(makeAddr("2"))) / lst.totalSupply();
-        uint256 refund = unstaked - delegation.getStake(validator(2)) - 2;
+        uint256 refund = unstaked - delegation.getStake(validator(2)) + 0;
         amount = (delegation.getStake(validator(2)) * 1 ether - refund * 1 ether - lst.balanceOf(makeAddr("2")) * price) / price;
         vm.startPrank(owner);
         lst.transfer(makeAddr("2"), amount);
@@ -1491,7 +1491,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         uint256 price = delegation.getPrice();
         uint256 amount = (delegation.getStake(validator(2)) * 1 ether - lst.balanceOf(makeAddr("2")) * price) / price;
         uint256 unstaked = (delegation.getStake() + delegation.getTaxedRewards()) * (amount + lst.balanceOf(makeAddr("2"))) / lst.totalSupply();
-        uint256 refund = unstaked - delegation.getStake(validator(2)) + 0;
+        uint256 refund = unstaked - delegation.getStake(validator(2)) + 1;
         amount = (delegation.getStake(validator(2)) * 1 ether - refund * 1 ether - lst.balanceOf(makeAddr("2")) * price) / price;
         vm.startPrank(owner);
         lst.transfer(makeAddr("2"), amount);
@@ -1893,11 +1893,12 @@ contract LiquidDelegationTest is BaseDelegationTest {
                 claimingsCounter++;
                 Console.log("%s claimed %s and has %s unstaked", user, amount, unstakedZil[user]);
             }
+            Console.log("round %s of %s", i, numOfRounds);
             assertGe(delegation.getPrice(), 1 ether, "price too low");
             assertLt(delegation.getPrice(), 1 ether + 1_000_000 gwei, "price too high");
             if (lst.totalSupply() == depositAmount)
                 assertEq(totalStakedZil, 0, "stake more than initial deposit");
-//TODO: assert that exposure <= funds like in the e2e tests
+            assertLe(lst.totalSupply() * delegation.getPrice() / 1 ether, delegation.getStake() + delegation.getTaxedRewards() + (delegation.getRewards() - delegation.getTaxedRewards()) * delegation.getCommissionNumerator() / delegation.DENOMINATOR(), "exposure greater than funds");
             assertEq(totalWithdrawnZil + delegation.totalPendingWithdrawals(), totalUnstakedZil, "owned does not match owed");
         }
         for (uint256 i = 0; i < users.length; i++) {
@@ -1905,7 +1906,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
             totalStakedZil += stakedZil[user];
             totalUnstakedZil += unstakedZil[user];
             totalEarnedZil += earnedZil[user];
-            Console.log(user, stakedZil[user], unstakedZil[user], earnedZil[user]);
+            Console.log(stakedZil[user], unstakedZil[user], earnedZil[user]);
         }
         Console.log("%s total staked %s total unstaked %s total earned", totalStakedZil, totalUnstakedZil, totalEarnedZil);
         Console.log("%s stakings", stakingsCounter);

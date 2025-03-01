@@ -1430,81 +1430,57 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         join(BaseDelegation(delegation), depositAmount, makeAddr("4"), 4);
         stakers.push(makeAddr("4"));
         vm.deal(stakers[0], stakers[0].balance + 100 ether);
-//TODO: remove
-Console.log("%s vs %s", delegation.getStake1(), delegation.getStake2());
         uint256 totalStaked = delegation.getStake();
         assertEq(totalStaked, 4 * depositAmount, "Incorrect total stake");
         vm.startPrank(stakers[0]);
         delegation.stake{value: 100 ether}();
         vm.stopPrank();
-//TODO: remove
-Console.log("%s vs %s", delegation.getStake1(), delegation.getStake2());
         totalStaked = delegation.getStake();
         assertEq(totalStaked, 4 * depositAmount + 100 ether, "Incorrect total stake");
         vm.startPrank(makeAddr("2"));
         delegation.leave(validator(2));
         vm.stopPrank();
-//TODO: remove
-Console.log("%s vs %s", delegation.getStake1(), delegation.getStake2());
         totalStaked = delegation.getStake();
         assertEq(totalStaked, 3 * depositAmount + 100 ether, "Incorrect total stake");
         vm.startPrank(owner);
         delegation.leave(validator(1));
         vm.stopPrank();
-//TODO: remove
-Console.log("%s vs %s", delegation.getStake1(), delegation.getStake2());
         totalStaked = delegation.getStake();
         assertEq(totalStaked, 2 * depositAmount + 100 ether, "Incorrect total stake");
         vm.startPrank(makeAddr("4"));
         delegation.leave(validator(4));
         vm.stopPrank();
-//TODO: remove
-Console.log("%s vs %s", delegation.getStake1(), delegation.getStake2());
         totalStaked = delegation.getStake();
         assertEq(totalStaked, 1 * depositAmount + 100 ether, "Incorrect total stake");
         vm.roll(block.number + delegation.unbondingPeriod());
-//TODO: remove
-Console.log("%s vs %s", delegation.getStake1(), delegation.getStake2());
         totalStaked = delegation.getStake();
         assertEq(totalStaked, 1 * depositAmount + 100 ether, "Incorrect total stake");
         vm.startPrank(makeAddr("2"));
         delegation.completeLeaving(validator(2));
         vm.stopPrank();
-//TODO: remove
-Console.log("%s vs %s", delegation.getStake1(), delegation.getStake2());
         totalStaked = delegation.getStake();
         assertEq(totalStaked, 1 * depositAmount + 100 ether, "Incorrect total stake");
         vm.startPrank(makeAddr("3"));
         delegation.leave(validator(3));
         vm.stopPrank();
-//TODO: remove
-Console.log("%s vs %s", delegation.getStake1(), delegation.getStake2());
         totalStaked = delegation.getStake();
         assertEq(totalStaked, 100 ether, "Incorrect total stake");
         vm.roll(block.number + delegation.unbondingPeriod());
-//TODO: remove
-Console.log("%s vs %s", delegation.getStake1(), delegation.getStake2());
         totalStaked = delegation.getStake();
         assertEq(totalStaked, 100 ether, "Incorrect total stake");
         vm.startPrank(owner);
         delegation.completeLeaving(validator(1));
         vm.stopPrank();
-//TODO: remove
-Console.log("%s vs %s", delegation.getStake1(), delegation.getStake2());
         totalStaked = delegation.getStake();
         assertEq(totalStaked, 100 ether, "Incorrect total stake");
         vm.startPrank(makeAddr("4"));
         delegation.completeLeaving(validator(4));
         vm.stopPrank();
-//TODO: remove
-Console.log("%s vs %s", delegation.getStake1(), delegation.getStake2());
         totalStaked = delegation.getStake();
         assertEq(totalStaked, 100 ether, "Incorrect total stake");
         vm.startPrank(makeAddr("3"));
         delegation.completeLeaving(validator(3));
         vm.stopPrank();
-//TODO: remove
-Console.log("%s vs %s", delegation.getStake1(), delegation.getStake2());
         totalStaked = delegation.getStake();
         assertEq(totalStaked, 100 ether, "Incorrect total stake");
     }
@@ -2070,21 +2046,28 @@ Console.log("%s vs %s", delegation.getStake1(), delegation.getStake2());
                 claimingsCounter++;
                 Console.log("%s claimed %s and has %s unstaked", user, amount, unstakedZil[user]);
             }
-            assertEq(delegation.getStake(), delegation.getStake2(), "getStake vs getStake2");
-//TODO: assert that exposure <= funds like in the e2e tests
+            Console.log("round %s of %s", i, numOfRounds);
+            assertEq(delegation.getStake(), delegation.getDelegatedTotal(), "getStake does not match getDelegatedTotal");
             assertEq(totalWithdrawnZil + delegation.totalPendingWithdrawals(), totalUnstakedZil, "owned does not match owed");
         }
+        uint256 outstandingRewards;
         for (uint256 i = 0; i < users.length; i++) {
             address user = users[i];
+            vm.startPrank(user);
+            uint256 userRewards = delegation.rewards();
+            vm.stopPrank();
+            outstandingRewards += userRewards;
             totalStakedZil += stakedZil[user];
             totalUnstakedZil += unstakedZil[user];
             totalEarnedZil += earnedZil[user];
-            Console.log(user, stakedZil[user], unstakedZil[user], earnedZil[user]);
+            Console.log(stakedZil[user], unstakedZil[user], earnedZil[user], userRewards);
         }
         Console.log("%s total staked %s total unstaked %s total earned", totalStakedZil, totalUnstakedZil, totalEarnedZil);
         Console.log("%s stakings", stakingsCounter);
         Console.log("%s unstakings", unstakingsCounter);
         Console.log("%s claimings", claimingsCounter);
+        // computing the outstanding rewards is expensive, therefore only once at the end
+        assertLe(delegation.getDelegatedTotal() + outstandingRewards, delegation.getStake() + delegation.getRewards() * (delegation.DENOMINATOR() - delegation.getCommissionNumerator()) / delegation.DENOMINATOR(), "exposure greater than funds");
     }
 
 }

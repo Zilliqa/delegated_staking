@@ -72,9 +72,15 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     *
     * - `validators` holds the current {Validator} list of the staking pool.
     *
-    * - `undepositedStake` is the amount included in the contract's balance
-    * that does not represent rewards. It is the stake that could not be
-    * deposited because there is no validator in the staking pool.
+    * - `nonRewards` is the portion of the contract balance that does not
+    * represent rewards. The first part of it is `undepositedClaims` which
+    * are the unstaked funds withdrawn from the validators' deposits that can
+    * be claimed. The seconds part of it is `depositedClaims` which represent
+    * unstaked funds that could not be withdrawn from the validators' deposits
+    * because of the required minimum but can be claimed, so they have to be
+    * paid out of the contract balance. The third part of it is the stake that
+    * could not be deposited because there was no validator in the pool whose
+    * deposit could have been topped up.
     */
     /// @custom:storage-location erc7201:zilliqa.storage.BaseDelegation
     struct BaseDelegationStorage {
@@ -86,7 +92,9 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         uint256 pendingRebalancedDeposit;
         Validator[] validators;
         address commissionReceiver;
-        uint256 undepositedStake;
+        uint256 nonRewards;
+        uint256 undepositedClaims;
+        uint256 depositedClaims;
     }
 
     // keccak256(abi.encode(uint256(keccak256("zilliqa.storage.BaseDelegation")) - 1)) & ~bytes32(uint256(0xff))
@@ -346,7 +354,7 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     function _authorizeUpgrade(address newImplementation) internal onlyOwner virtual override {}
 
     /**
-    * @dev Increase `undepositedStake` to reflect the amount that was withdrawn from a validators'
+    * @dev Increase `nonRewards` to reflect the amount that was withdrawn from a validators'
     * deposits and added to the contract balance.
     */
     receive() external payable {
@@ -355,7 +363,7 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
             InvalidCaller(_msgSender(), DEPOSIT_CONTRACT)
         );
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
-        $.undepositedStake += msg.value;
+        $.nonRewards += msg.value;
     }
 
     /**
@@ -406,10 +414,9 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         $.validatorIndex[blsPubKey] = $.validators.length;
         emit ValidatorJoined(blsPubKey);
 
-//TODO: undepositedStake does not contain pending withdrawals, they are only added to undepositedStake when received but it
-//      does contain the already withdrawn deposits that are waiting to be claimed plus new stake that can't be deposited
-        if ($.undepositedStake > totalPendingWithdrawals())
-            _increaseDeposit($.undepositedStake - totalPendingWithdrawals());
+        uint256 availableStake = $.nonRewards - $.undepositedClaims - $.depositedClaims;
+        if (availableStake > 0)
+            _increaseDeposit(availableStake);
     }
 
     /**
@@ -572,8 +579,7 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     /**
     * @dev Append an entry to the staking pool's list of validators. Use the pool contract's
     * owner address as reward address and control address in the entry. Register the validator
-    * by transferring the `undepositedStake` minus the {totalPendingWithdrawals} to the
-    * `DEPOSIT_CONTRACT`.
+    * by transferring the available stake to the `DEPOSIT_CONTRACT`.
     */
     function _deposit(
         bytes calldata blsPubKey,
@@ -582,9 +588,10 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     ) internal virtual {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
         $.activated = true;
+        uint256 availableStake = $.nonRewards - $.undepositedClaims - $.depositedClaims;
         $.validators.push(Validator(
             blsPubKey,
-            $.undepositedStake - totalPendingWithdrawals(),
+            availableStake,
             owner(),
             owner(),
             0,
@@ -602,11 +609,11 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
                 owner()
             );
         (bool success, bytes memory data) = DEPOSIT_CONTRACT.call{
-            value: $.undepositedStake - totalPendingWithdrawals()
+            value: availableStake
         }(callData);
         require(success, DepositContractCallFailed(callData, data));
 
-        $.undepositedStake = totalPendingWithdrawals();
+        $.nonRewards = totalPendingWithdrawals();
         emit ValidatorJoined(blsPubKey);
     }
 
@@ -642,7 +649,7 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     function leave(bytes calldata blsPubKey) public virtual;
 
     /**
-    * @dev Turn a fully synced node into a validator using the pool's `undepositedStake`.
+    * @dev Turn a fully synced node into a validator using the stake in the pool's balance.
     * Must be called by the contract owner. The staking pool must have at least the minimum
     * stake required of validators in its balance including the amount transferred by the
     * contract owner in the current transaction.
@@ -654,20 +661,12 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     ) public virtual payable;
 
     /**
-    * @dev Increase `undepositedStake` by the `amount` staked by a delegator or staked from
-    * the rewards in the contract balance.
+    * @dev Increase the `nonRewards` portion of the balance by the `amount` either staked
+    * by a delegator or staked out of the rewards in the contract balance.
     */
     function _increaseStake(uint256 amount) internal {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
-        $.undepositedStake += amount;
-    }
-
-    /**
-    * @dev Decrease `undepositedStake` by the `amount` claimed and transferred to a delegator.
-    */
-    function _decreaseStake(uint256 amount) internal virtual {
-        BaseDelegationStorage storage $ = _getBaseDelegationStorage();
-        $.undepositedStake -= amount;
+        $.nonRewards += amount;
     }
 
     /**
@@ -698,7 +697,7 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
                 }(callData);
                 require(success, DepositContractCallFailed(callData, data));
             }
-        $.undepositedStake -= totalDeposited;
+        $.nonRewards -= totalDeposited;
     }
 
     /**
@@ -720,19 +719,33 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
                 totalContribution += contribution[i];
             }
         if (totalContribution < amount) {
+            $.depositedClaims += amount - totalContribution;
             require(
-                $.undepositedStake >= amount - totalContribution,
-                InsufficientUndepositedStake($.undepositedStake, amount - totalContribution)
+                $.nonRewards - $.undepositedClaims >= $.depositedClaims,
+                InsufficientUndepositedStake($.nonRewards - $.undepositedClaims, $.depositedClaims)
             );
-//TODO: ensure that getStake() is reduced by amount and not only by totalContribution
             amount = totalContribution;
-//            totalContribution = amount;
         }
+        uint256[] memory undeposited = new uint256[]($.validators.length);
         uint256 totalUndeposited;
         for (uint256 i = 0; i < $.validators.length; i++)
             if (contribution[i] > 0) {
-                uint256 value = amount * contribution[i] / totalContribution;
-                totalUndeposited += value;
+                undeposited[i] = amount * contribution[i] / totalContribution;
+                totalUndeposited += undeposited[i];
+            }
+        // rounding error that was not unstaked from the deposits but can be claimed
+        // after the unbonding period
+        uint256 delta = amount - totalUndeposited;
+        // increment the values to be undeposited unless they equal the respective
+        // validator's contribution i.e. the validator can't contribute more, until
+        // the delta bounded by the number of contributing validators becomes zero
+        for (uint256 i = 0; i < $.validators.length; i++) {
+            uint256 value = undeposited[i];
+            if (value > 0) {
+                if (delta > 0 && value < contribution[i]) {
+                    value++;
+                    delta--;
+                }
                 $.validators[i].futureStake -= value;
                 $.validators[i].pendingWithdrawals += value;
                 callData =
@@ -743,6 +756,7 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
                 (success, data) = DEPOSIT_CONTRACT.call(callData);
                 require(success, DepositContractCallFailed(callData, data));
             }
+        }
     }
 
     /**
@@ -831,8 +845,41 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     /// @inheritdoc IDelegation
     function unstake(uint256) external virtual returns(uint256);
 
+//TODO: remove
+event Test(string,uint);
     /// @inheritdoc IDelegation
-    function claim() external virtual;
+    function claim() public virtual whenNotPaused {
+        uint256 total = _dequeueWithdrawals();
+        if (total == 0)
+            return;
+        BaseDelegationStorage storage $ = _getBaseDelegationStorage();
+        // withdraw the unstaked deposit once the unbonding period is over
+        uint256 withdrawn = _withdrawDeposit();
+emit Test("total", total);
+emit Test("withdrawn", withdrawn);
+emit Test("undepositedClaims", $.undepositedClaims);
+emit Test("nonRewards", $.nonRewards);
+emit Test("depositedClaims", $.depositedClaims);
+emit Test("getStake", getStake());
+        $.undepositedClaims += withdrawn;
+        // if the pool has not been activated yet, all the stake lands in nonRewards
+        // and withdrawn is zero hence undepositedClaims is zero too
+        if (_isActivated())
+            if ($.undepositedClaims >= total) 
+                // total is part of withdrawn now or it has already been withdrawn before
+                // i.e. in both cases it has already been added to undepositedClaims
+                $.undepositedClaims -= total;
+            else {
+                $.depositedClaims -= total - $.undepositedClaims;
+                $.undepositedClaims = 0;
+            }
+        $.nonRewards -= total;
+        (bool success, ) = _msgSender().call{
+            value: total
+        }("");
+        require(success, TransferFailed(_msgSender(), total));
+        emit Claimed(_msgSender(), total, "");
+    }
 
     /// @inheritdoc IDelegation
     function collectCommission() public virtual;
@@ -910,7 +957,7 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
         // currently all validators have the same reward address,
         // which is the address of their pool's delegation contract
-        total = address(this).balance - $.undepositedStake;
+        total = address(this).balance - $.nonRewards;
     }
 
     /**
@@ -919,17 +966,19 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     */
     function getUndepositedStake() public view returns(uint256) {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
-        return $.undepositedStake;
+        return $.nonRewards;
     }
 
     /// @inheritdoc IDelegation
     function getStake() public virtual view returns(uint256 total) {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
-        total = $.undepositedStake;
+        total = $.nonRewards;
         for (uint256 i = 0; i < $.validators.length; i++)
             if ($.validators[i].status < ValidatorStatus.ReadyToLeave)
                 total += $.validators[i].futureStake;
         total += $.pendingRebalancedDeposit;
+        total -= $.undepositedClaims;
+        total -= $.depositedClaims;
     }
 
     /**
