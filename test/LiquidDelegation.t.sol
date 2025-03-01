@@ -1898,7 +1898,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
             assertLt(delegation.getPrice(), 1 ether + 1_000_000 gwei, "price too high");
             if (lst.totalSupply() == depositAmount)
                 assertEq(totalStakedZil, 0, "stake more than initial deposit");
-            assertLe(lst.totalSupply() * delegation.getPrice() / 1 ether, delegation.getStake() + delegation.getTaxedRewards() + (delegation.getRewards() - delegation.getTaxedRewards()) * delegation.getCommissionNumerator() / delegation.DENOMINATOR(), "exposure greater than funds");
+            assertLe(lst.totalSupply() * delegation.getPrice() / 1 ether, delegation.getStake() + delegation.getTaxedRewards() + (delegation.getRewards() - delegation.getTaxedRewards()) * (delegation.DENOMINATOR() - delegation.getCommissionNumerator()) / delegation.DENOMINATOR(), "exposure greater than funds");
             assertEq(totalWithdrawnZil + delegation.totalPendingWithdrawals(), totalUnstakedZil, "owned does not match owed");
         }
         for (uint256 i = 0; i < users.length; i++) {
