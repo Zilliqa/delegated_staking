@@ -212,8 +212,6 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation, INonLiquidDelegatio
         delete $.newAddress[old];
     } 
 
-//TODO: describe in the readme how to replace the non-liquid staker address
-
     /**
     * @dev Emit the event when `reward` was transferred to `delegator`. 
     */

@@ -314,6 +314,23 @@ forge script script/StakeRewards.s.sol --broadcast --legacy --sig "run(address p
 using the private key of their account.
 
 
+## Replacing the Delegator Address
+
+Delegators of non-liquid staking pools can replace their address in 2 steps. First, use the private key of your current address to set the new address `0x092E5E57955437876dA9Df998C96e2BE19341670` by running
+```bash
+cast send --legacy --private-key 0x... \
+0x7a0b7e6d24ede78260c9ddbd98e828b0e11a8ea2 "setNewAddress(address)" \
+0x092E5E57955437876dA9Df998C96e2BE19341670
+```
+
+Second, use the private key of the new address to replace the old address `0xd819fFcE7A58b1E835c25617Db7b46a00888B013` by running
+```bash
+cast send --legacy --private-key 0x... \
+0x7a0b7e6d24ede78260c9ddbd98e828b0e11a8ea2 "replaceOldAddress(address)" \
+0xd819fFcE7A58b1E835c25617Db7b46a00888B013
+```
+
+
 ## Development and Testing
 
 Staking pool operators are encouraged to fork and adapt the above contracts to implement features such as instant unstaking for a premium fee, automated staking of rewards to achieve the best possible APR or issuing a rebasing liquid staking token with a constant price of 1 ZIL but holder balances adjusted according to the rewards accrued.

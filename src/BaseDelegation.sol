@@ -845,8 +845,6 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     /// @inheritdoc IDelegation
     function unstake(uint256) external virtual returns(uint256);
 
-//TODO: remove
-event Test(string,uint);
     /// @inheritdoc IDelegation
     function claim() public virtual whenNotPaused {
         uint256 total = _dequeueWithdrawals();
@@ -855,12 +853,6 @@ event Test(string,uint);
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
         // withdraw the unstaked deposit once the unbonding period is over
         uint256 withdrawn = _withdrawDeposit();
-emit Test("total", total);
-emit Test("withdrawn", withdrawn);
-emit Test("undepositedClaims", $.undepositedClaims);
-emit Test("nonRewards", $.nonRewards);
-emit Test("depositedClaims", $.depositedClaims);
-emit Test("getStake", getStake());
         $.undepositedClaims += withdrawn;
         // if the pool has not been activated yet, all the stake lands in nonRewards
         // and withdrawn is zero hence undepositedClaims is zero too
