@@ -264,23 +264,6 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation, INonLiquidDelegatio
     /**
     * @inheritdoc IDelegation
     */
-    function claim() public override(BaseDelegation, IDelegation) whenNotPaused {
-        uint256 total = _dequeueWithdrawals();
-        if (total == 0)
-            return;
-        // withdraw the unstaked deposit once the unbonding period is over
-        _withdrawDeposit();
-        _decreaseStake(total);
-        (bool success, ) = _msgSender().call{
-            value: total
-        }("");
-        require(success, TransferFailed(_msgSender(), total));
-        emit Claimed(_msgSender(), total, "");
-    }
-
-    /**
-    * @inheritdoc IDelegation
-    */
     function stake() public override(BaseDelegation, IDelegation) payable whenNotPaused {
         _increaseStake(msg.value);
         _increaseDeposit(msg.value);
@@ -526,18 +509,6 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation, INonLiquidDelegatio
     * @dev Commission is deducted when delegators withdraw their share of the rewards.
     */
     function collectCommission() public override(BaseDelegation, IDelegation) {}
-
-    /// @inheritdoc IDelegation
-    function getStake() public override(BaseDelegation, IDelegation) view returns(uint256 total) {
-        total = super.getStake();
-        //assert(!_isActivated() || total == getDelegatedTotal() + getUndepositedStake());
-    }
-
-    //TODO: Remove this function and uncomment the assert statement in getStake() above
-    function getStake2() public view returns(uint256 total) {
-        total = getDelegatedTotal();
-        total += getUndepositedStake();
-    }
 
     /**
     * @dev See https://eips.ethereum.org/EIPS/eip-165

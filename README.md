@@ -104,7 +104,7 @@ Note that the commission rate is specified as an integer to be divided by the `D
 cast call 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 "DENOMINATOR()(uint256)"  | sed 's/\[[^]]*\]//g'
 ```
 
-Once the validator is activated and starts earning rewards, the commission is deducted and transferred automatically. The commission of a non-liquid staking pool is deducted when delegators withdraw or stake rewards. In case of a liquid staking pool, the commission is deducted each time delegators stake, unstake or claim what they unstaked, or when the contract owner requests the outstanding commission that hasn't been transferred yet. To collect the outstanding commission, run
+Once the validator is activated and starts earning rewards, the commission is deducted and transferred automatically. The commission of a non-liquid staking pool is deducted when delegators withdraw or stake their rewards. In case of a liquid staking pool, the commission is deducted each time delegators stake or unstake or the contract owner stakes the rewards accrued in the contract balance or requests the outstanding commission that hasn't been transferred yet. To collect the outstanding commission, run
 ```bash
 forge script script/CollectCommission.s.sol --broadcast --legacy --sig "run(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2
 ```
@@ -312,6 +312,23 @@ Last but not least, in order to stake rewards instead of withdrawing them, run
 forge script script/StakeRewards.s.sol --broadcast --legacy --sig "run(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 --private-key 0x...
 ```
 using the private key of their account.
+
+
+## Replacing the Delegator Address
+
+Delegators of non-liquid staking pools can replace their address in 2 steps. First, use the private key of your current address to set the new address `0x092E5E57955437876dA9Df998C96e2BE19341670` by running
+```bash
+cast send --legacy --private-key 0x... \
+0x7a0b7e6d24ede78260c9ddbd98e828b0e11a8ea2 "setNewAddress(address)" \
+0x092E5E57955437876dA9Df998C96e2BE19341670
+```
+
+Second, use the private key of the new address to replace the old address `0xd819fFcE7A58b1E835c25617Db7b46a00888B013` by running
+```bash
+cast send --legacy --private-key 0x... \
+0x7a0b7e6d24ede78260c9ddbd98e828b0e11a8ea2 "replaceOldAddress(address)" \
+0xd819fFcE7A58b1E835c25617Db7b46a00888B013
+```
 
 
 ## Development and Testing

@@ -45,7 +45,7 @@ library Console {
 
     function logP(string memory format, int256 amount, uint8 precision) internal pure {
         (int256 predecimal, string memory zeros, uint256 postdecimal) = convert(amount, precision);
-        console.log(format, Strings.toStringSigned(predecimal), zeros, postdecimal);
+        console.log(format, Strings.toStringSigned(predecimal), zeros, Strings.toString(postdecimal));
     }
 
     function log18(string memory format, uint256 amount) internal pure {
@@ -63,6 +63,14 @@ library Console {
             s = string.concat(s, " ");
         }
         console.log(format, s);
+    }
+
+    function log(uint256 first, uint256 second, uint256 third, uint256 fourth) internal pure {
+        return console.log(Strings.toString(first), Strings.toString(second), Strings.toString(third), Strings.toString(fourth));
+    }
+
+    function log(uint256 first, uint256 second, uint256 third) internal pure {
+        return console.log(Strings.toString(first), Strings.toString(second), Strings.toString(third));
     }
 
     function log(string memory format, uint256 first, uint256 second, uint256 third) internal pure {

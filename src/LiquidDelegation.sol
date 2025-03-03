@@ -224,25 +224,6 @@ contract LiquidDelegation is IDelegation, BaseDelegation, ILiquidDelegation {
     /**
     * @inheritdoc IDelegation
     */
-    function claim() public override(BaseDelegation, IDelegation) whenNotPaused {
-        uint256 total = _dequeueWithdrawals();
-        if (total == 0)
-            return;
-        // before the balance changes deduct the commission from the yet untaxed rewards
-        taxRewards();
-        // withdraw the unstaked deposit once the unbonding period is over
-        _withdrawDeposit();
-        _decreaseStake(total);
-        (bool success, ) = _msgSender().call{
-            value: total
-        }("");
-        require(success, TransferFailed(_msgSender(), total));
-        emit Claimed(_msgSender(), total, "");
-    }
-
-    /**
-    * @inheritdoc IDelegation
-    */
     function stakeRewards() public override(BaseDelegation, IDelegation) onlyOwner {
         require(_isActivated(), StakingPoolNotActivated());
         _stakeRewards();

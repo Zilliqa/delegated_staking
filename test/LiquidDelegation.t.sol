@@ -1284,7 +1284,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         uint256 price = delegation.getPrice();
         uint256 amount = (delegation.getStake(validator(2)) * 1 ether - lst.balanceOf(makeAddr("2")) * price) / price;
         uint256 unstaked = (delegation.getStake() + delegation.getTaxedRewards()) * (amount + lst.balanceOf(makeAddr("2"))) / lst.totalSupply();
-        uint256 refund = unstaked - delegation.getStake(validator(2)) - 1;
+        uint256 refund = unstaked - delegation.getStake(validator(2)) + 0;
         vm.startPrank(owner);
         lst.transfer(makeAddr("2"), amount);
         vm.stopPrank();
@@ -1433,7 +1433,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         uint256 price = delegation.getPrice();
         uint256 amount = (delegation.getStake(validator(2)) * 1 ether - lst.balanceOf(makeAddr("2")) * price) / price;
         uint256 unstaked = (delegation.getStake() + delegation.getTaxedRewards()) * (amount + lst.balanceOf(makeAddr("2"))) / lst.totalSupply();
-        uint256 refund = unstaked - delegation.getStake(validator(2)) - 1;
+        uint256 refund = unstaked - delegation.getStake(validator(2)) + 0;
         amount = (delegation.getStake(validator(2)) * 1 ether - refund * 1 ether - lst.balanceOf(makeAddr("2")) * price) / price;
         vm.startPrank(owner);
         lst.transfer(makeAddr("2"), amount);
@@ -1783,6 +1783,135 @@ contract LiquidDelegationTest is BaseDelegationTest {
             LiquidDelegation(proxy), //delegation
             20 //steps
         );
+    }
+
+    // Fuzz testing starts here
+
+    // Foundry tests are stateless i.e. a new contract is deployed each time a test function is called,
+    // hence we do fuzzing "manually"
+
+    uint256 constant numOfUsers = 1_000;
+    uint256 constant numOfStakings = 5_000;
+    uint256 constant numOfRounds = 25_000;
+    address[] users; 
+    mapping(address => uint256) stakedZil;
+    mapping(address => uint256) unstakedZil;
+    mapping(address => uint256) earnedZil;
+    uint256 stakingsCounter;
+    uint256 unstakingsCounter;
+    uint256 claimingsCounter;
+
+    function test_RandomStakeUnstakeClaim() external {
+        uint256 totalDeposit = 5_200_000_000 ether;
+        uint256 depositAmount = vm.randomUint(10_000_000 ether, 100_000_000 ether);
+        deposit(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        Console.log("%s total deposit", totalDeposit);
+        Console.log("%s initial deposit", depositAmount);
+        for (uint256 i = 0; i < numOfUsers; i++) {
+            address user = vm.randomAddress();
+            users.push(user);
+            vm.deal(user, vm.randomUint(100 ether, 100_000_000 ether));
+        }
+        uint256 totalStakedZil;
+        uint256 totalUnstakedZil;
+        uint256 totalWithdrawnZil;
+        uint256 totalEarnedZil;
+        for (uint i = 0; i < numOfRounds; i++) {
+            uint256 blocks = vm.randomUint(0, 100);
+            vm.roll(block.number + blocks);
+            uint256 rewards = 51_000 ether * blocks * depositAmount / 3_600 / totalDeposit;
+            rewards = rewards * vm.randomUint(0, 100) / 100;
+            vm.deal(address(delegation), address(delegation).balance + rewards);
+            if (blocks == 0)
+                blocks = 1;
+            address user = users[vm.randomUint(0, users.length - 1)];
+            // numOfStakings is enough
+            uint256 operation = vm.randomUint(stakingsCounter < numOfStakings ? 1 : 2, 10);
+            // staking is 10% of the operations attempted
+            if (operation == 1) {
+                if (user.balance < 100 ether)
+                    continue;
+                Console.log("block %s avg rewards %s price %s", block.number, rewards / blocks, delegation.getPrice());
+                uint256 amount = vm.randomUint(100 ether, user.balance);
+                vm.startPrank(user);
+                delegation.stake{
+                    value: amount
+                }();
+                vm.stopPrank();
+                stakedZil[user] += amount;
+                totalStakedZil += amount;
+                stakingsCounter++;
+                Console.log("%s staked %s and has %s staked", user, amount, stakedZil[user]);
+            }
+            // unstaking is 40% of the operations attempted (20% full unstaking, 20% partial unstaking)
+            if (operation >= 2 && operation <= 5) {
+                if (lst.balanceOf(user) == 0)
+                    continue;
+                Console.log("block %s avg rewards %s price %s", block.number, rewards / blocks, delegation.getPrice());
+                uint256 amount =
+                    operation % 2 == 0 ?
+                    vm.randomUint(1, lst.balanceOf(user)):
+                    lst.balanceOf(user);
+                uint256 pendingBefore = delegation.totalPendingWithdrawals();
+                vm.startPrank(user);
+                amount = delegation.unstake(
+                    amount
+                );
+                vm.stopPrank();
+                uint256 totalContribution = delegation.totalPendingWithdrawals() - pendingBefore;
+                if (totalContribution < amount)
+                    totalWithdrawnZil += amount - totalContribution;
+                if (amount > stakedZil[user]) {
+                    earnedZil[user] += amount - stakedZil[user];
+                    totalStakedZil -= stakedZil[user];
+                    stakedZil[user] = 0;
+                } else {
+                    stakedZil[user] -= amount;
+                    totalStakedZil -= amount;
+                }
+                unstakedZil[user] += amount;
+                totalUnstakedZil += amount;
+                unstakingsCounter++;
+                Console.log("%s unstaked %s and has %s staked", user, amount, stakedZil[user]);
+                Console.log("%s unstaked %s and has %s unstaked", user, amount, unstakedZil[user]);
+            }
+            // claiming is 50% of the operations attempted
+            if (operation >= 6) {
+                if (unstakedZil[user] == 0)
+                    continue;
+                Console.log("block %s avg rewards %s price %s", block.number, rewards / blocks, delegation.getPrice());
+                uint256 contractBalance = address(delegation).balance;
+                uint256 userBalance = user.balance;
+                vm.startPrank(user);
+                delegation.claim();
+                vm.stopPrank();
+                uint256 amount = user.balance - userBalance;
+                totalWithdrawnZil = totalWithdrawnZil + address(delegation).balance + amount - contractBalance;
+                if (amount == 0)
+                    continue;
+                unstakedZil[user] -= amount;
+                claimingsCounter++;
+                Console.log("%s claimed %s and has %s unstaked", user, amount, unstakedZil[user]);
+            }
+            Console.log("round %s of %s", i, numOfRounds);
+            assertGe(delegation.getPrice(), 1 ether, "price too low");
+            assertLt(delegation.getPrice(), 1 ether + 1_000_000 gwei, "price too high");
+            if (lst.totalSupply() == depositAmount)
+                assertEq(totalStakedZil, 0, "stake more than initial deposit");
+            assertLe(lst.totalSupply() * delegation.getPrice() / 1 ether, delegation.getStake() + delegation.getTaxedRewards() + (delegation.getRewards() - delegation.getTaxedRewards()) * (delegation.DENOMINATOR() - delegation.getCommissionNumerator()) / delegation.DENOMINATOR(), "exposure greater than funds");
+            assertEq(totalWithdrawnZil + delegation.totalPendingWithdrawals(), totalUnstakedZil, "owned does not match owed");
+        }
+        for (uint256 i = 0; i < users.length; i++) {
+            address user = users[i];
+            totalStakedZil += stakedZil[user];
+            totalUnstakedZil += unstakedZil[user];
+            totalEarnedZil += earnedZil[user];
+            Console.log(stakedZil[user], unstakedZil[user], earnedZil[user]);
+        }
+        Console.log("%s total staked %s total unstaked %s total earned", totalStakedZil, totalUnstakedZil, totalEarnedZil);
+        Console.log("%s stakings", stakingsCounter);
+        Console.log("%s unstakings", unstakingsCounter);
+        Console.log("%s claimings", claimingsCounter);
     }
 
 }

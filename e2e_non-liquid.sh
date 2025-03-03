@@ -18,14 +18,18 @@ CONTROL_KEY_3=0x56d7a450d75c6ba2706ef71da6ca80143ec4971add9c44d7d129a12fa7d3a364
 BLS_PUB_KEY_4=0x985e3a4d367cbfc966d48710806612cc00f6bfd06aa759340cfe13c3990d26a7ddde63f64468cdba5b2ff132a4639a7f
 CONTROL_KEY_4=0xdb670cbff28f4b15297d03fafdab8f5303d68b7591bd59e31eaef215dd0f246a
 
-unbonding() {
+
+
+unbond() {
     # sleep two times as many seconds as many blocks the deposit withdrawal period
     # consists of to wait long enough even if there is a 2 second average block time
     sleep $(cast call $DEPOSIT_ADDRESS "withdrawalPeriod()(uint256)")
     sleep $(cast call $DEPOSIT_ADDRESS "withdrawalPeriod()(uint256)")
 }
 
-joining() {
+
+
+join_one() {
     # $1 = blsPubKey
     # $2 = privKey
     echo "🔽🔽🔽🔽🔽🔽🔽🔽🔽🔽🔽🔽🔽🔽🔽🔽"
@@ -42,12 +46,13 @@ joining() {
     else
         echo "🔴 join($1, $(cast wallet address $2))"
     fi
-    #echo -n "🟢 validators: " && cast call $CONTRACT_ADDRESS "validators()(bool[])" | grep -o "true" | wc -l
     echo -n "🟢 validators: " && cast call $CONTRACT_ADDRESS "validators()((bytes,uint256,bool,bool,bool,bool)[])" | sed 's/ \[[0-9]e[0-9][0-9]\]//g' | sed 's/, true//g' | sed 's/, false//g' | sed 's/0x[0-9a-f]*,//g' | sed 's/( //g' | sed 's/)//g'
     echo "🔼🔼🔼🔼🔼🔼🔼🔼🔼🔼🔼🔼🔼🔼🔼🔼"
 }
 
-leaving() {
+
+
+leave_one() {
     # $1 = blsPubKey
     # $2 = privKey
     echo "🔽🔽🔽🔽🔽🔽🔽🔽🔽🔽🔽🔽🔽🔽🔽🔽"
@@ -66,7 +71,7 @@ leaving() {
         fi
 
         echo "############################### UNBONDING ##############################"
-        unbonding
+        unbond
         echo "############################### RETRYING ##############################"
 
         count=$(cast call $CONTRACT_ADDRESS "validators()((bytes,uint256,bool,bool,bool,bool)[])" | grep -c -o "$1")
@@ -99,7 +104,7 @@ leaving() {
     fi
 
     echo "############################### UNBONDING DEPOSIT DECREASE / STAKE REFUND ##############################"
-    unbonding
+    unbond
 
     count=$(cast call $CONTRACT_ADDRESS "validators()((bytes,uint256,bool,bool,bool,bool)[])" | grep -c -o "$1")
     if [[ $count -gt 0 ]]; then
@@ -140,6 +145,8 @@ leaving() {
     echo "🔼🔼🔼🔼🔼🔼🔼🔼🔼🔼🔼🔼🔼🔼🔼🔼"
 }
 
+
+
 rewards() {
     bc -l <<< "scale=18; \
     $(cast to-unit $(cast call $CONTRACT_ADDRESS "rewards()(uint256)" --from $STAKER_ADDRESS | sed 's/\[[^]]*\]//g') ether)+\
@@ -149,6 +156,8 @@ rewards() {
     $(cast to-unit $(cast call $CONTRACT_ADDRESS "rewards()(uint256)" --from $(cast wallet address $CONTROL_KEY_4) | sed 's/\[[^]]*\]//g') ether)\
     "
 }
+
+
 
 withdraw_rewards() {
     echo "🔽🔽🔽🔽🔽🔽🔽🔽🔽🔽🔽🔽🔽🔽🔽🔽"
@@ -216,263 +225,300 @@ else
     echo "🔴 Configure commissionReceiver(address payable, address) $temp"
 fi
 
-echo "############################### JOINING ##############################"
-echo -n "🟢 committee: " && cast call $DEPOSIT_ADDRESS "getStakersData()(bool[],uint256[],uint256[])" | tail -1 | sed 's/ \[[0-9]e[0-9][0-9]\]//g'
-echo -n "🟢 validators: " && cast call $CONTRACT_ADDRESS "validators()((bytes,uint256,bool,bool,bool,bool)[])" | sed 's/ \[[0-9]e[0-9][0-9]\]//g' | sed 's/, true//g' | sed 's/, false//g' | sed 's/0x[0-9a-f]*,//g' | sed 's/( //g' | sed 's/)//g'
-joining $BLS_PUB_KEY_1 $CONTROL_KEY_1
-joining $BLS_PUB_KEY_2 $CONTROL_KEY_2
-joining $BLS_PUB_KEY_3 $CONTROL_KEY_3
-joining $BLS_PUB_KEY_4 $CONTROL_KEY_4
-
-echo "############################### EARNING ##############################"
-sleep 10s
 
 
-
-echo "############################### STAKING ##############################"
-cast send --legacy --value 300ether --private-key 0x0000000000000000000000000000000000000000000000000000000000000002 $STAKER_ADDRESS 1>/dev/null
-echo -n "🟢 staker rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "rewards()(uint256)" --from $STAKER_ADDRESS | sed 's/\[[^]]*\]//g') ether
-echo -n "🟢 delegated amount: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedAmount()(uint256)" --from $STAKER_ADDRESS | sed 's/\[[^]]*\]//g') ether
-echo -n "🟢 staker balance: " && cast to-unit $(cast balance $STAKER_ADDRESS) ether
-
-echo -n "🟢 commission: " && cast to-unit $(cast balance $COMMISSION_ADDRESS) ether
-temp=$(forge script script/Stake.s.sol --broadcast --legacy --sig "run(address payable, uint256)" $CONTRACT_ADDRESS 200000000000000000000 --private-key $STAKER_KEY 2>&1 1>/dev/null)
-errors=$(echo $temp | grep -o -i -e "error" -e "fail" -e "revert" | wc -l)
-if [ $errors -eq 0 ]; then
-    echo "🟢 Stake"
-else
-    echo "🔴 Stake $temp"
-fi
-echo -n "🟢 commission: " && cast to-unit $(cast balance $COMMISSION_ADDRESS) ether
-echo -n "🟢 staker rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "rewards()(uint256)" --from $STAKER_ADDRESS | sed 's/\[[^]]*\]//g') ether
-echo -n "🟢 delegated amount: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedAmount()(uint256)" --from $STAKER_ADDRESS | sed 's/\[[^]]*\]//g') ether
-echo -n "🟢 staker balance: " && cast to-unit $(cast balance $STAKER_ADDRESS) ether
-
-priv_key=$CONTROL_KEY_3
-cast send --legacy --value 1000ether --private-key 0x0000000000000000000000000000000000000000000000000000000000000002 $(cast wallet address $priv_key) 1>/dev/null
-echo -n "🟢 staker balance: " && cast to-unit $(cast balance $(cast wallet address $priv_key)) ether
-
-echo -n "🟢 commission: " && cast to-unit $(cast balance $COMMISSION_ADDRESS) ether
-temp=$(forge script script/Stake.s.sol --broadcast --legacy --sig "run(address payable, uint256)" $CONTRACT_ADDRESS 1000000000000000000000 --private-key $priv_key 2>&1 1>/dev/null)
-errors=$(echo $temp | grep -o -i -e "error" -e "fail" -e "revert" | wc -l)
-if [ $errors -eq 0 ]; then
-    echo "🟢 Stake"
-else
-    echo "🔴 Stake $temp"
-fi
-echo -n "🟢 commission: " && cast to-unit $(cast balance $COMMISSION_ADDRESS) ether
-echo -n "🟢 controller rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "rewards()(uint256)" --from $(cast wallet address $priv_key) | sed 's/\[[^]]*\]//g') ether
-echo -n "🟢 controller delegated: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedAmount()(uint256)" --from $(cast wallet address $priv_key) | sed 's/\[[^]]*\]//g') ether
-echo -n "🟢 controller balance: " && cast to-unit $(cast balance $(cast wallet address $priv_key)) ether
-
-echo "############################### EARNING ##############################"
-sleep 10s
-
-echo "############################### WITHDRAWING REWARDS ##############################"
-echo -n "🟢 commission: " && cast to-unit $(cast balance $COMMISSION_ADDRESS) ether
-echo -n "🟢 staker rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "rewards()(uint256)" --from $STAKER_ADDRESS | sed 's/\[[^]]*\]//g') ether
-echo -n "🟢 delegated amount: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedAmount()(uint256)" --from $STAKER_ADDRESS | sed 's/\[[^]]*\]//g') ether
-echo -n "🟢 staker balance: " && cast to-unit $(cast balance $STAKER_ADDRESS) ether
-temp=$(forge script script/WithdrawRewards.s.sol --broadcast --legacy --sig "run(address payable, string, string)" $CONTRACT_ADDRESS all all --private-key $STAKER_KEY 2>&1 1>/dev/null)
-errors=$(echo $temp | grep -o -i -e "error" -e "fail" -e "revert" | wc -l)
-if [ $errors -eq 0 ]; then
-    echo "🟢 WithdrawRewards"
-else
-    echo "🔴 WithdrawRewards $temp"
-fi
-echo -n "🟢 commission: " && cast to-unit $(cast balance $COMMISSION_ADDRESS) ether
-echo -n "🟢 staker rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "rewards()(uint256)" --from $STAKER_ADDRESS | sed 's/\[[^]]*\]//g') ether
-echo -n "🟢 delegated amount: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedAmount()(uint256)" --from $STAKER_ADDRESS | sed 's/\[[^]]*\]//g') ether
-echo -n "🟢 staker balance: " && cast to-unit $(cast balance $STAKER_ADDRESS) ether
-
-echo "############################### UNSTAKING ##############################"
-temp=$(forge script script/Unstake.s.sol --broadcast --legacy --sig "run(address payable, uint256)" $CONTRACT_ADDRESS 100000000000000000000 --private-key $STAKER_KEY 2>&1 1>/dev/null)
-errors=$(echo $temp | grep -o -i -e "error" -e "fail" -e "revert" | wc -l)
-if [ $errors -eq 0 ]; then
-    echo "🟢 Unstake"
-else
-    echo "🔴 Unstake $temp"
-fi
-echo -n "🟢 commission: " && cast to-unit $(cast balance $COMMISSION_ADDRESS) ether
-echo -n "🟢 staker rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "rewards()(uint256)" --from $STAKER_ADDRESS | sed 's/\[[^]]*\]//g') ether
-echo -n "🟢 delegated amount: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedAmount()(uint256)" --from $STAKER_ADDRESS | sed 's/\[[^]]*\]//g') ether
-echo -n "🟢 staker balance: " && cast to-unit $(cast balance $STAKER_ADDRESS) ether
-
-echo "############################### UNBONDING ##############################"
-unbonding
-
-echo "############################### STAKING REWARDS ##############################"
-echo -n "🟢 commission: " && cast to-unit $(cast balance $COMMISSION_ADDRESS) ether
-echo -n "🟢 staker rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "rewards()(uint256)" --from $STAKER_ADDRESS | sed 's/\[[^]]*\]//g') ether
-echo -n "🟢 delegated amount: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedAmount()(uint256)" --from $STAKER_ADDRESS | sed 's/\[[^]]*\]//g') ether
-echo -n "🟢 staker balance: " && cast to-unit $(cast balance $STAKER_ADDRESS) ether
-temp=$(forge script script/StakeRewards.s.sol --broadcast --legacy --sig "run(address payable)" $CONTRACT_ADDRESS --private-key $STAKER_KEY 2>&1 1>/dev/null)
-errors=$(echo $temp | grep -o -i -e "error" -e "fail" -e "revert" | wc -l)
-if [ $errors -eq 0 ]; then
-    echo "🟢 StakeRewards"
-else
-    echo "🔴 StakeRewards $temp"
-fi
-echo -n "🟢 commission: " && cast to-unit $(cast balance $COMMISSION_ADDRESS) ether
-echo -n "🟢 staker rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "rewards()(uint256)" --from $STAKER_ADDRESS | sed 's/\[[^]]*\]//g') ether
-echo -n "🟢 delegated amount: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedAmount()(uint256)" --from $STAKER_ADDRESS | sed 's/\[[^]]*\]//g') ether
-echo -n "🟢 staker balance: " && cast to-unit $(cast balance $STAKER_ADDRESS) ether
-
-echo "############################### CLAIMING ##############################"
-echo -n "🟢 claimable: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getClaimable()(uint256)" --from $STAKER_ADDRESS | sed 's/\[[^]]*\]//g') ether
-temp=$(forge script script/Claim.s.sol --broadcast --legacy --sig "run(address payable)" $CONTRACT_ADDRESS --private-key $STAKER_KEY 2>&1 1>/dev/null)
-errors=$(echo $temp | grep -o -i -e "error" -e "fail" -e "revert" | wc -l)
-if [ $errors -eq 0 ]; then
-    echo "🟢 Claim"
-else
-    echo "🔴 Claim $temp"
-fi
-echo -n "🟢 claimable: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getClaimable()(uint256)" --from $STAKER_ADDRESS | sed 's/\[[^]]*\]//g') ether
-
-echo "############################### WITHDRAWING REWARDS ##############################"
-echo -n "🟢 commission: " && cast to-unit $(cast balance $COMMISSION_ADDRESS) ether
-echo -n "🟢 staker balance: " && cast to-unit $(cast balance $STAKER_ADDRESS) ether
-echo -n "🟢 delegated amount: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedAmount()(uint256)" --from $STAKER_ADDRESS | sed 's/\[[^]]*\]//g') ether
-echo -n "🟢 staker rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "rewards()(uint256)" --from $STAKER_ADDRESS | sed 's/\[[^]]*\]//g') ether
-temp=$(forge script script/WithdrawRewards.s.sol --broadcast --legacy --sig "run(address payable, string, string)" $CONTRACT_ADDRESS all all --private-key $STAKER_KEY 2>&1 1>/dev/null)
-errors=$(echo $temp | grep -o -i -e "error" -e "fail" -e "revert" | wc -l)
-if [ $errors -eq 0 ]; then
-    echo "🟢 WithdrawRewards"
-else
-    echo "🔴 WithdrawRewards $temp"
-fi
-echo -n "🟢 commission: " && cast to-unit $(cast balance $COMMISSION_ADDRESS) ether
-echo -n "🟢 staker rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "rewards()(uint256)" --from $STAKER_ADDRESS | sed 's/\[[^]]*\]//g') ether
-echo -n "🟢 delegated amount: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedAmount()(uint256)" --from $STAKER_ADDRESS | sed 's/\[[^]]*\]//g') ether
-echo -n "🟢 staker balance: " && cast to-unit $(cast balance $STAKER_ADDRESS) ether
-
-echo "############################### EARNING ##############################"
-sleep 10s
-
-echo "############################### COLLECTING ##############################"
-echo -n "🟢 commission: " && cast to-unit $(cast balance $COMMISSION_ADDRESS) ether
-temp=$(forge script script/CollectCommission.s.sol --broadcast --legacy --sig "run(address payable)" $CONTRACT_ADDRESS 2>&1 1>/dev/null)
-errors=$(echo $temp | grep -o -i -e "error" -e "fail" -e "revert" | wc -l)
-if [ $errors -eq 0 ]; then
-    echo "🟢 CollectCommission"
-else
-    echo "🔴 CollectCommission $temp"
-fi
-echo -n "🟢 commission: " && cast to-unit $(cast balance $COMMISSION_ADDRESS) ether
+join_all() {
+    echo "############################### JOINING ##############################"
+    echo -n "🟢 committee: " && cast call $DEPOSIT_ADDRESS "getStakersData()(bool[],uint256[],uint256[])" | tail -1 | sed 's/ \[[0-9]e[0-9][0-9]\]//g'
+    echo -n "🟢 validators: " && cast call $CONTRACT_ADDRESS "validators()((bytes,uint256,bool,bool,bool,bool)[])" | sed 's/ \[[0-9]e[0-9][0-9]\]//g' | sed 's/, true//g' | sed 's/, false//g' | sed 's/0x[0-9a-f]*,//g' | sed 's/( //g' | sed 's/)//g'
+    join_one $BLS_PUB_KEY_1 $CONTROL_KEY_1
+    join_one $BLS_PUB_KEY_2 $CONTROL_KEY_2
+    join_one $BLS_PUB_KEY_3 $CONTROL_KEY_3
+    join_one $BLS_PUB_KEY_4 $CONTROL_KEY_4
+}
 
 
 
-echo "############################### LEAVING ##############################"
-echo -n "🟢 exposure: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedTotal()(uint256)" | sed 's/\[[^]]*\]//g') ether)+$(echo $(rewards))"
-echo -n "🟢 funds: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether)+0.9*$(cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether)"
-echo -n "🟢 total delegated: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedTotal()(uint256)" | sed 's/\[[^]]*\]//g') ether
-echo -n "🟢 total deposited: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether
-echo -n "🟢 immutable rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getImmutableRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
-echo -n "🟢 total rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
-leaving $BLS_PUB_KEY_1 $CONTROL_KEY_1
-echo -n "🟢 exposure: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedTotal()(uint256)" | sed 's/\[[^]]*\]//g') ether)+$(echo $(rewards))"
-echo -n "🟢 funds: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether)+0.9*$(cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether)"
-echo -n "🟢 total delegated: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedTotal()(uint256)" | sed 's/\[[^]]*\]//g') ether
-echo -n "🟢 total deposited: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether
-echo -n "🟢 immutable rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getImmutableRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
-echo -n "🟢 total rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
-leaving $BLS_PUB_KEY_2 $CONTROL_KEY_2
-echo -n "🟢 exposure: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedTotal()(uint256)" | sed 's/\[[^]]*\]//g') ether)+$(echo $(rewards))"
-echo -n "🟢 funds: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether)+0.9*$(cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether)"
-echo -n "🟢 total delegated: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedTotal()(uint256)" | sed 's/\[[^]]*\]//g') ether
-echo -n "🟢 total deposited: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether
-echo -n "🟢 immutable rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getImmutableRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
-echo -n "🟢 total rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
-leaving $BLS_PUB_KEY_3 $CONTROL_KEY_3
-echo -n "🟢 exposure: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedTotal()(uint256)" | sed 's/\[[^]]*\]//g') ether)+$(echo $(rewards))"
-echo -n "🟢 funds: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether)+0.9*$(cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether)"
-echo -n "🟢 total delegated: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedTotal()(uint256)" | sed 's/\[[^]]*\]//g') ether
-echo -n "🟢 total deposited: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether
-echo -n "🟢 immutable rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getImmutableRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
-echo -n "🟢 total rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
-leaving $BLS_PUB_KEY_4 $CONTROL_KEY_4
-#🟪 move the line below to mark the location where execution shall continue when running the script again  🟪
-#🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪'
-echo -n "🟢 exposure: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedTotal()(uint256)" | sed 's/\[[^]]*\]//g') ether)+$(echo $(rewards))"
-echo -n "🟢 funds: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether)+0.9*$(cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether)"
-echo -n "🟢 total delegated: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedTotal()(uint256)" | sed 's/\[[^]]*\]//g') ether
-echo -n "🟢 total deposited: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether
-echo -n "🟢 immutable rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getImmutableRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
-echo -n "🟢 total rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
-echo -n "🟢 total withdrawals: " && cast to-unit $(cast call $CONTRACT_ADDRESS "totalPendingWithdrawals()(uint256)" | sed 's/\[[^]]*\]//g') ether
+stake_all() {
+    echo "############################### EARNING ##############################"
+    sleep 10s
+    echo "############################### STAKING ##############################"
+    cast send --legacy --value 300ether --private-key 0x0000000000000000000000000000000000000000000000000000000000000002 $STAKER_ADDRESS 1>/dev/null
+    echo -n "🟢 staker rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "rewards()(uint256)" --from $STAKER_ADDRESS | sed 's/\[[^]]*\]//g') ether
+    echo -n "🟢 delegated amount: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedAmount()(uint256)" --from $STAKER_ADDRESS | sed 's/\[[^]]*\]//g') ether
+    echo -n "🟢 staker balance: " && cast to-unit $(cast balance $STAKER_ADDRESS) ether
+
+    echo -n "🟢 commission: " && cast to-unit $(cast balance $COMMISSION_ADDRESS) ether
+    temp=$(forge script script/Stake.s.sol --broadcast --legacy --sig "run(address payable, uint256)" $CONTRACT_ADDRESS 200000000000000000000 --private-key $STAKER_KEY 2>&1 1>/dev/null)
+    errors=$(echo $temp | grep -o -i -e "error" -e "fail" -e "revert" | wc -l)
+    if [ $errors -eq 0 ]; then
+        echo "🟢 Stake"
+    else
+        echo "🔴 Stake $temp"
+    fi
+    echo -n "🟢 commission: " && cast to-unit $(cast balance $COMMISSION_ADDRESS) ether
+    echo -n "🟢 staker rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "rewards()(uint256)" --from $STAKER_ADDRESS | sed 's/\[[^]]*\]//g') ether
+    echo -n "🟢 delegated amount: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedAmount()(uint256)" --from $STAKER_ADDRESS | sed 's/\[[^]]*\]//g') ether
+    echo -n "🟢 staker balance: " && cast to-unit $(cast balance $STAKER_ADDRESS) ether
+    validators=$(cast call $CONTRACT_ADDRESS "validators()(bool[])" | grep -o "true" | wc -l)
+    if [ $validators -gt 0 ]; then
+        priv_key=$CONTROL_KEY_3
+        cast send --legacy --value 1000ether --private-key 0x0000000000000000000000000000000000000000000000000000000000000002 $(cast wallet address $priv_key) 1>/dev/null
+        echo -n "🟢 staker balance: " && cast to-unit $(cast balance $(cast wallet address $priv_key)) ether
+
+        echo -n "🟢 commission: " && cast to-unit $(cast balance $COMMISSION_ADDRESS) ether
+        temp=$(forge script script/Stake.s.sol --broadcast --legacy --sig "run(address payable, uint256)" $CONTRACT_ADDRESS 1000000000000000000000 --private-key $priv_key 2>&1 1>/dev/null)
+        errors=$(echo $temp | grep -o -i -e "error" -e "fail" -e "revert" | wc -l)
+        if [ $errors -eq 0 ]; then
+            echo "🟢 Stake"
+        else
+            echo "🔴 Stake $temp"
+        fi
+        echo -n "🟢 commission: " && cast to-unit $(cast balance $COMMISSION_ADDRESS) ether
+        echo -n "🟢 controller rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "rewards()(uint256)" --from $(cast wallet address $priv_key) | sed 's/\[[^]]*\]//g') ether
+        echo -n "🟢 controller delegated: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedAmount()(uint256)" --from $(cast wallet address $priv_key) | sed 's/\[[^]]*\]//g') ether
+        echo -n "🟢 controller balance: " && cast to-unit $(cast balance $(cast wallet address $priv_key)) ether
+    fi
+    echo "############################### EARNING ##############################"
+    sleep 10s
+
+    echo "############################### WITHDRAWING REWARDS ##############################"
+    echo -n "🟢 commission: " && cast to-unit $(cast balance $COMMISSION_ADDRESS) ether
+    echo -n "🟢 staker rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "rewards()(uint256)" --from $STAKER_ADDRESS | sed 's/\[[^]]*\]//g') ether
+    echo -n "🟢 delegated amount: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedAmount()(uint256)" --from $STAKER_ADDRESS | sed 's/\[[^]]*\]//g') ether
+    echo -n "🟢 staker balance: " && cast to-unit $(cast balance $STAKER_ADDRESS) ether
+    temp=$(forge script script/WithdrawRewards.s.sol --broadcast --legacy --sig "run(address payable, string, string)" $CONTRACT_ADDRESS all all --private-key $STAKER_KEY 2>&1 1>/dev/null)
+    errors=$(echo $temp | grep -o -i -e "error" -e "fail" -e "revert" | wc -l)
+    if [ $errors -eq 0 ]; then
+        echo "🟢 WithdrawRewards"
+    else
+        echo "🔴 WithdrawRewards $temp"
+    fi
+    echo -n "🟢 commission: " && cast to-unit $(cast balance $COMMISSION_ADDRESS) ether
+    echo -n "🟢 staker rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "rewards()(uint256)" --from $STAKER_ADDRESS | sed 's/\[[^]]*\]//g') ether
+    echo -n "🟢 delegated amount: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedAmount()(uint256)" --from $STAKER_ADDRESS | sed 's/\[[^]]*\]//g') ether
+    echo -n "🟢 staker balance: " && cast to-unit $(cast balance $STAKER_ADDRESS) ether
+
+    echo "############################### UNSTAKING ##############################"
+    temp=$(forge script script/Unstake.s.sol --broadcast --legacy --sig "run(address payable, uint256)" $CONTRACT_ADDRESS 100000000000000000000 --private-key $STAKER_KEY 2>&1 1>/dev/null)
+    errors=$(echo $temp | grep -o -i -e "error" -e "fail" -e "revert" | wc -l)
+    if [ $errors -eq 0 ]; then
+        echo "🟢 Unstake"
+    else
+        echo "🔴 Unstake $temp"
+    fi
+    echo -n "🟢 commission: " && cast to-unit $(cast balance $COMMISSION_ADDRESS) ether
+    echo -n "🟢 staker rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "rewards()(uint256)" --from $STAKER_ADDRESS | sed 's/\[[^]]*\]//g') ether
+    echo -n "🟢 delegated amount: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedAmount()(uint256)" --from $STAKER_ADDRESS | sed 's/\[[^]]*\]//g') ether
+    echo -n "🟢 staker balance: " && cast to-unit $(cast balance $STAKER_ADDRESS) ether
+
+    echo "############################### UNBONDING ##############################"
+    unbond
+
+    echo "############################### STAKING REWARDS ##############################"
+    echo -n "🟢 commission: " && cast to-unit $(cast balance $COMMISSION_ADDRESS) ether
+    echo -n "🟢 staker rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "rewards()(uint256)" --from $STAKER_ADDRESS | sed 's/\[[^]]*\]//g') ether
+    echo -n "🟢 delegated amount: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedAmount()(uint256)" --from $STAKER_ADDRESS | sed 's/\[[^]]*\]//g') ether
+    echo -n "🟢 staker balance: " && cast to-unit $(cast balance $STAKER_ADDRESS) ether
+    temp=$(forge script script/StakeRewards.s.sol --broadcast --legacy --sig "run(address payable)" $CONTRACT_ADDRESS --private-key $STAKER_KEY 2>&1 1>/dev/null)
+    errors=$(echo $temp | grep -o -i -e "error" -e "fail" -e "revert" | wc -l)
+    if [ $errors -eq 0 ]; then
+        echo "🟢 StakeRewards"
+    else
+        echo "🔴 StakeRewards $temp"
+    fi
+    echo -n "🟢 commission: " && cast to-unit $(cast balance $COMMISSION_ADDRESS) ether
+    echo -n "🟢 staker rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "rewards()(uint256)" --from $STAKER_ADDRESS | sed 's/\[[^]]*\]//g') ether
+    echo -n "🟢 delegated amount: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedAmount()(uint256)" --from $STAKER_ADDRESS | sed 's/\[[^]]*\]//g') ether
+    echo -n "🟢 staker balance: " && cast to-unit $(cast balance $STAKER_ADDRESS) ether
+
+    echo "############################### CLAIMING ##############################"
+    echo -n "🟢 claimable: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getClaimable()(uint256)" --from $STAKER_ADDRESS | sed 's/\[[^]]*\]//g') ether
+    temp=$(forge script script/Claim.s.sol --broadcast --legacy --sig "run(address payable)" $CONTRACT_ADDRESS --private-key $STAKER_KEY 2>&1 1>/dev/null)
+    errors=$(echo $temp | grep -o -i -e "error" -e "fail" -e "revert" | wc -l)
+    if [ $errors -eq 0 ]; then
+        echo "🟢 Claim"
+    else
+        echo "🔴 Claim $temp"
+    fi
+    echo -n "🟢 claimable: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getClaimable()(uint256)" --from $STAKER_ADDRESS | sed 's/\[[^]]*\]//g') ether
+
+    echo "############################### WITHDRAWING REWARDS ##############################"
+    echo -n "🟢 commission: " && cast to-unit $(cast balance $COMMISSION_ADDRESS) ether
+    echo -n "🟢 staker balance: " && cast to-unit $(cast balance $STAKER_ADDRESS) ether
+    echo -n "🟢 delegated amount: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedAmount()(uint256)" --from $STAKER_ADDRESS | sed 's/\[[^]]*\]//g') ether
+    echo -n "🟢 staker rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "rewards()(uint256)" --from $STAKER_ADDRESS | sed 's/\[[^]]*\]//g') ether
+    temp=$(forge script script/WithdrawRewards.s.sol --broadcast --legacy --sig "run(address payable, string, string)" $CONTRACT_ADDRESS all all --private-key $STAKER_KEY 2>&1 1>/dev/null)
+    errors=$(echo $temp | grep -o -i -e "error" -e "fail" -e "revert" | wc -l)
+    if [ $errors -eq 0 ]; then
+        echo "🟢 WithdrawRewards"
+    else
+        echo "🔴 WithdrawRewards $temp"
+    fi
+    echo -n "🟢 commission: " && cast to-unit $(cast balance $COMMISSION_ADDRESS) ether
+    echo -n "🟢 staker rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "rewards()(uint256)" --from $STAKER_ADDRESS | sed 's/\[[^]]*\]//g') ether
+    echo -n "🟢 delegated amount: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedAmount()(uint256)" --from $STAKER_ADDRESS | sed 's/\[[^]]*\]//g') ether
+    echo -n "🟢 staker balance: " && cast to-unit $(cast balance $STAKER_ADDRESS) ether
+
+    echo "############################### EARNING ##############################"
+    sleep 10s
+
+    echo "############################### COLLECTING ##############################"
+    echo -n "🟢 commission: " && cast to-unit $(cast balance $COMMISSION_ADDRESS) ether
+    temp=$(forge script script/CollectCommission.s.sol --broadcast --legacy --sig "run(address payable)" $CONTRACT_ADDRESS 2>&1 1>/dev/null)
+    errors=$(echo $temp | grep -o -i -e "error" -e "fail" -e "revert" | wc -l)
+    if [ $errors -eq 0 ]; then
+        echo "🟢 CollectCommission"
+    else
+        echo "🔴 CollectCommission $temp"
+    fi
+    echo -n "🟢 commission: " && cast to-unit $(cast balance $COMMISSION_ADDRESS) ether
+}
 
 
 
-echo "############################### NOT EARNING ##############################"
-sleep 10s
-echo -n "🟢 immutable rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getImmutableRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
-echo -n "🟢 total rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
-
-echo "############################### UNSTAKING ##############################"
-echo -n "🟢 commission: " && cast to-unit $(cast balance $COMMISSION_ADDRESS) ether
-echo -n "🟢 staker rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "rewards()(uint256)" --from $STAKER_ADDRESS | sed 's/\[[^]]*\]//g') ether
-echo -n "🟢 staker balance: " && cast to-unit $(cast balance $STAKER_ADDRESS) ether
-temp=$(forge script script/Unstake.s.sol --broadcast --legacy --sig "run(address payable, uint256)" $CONTRACT_ADDRESS $(cast call $CONTRACT_ADDRESS "getDelegatedAmount()(uint256)" --from $STAKER_ADDRESS) --private-key $STAKER_KEY 2>&1 1>/dev/null)
-errors=$(echo $temp | grep -o -i -e "error" -e "fail" -e "revert" | wc -l)
-if [ $errors -eq 0 ]; then
-    echo "🟢 Unstake"
-else
-    echo "🔴 Unstake $temp"
-fi
-echo -n "🟢 commission: " && cast to-unit $(cast balance $COMMISSION_ADDRESS) ether
-echo -n "🟢 staker rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "rewards()(uint256)" --from $STAKER_ADDRESS | sed 's/\[[^]]*\]//g') ether
-echo -n "🟢 staker balance: " && cast to-unit $(cast balance $STAKER_ADDRESS) ether
-
-echo "############################### UNBONDING ##############################"
-unbonding
-echo -n "🟢 immutable rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getImmutableRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
-echo -n "🟢 total rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
-
-echo "############################### CLAIMING ##############################"
-echo -n "🟢 commission: " && cast to-unit $(cast balance $COMMISSION_ADDRESS) ether
-echo -n "🟢 staker rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "rewards()(uint256)" --from $STAKER_ADDRESS | sed 's/\[[^]]*\]//g') ether
-echo -n "🟢 staker balance: " && cast to-unit $(cast balance $STAKER_ADDRESS) ether
-echo -n "🟢 claimable: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getClaimable()(uint256)" --from $STAKER_ADDRESS | sed 's/\[[^]]*\]//g') ether
-temp=$(forge script script/Claim.s.sol --broadcast --legacy --sig "run(address payable)" $CONTRACT_ADDRESS --private-key $STAKER_KEY 2>&1 1>/dev/null)
-errors=$(echo $temp | grep -o -i -e "error" -e "fail" -e "revert" | wc -l)
-if [ $errors -eq 0 ]; then
-    echo "🟢 Claim"
-else
-    echo "🔴 Claim $temp"
-fi
-echo -n "🟢 claimable: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getClaimable()(uint256)" --from $STAKER_ADDRESS | sed 's/\[[^]]*\]//g') ether
-echo -n "🟢 immutable rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getImmutableRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
-echo -n "🟢 total rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
-
-echo "############################### WITHDRAWING REWARDS ##############################"
-echo -n "🟢 exposure: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedTotal()(uint256)" | sed 's/\[[^]]*\]//g') ether)+$(echo $(rewards))"
-echo -n "🟢 funds: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether)+0.9*$(cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether)"
-echo -n "🟢 commission: " && cast to-unit $(cast balance $COMMISSION_ADDRESS) ether
-echo -n "🟢 staker balance: " && cast to-unit $(cast balance $STAKER_ADDRESS) ether
-echo -n "🟢 staker rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "rewards()(uint256)" --from $STAKER_ADDRESS | sed 's/\[[^]]*\]//g') ether
-temp=$(forge script script/WithdrawRewards.s.sol --broadcast --legacy --sig "run(address payable, string, string)" $CONTRACT_ADDRESS all all --private-key $STAKER_KEY 2>&1 1>/dev/null)
-errors=$(echo $temp | grep -o -i -e "error" -e "fail" -e "revert" | wc -l)
-if [ $errors -eq 0 ]; then
-    echo "🟢 WithdrawRewards"
-else
-    echo "🔴 WithdrawRewards $temp"
-fi
-echo -n "🟢 exposure: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedTotal()(uint256)" | sed 's/\[[^]]*\]//g') ether)+$(echo $(rewards))"
-echo -n "🟢 funds: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether)+0.9*$(cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether)"
-echo -n "🟢 commission: " && cast to-unit $(cast balance $COMMISSION_ADDRESS) ether
-echo -n "🟢 staker balance: " && cast to-unit $(cast balance $STAKER_ADDRESS) ether
-echo -n "🟢 staker rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "rewards()(uint256)" --from $STAKER_ADDRESS | sed 's/\[[^]]*\]//g') ether
-echo "############################### WITHDRAWING VALIDATOR REWARDS ##############################"
-withdraw_rewards $CONTROL_KEY_1
-withdraw_rewards $CONTROL_KEY_2
-withdraw_rewards $CONTROL_KEY_3
-withdraw_rewards $CONTROL_KEY_4
+leave_all() {
+    echo "############################### LEAVING ##############################"
+    echo -n "🟢 exposure: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedTotal()(uint256)" | sed 's/\[[^]]*\]//g') ether)+$(echo $(rewards))"
+    echo -n "🟢 funds: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether)+0.9*$(cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether)"
+    echo -n "🟢 total delegated: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedTotal()(uint256)" | sed 's/\[[^]]*\]//g') ether
+    echo -n "🟢 total deposited: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether
+    echo -n "🟢 immutable rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getImmutableRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
+    echo -n "🟢 total rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
+    leave_one $BLS_PUB_KEY_1 $CONTROL_KEY_1
+    echo -n "🟢 exposure: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedTotal()(uint256)" | sed 's/\[[^]]*\]//g') ether)+$(echo $(rewards))"
+    echo -n "🟢 funds: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether)+0.9*$(cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether)"
+    echo -n "🟢 total delegated: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedTotal()(uint256)" | sed 's/\[[^]]*\]//g') ether
+    echo -n "🟢 total deposited: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether
+    echo -n "🟢 immutable rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getImmutableRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
+    echo -n "🟢 total rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
+    leave_one $BLS_PUB_KEY_2 $CONTROL_KEY_2
+    echo -n "🟢 exposure: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedTotal()(uint256)" | sed 's/\[[^]]*\]//g') ether)+$(echo $(rewards))"
+    echo -n "🟢 funds: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether)+0.9*$(cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether)"
+    echo -n "🟢 total delegated: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedTotal()(uint256)" | sed 's/\[[^]]*\]//g') ether
+    echo -n "🟢 total deposited: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether
+    echo -n "🟢 immutable rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getImmutableRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
+    echo -n "🟢 total rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
+    leave_one $BLS_PUB_KEY_3 $CONTROL_KEY_3
+    echo -n "🟢 exposure: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedTotal()(uint256)" | sed 's/\[[^]]*\]//g') ether)+$(echo $(rewards))"
+    echo -n "🟢 funds: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether)+0.9*$(cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether)"
+    echo -n "🟢 total delegated: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedTotal()(uint256)" | sed 's/\[[^]]*\]//g') ether
+    echo -n "🟢 total deposited: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether
+    echo -n "🟢 immutable rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getImmutableRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
+    echo -n "🟢 total rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
+    leave_one $BLS_PUB_KEY_4 $CONTROL_KEY_4
+    #🟪 move the line below to mark the location where execution shall continue when running the script again  🟪
+    #🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪'
+    echo -n "🟢 exposure: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedTotal()(uint256)" | sed 's/\[[^]]*\]//g') ether)+$(echo $(rewards))"
+    echo -n "🟢 funds: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether)+0.9*$(cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether)"
+    echo -n "🟢 total delegated: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedTotal()(uint256)" | sed 's/\[[^]]*\]//g') ether
+    echo -n "🟢 total deposited: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether
+    echo -n "🟢 immutable rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getImmutableRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
+    echo -n "🟢 total rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
+    echo -n "🟢 total withdrawals: " && cast to-unit $(cast call $CONTRACT_ADDRESS "totalPendingWithdrawals()(uint256)" | sed 's/\[[^]]*\]//g') ether
+}
 
 
 
-echo -n "🟢 exposure: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedTotal()(uint256)" | sed 's/\[[^]]*\]//g') ether)+$(echo $(rewards))"
-echo -n "🟡 funds: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether)+0.9*$(cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether)"
-echo -n "🟢 total delegated: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedTotal()(uint256)" | sed 's/\[[^]]*\]//g') ether
-echo -n "🟢 total deposited: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether
-echo -n "🟡 immutable rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getImmutableRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
-echo -n "🟡 total rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
+unstake_all() {
+    echo "############################### EARNING ##############################"
+    sleep 10s
+    echo -n "🟢 immutable rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getImmutableRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
+    echo -n "🟢 total rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
+
+    echo "############################### UNSTAKING ##############################"
+    echo -n "🟢 commission: " && cast to-unit $(cast balance $COMMISSION_ADDRESS) ether
+    echo -n "🟢 staker rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "rewards()(uint256)" --from $STAKER_ADDRESS | sed 's/\[[^]]*\]//g') ether
+    echo -n "🟢 staker balance: " && cast to-unit $(cast balance $STAKER_ADDRESS) ether
+    temp=$(forge script script/Unstake.s.sol --broadcast --legacy --sig "run(address payable, uint256)" $CONTRACT_ADDRESS $(cast call $CONTRACT_ADDRESS "getDelegatedAmount()(uint256)" --from $STAKER_ADDRESS) --private-key $STAKER_KEY 2>&1 1>/dev/null)
+    errors=$(echo $temp | grep -o -i -e "error" -e "fail" -e "revert" | wc -l)
+    if [ $errors -eq 0 ]; then
+        echo "🟢 Unstake"
+    else
+        echo "🔴 Unstake $temp"
+    fi
+    echo -n "🟢 commission: " && cast to-unit $(cast balance $COMMISSION_ADDRESS) ether
+    echo -n "🟢 staker rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "rewards()(uint256)" --from $STAKER_ADDRESS | sed 's/\[[^]]*\]//g') ether
+    echo -n "🟢 staker balance: " && cast to-unit $(cast balance $STAKER_ADDRESS) ether
+
+    echo "############################### UNBONDING ##############################"
+    unbond
+    echo -n "🟢 immutable rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getImmutableRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
+    echo -n "🟢 total rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
+
+    echo "############################### CLAIMING ##############################"
+    echo -n "🟢 commission: " && cast to-unit $(cast balance $COMMISSION_ADDRESS) ether
+    echo -n "🟢 staker rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "rewards()(uint256)" --from $STAKER_ADDRESS | sed 's/\[[^]]*\]//g') ether
+    echo -n "🟢 staker balance: " && cast to-unit $(cast balance $STAKER_ADDRESS) ether
+    echo -n "🟢 claimable: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getClaimable()(uint256)" --from $STAKER_ADDRESS | sed 's/\[[^]]*\]//g') ether
+    temp=$(forge script script/Claim.s.sol --broadcast --legacy --sig "run(address payable)" $CONTRACT_ADDRESS --private-key $STAKER_KEY 2>&1 1>/dev/null)
+    errors=$(echo $temp | grep -o -i -e "error" -e "fail" -e "revert" | wc -l)
+    if [ $errors -eq 0 ]; then
+        echo "🟢 Claim"
+    else
+        echo "🔴 Claim $temp"
+    fi
+    echo -n "🟢 claimable: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getClaimable()(uint256)" --from $STAKER_ADDRESS | sed 's/\[[^]]*\]//g') ether
+    echo -n "🟢 immutable rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getImmutableRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
+    echo -n "🟢 total rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
+
+    echo "############################### WITHDRAWING REWARDS ##############################"
+    echo -n "🟢 exposure: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedTotal()(uint256)" | sed 's/\[[^]]*\]//g') ether)+$(echo $(rewards))"
+    echo -n "🟢 funds: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether)+0.9*$(cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether)"
+    echo -n "🟢 commission: " && cast to-unit $(cast balance $COMMISSION_ADDRESS) ether
+    echo -n "🟢 staker balance: " && cast to-unit $(cast balance $STAKER_ADDRESS) ether
+    echo -n "🟢 staker rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "rewards()(uint256)" --from $STAKER_ADDRESS | sed 's/\[[^]]*\]//g') ether
+    temp=$(forge script script/WithdrawRewards.s.sol --broadcast --legacy --sig "run(address payable, string, string)" $CONTRACT_ADDRESS all all --private-key $STAKER_KEY 2>&1 1>/dev/null)
+    errors=$(echo $temp | grep -o -i -e "error" -e "fail" -e "revert" | wc -l)
+    if [ $errors -eq 0 ]; then
+        echo "🟢 WithdrawRewards"
+    else
+        echo "🔴 WithdrawRewards $temp"
+    fi
+    echo -n "🟢 exposure: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedTotal()(uint256)" | sed 's/\[[^]]*\]//g') ether)+$(echo $(rewards))"
+    echo -n "🟢 funds: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether)+0.9*$(cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether)"
+    echo -n "🟢 commission: " && cast to-unit $(cast balance $COMMISSION_ADDRESS) ether
+    echo -n "🟢 staker balance: " && cast to-unit $(cast balance $STAKER_ADDRESS) ether
+    echo -n "🟢 staker rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "rewards()(uint256)" --from $STAKER_ADDRESS | sed 's/\[[^]]*\]//g') ether
+    echo "############################### WITHDRAWING VALIDATOR REWARDS ##############################"
+    withdraw_rewards $CONTROL_KEY_1
+    withdraw_rewards $CONTROL_KEY_2
+    withdraw_rewards $CONTROL_KEY_3
+    withdraw_rewards $CONTROL_KEY_4
+}
+
+
+
+report() {
+    echo -n "🟢 exposure: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedTotal()(uint256)" | sed 's/\[[^]]*\]//g') ether)+$(echo $(rewards))"
+    echo -n "🟡 funds: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether)+0.9*$(cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether)"
+    echo -n "🟢 total delegated: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedTotal()(uint256)" | sed 's/\[[^]]*\]//g') ether
+    echo -n "🟢 total deposited: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether
+    echo -n "🟡 immutable rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getImmutableRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
+    echo -n "🟡 total rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
+}
+
+
+
+join_all # all validators join the pool
+stake_all # all users stake, withdraw rewards, unstake and claim part of it
+leave_all # all validators leave and withdraw rewards
+unstake_all # all users unstake everything and withdraw rewards
+report # print the status
+echo "1️⃣ 1️⃣ 1️⃣ 1️⃣ 1️⃣ 1️⃣ 1️⃣ 1️⃣ 1️⃣ 1️⃣ 1️⃣ 1️⃣ 1️⃣ 1️⃣ 1️⃣ 1️⃣"
+
+sleep 5s
+
+stake_all
+unstake_all
+report
+echo "2️⃣ 2️⃣ 2️⃣ 2️⃣ 2️⃣ 2️⃣ 2️⃣ 2️⃣ 2️⃣ 2️⃣ 2️⃣ 2️⃣ 2️⃣ 2️⃣ 2️⃣ 2️⃣"
+
+sleep 5s
+
+join_all
+stake_all
+leave_all
+unstake_all
+report
+echo "3️⃣ 3️⃣ 3️⃣ 3️⃣ 3️⃣ 3️⃣ 3️⃣ 3️⃣ 3️⃣ 3️⃣ 3️⃣ 3️⃣ 3️⃣ 3️⃣ 3️⃣ 3️⃣"
