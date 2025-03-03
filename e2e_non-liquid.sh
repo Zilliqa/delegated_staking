@@ -502,34 +502,23 @@ report() {
 
 join_all # all validators join the pool
 stake_all # all users stake, withdraw rewards, unstake and claim part of it
-echo -n "🟪" && cast call $CONTRACT_ADDRESS "totalRoundingErrors()(uint256)"
 leave_all # all validators leave and withdraw rewards
-echo -n "🟪🟪" && cast call $CONTRACT_ADDRESS "totalRoundingErrors()(uint256)"
 unstake_all # all users unstake everything and withdraw rewards
-echo -n "🟪🟪🟪" && cast call $CONTRACT_ADDRESS "totalRoundingErrors()(uint256)"
 report # print the status
 echo "1️⃣ 1️⃣ 1️⃣ 1️⃣ 1️⃣ 1️⃣ 1️⃣ 1️⃣ 1️⃣ 1️⃣ 1️⃣ 1️⃣ 1️⃣ 1️⃣ 1️⃣ 1️⃣"
-echo -n "🟪🟪🟪🟪" && cast call $CONTRACT_ADDRESS "totalRoundingErrors()(uint256)"
 
 sleep 5s
 
 stake_all
-echo -n "🟪" && cast call $CONTRACT_ADDRESS "totalRoundingErrors()(uint256)"
 unstake_all
-echo -n "🟪🟪🟪" && cast call $CONTRACT_ADDRESS "totalRoundingErrors()(uint256)"
 report
 echo "2️⃣ 2️⃣ 2️⃣ 2️⃣ 2️⃣ 2️⃣ 2️⃣ 2️⃣ 2️⃣ 2️⃣ 2️⃣ 2️⃣ 2️⃣ 2️⃣ 2️⃣ 2️⃣"
-echo -n "🟪🟪🟪🟪" && cast call $CONTRACT_ADDRESS "totalRoundingErrors()(uint256)"
 
 sleep 5s
 
 join_all
 stake_all
-echo -n "🟪" && cast call $CONTRACT_ADDRESS "totalRoundingErrors()(uint256)"
 leave_all
-echo -n "🟪🟪" && cast call $CONTRACT_ADDRESS "totalRoundingErrors()(uint256)"
 unstake_all
-echo -n "🟪🟪🟪" && cast call $CONTRACT_ADDRESS "totalRoundingErrors()(uint256)"
 report
 echo "3️⃣ 3️⃣ 3️⃣ 3️⃣ 3️⃣ 3️⃣ 3️⃣ 3️⃣ 3️⃣ 3️⃣ 3️⃣ 3️⃣ 3️⃣ 3️⃣ 3️⃣ 3️⃣"
-echo -n "🟪🟪🟪🟪" && cast call $CONTRACT_ADDRESS "totalRoundingErrors()(uint256)"
