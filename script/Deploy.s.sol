@@ -50,6 +50,16 @@ contract Deploy is Script {
             delegation.owner()
         );
 
+        bytes memory reinitializerCall = abi.encodeWithSignature(
+            "reinitialize(uint64)",
+            1
+        );
+
+        delegation.upgradeToAndCall(
+            implementation,
+            reinitializerCall
+        );
+
         (uint24 major, uint24 minor, uint24 patch) = delegation.decodedVersion();
         Console.log("Upgraded to version: %s.%s.%s",
             uint256(major),
