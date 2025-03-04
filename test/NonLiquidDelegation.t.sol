@@ -2049,6 +2049,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
             Console.log("round %s of %s", i, numOfRounds);
             assertEq(delegation.getStake(), delegation.getDelegatedTotal(), "getStake does not match getDelegatedTotal");
             assertEq(totalWithdrawnZil + delegation.totalPendingWithdrawals(), totalUnstakedZil, "owned does not match owed");
+            assertLt(delegation.totalRoundingErrors(), numOfUsers * 1 ether, "rounding errors out of bounds");
         }
         uint256 outstandingRewards;
         for (uint256 i = 0; i < users.length; i++) {
