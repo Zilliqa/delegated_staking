@@ -20,7 +20,7 @@ block=$(cast rpc eth_blockNumber)
 block_num=$(echo $block | tr -d '"' | cast to-dec --base-in 16)
 
 echo rewardsAfterStaking = $(cast call $1 "getRewards()(uint256)" --block $block_num | sed 's/\[[^]]*\]//g')
-if [[ "$variant" == "ILiquidDelegation" ]]; then
+if [[ "$variant" == "LiquidStaking" ]]; then
     echo taxedRewardsAfterStaking = $(cast call $1 "getTaxedRewards()(uint256)" --block $block_num | sed 's/\[[^]]*\]//g')
 fi
 
@@ -48,7 +48,7 @@ echo rewardsBeforeStaking = $rewardsBeforeStaking
 stake=$(cast call $1 "getStake()(uint256)" --block $block_num | sed 's/\[[^]]*\]//g')
 commissionNumerator=$(cast call $1 "getCommissionNumerator()(uint256)" --block $block_num | sed 's/\[[^]]*\]//g')
 denominator=$(cast call $1 "DENOMINATOR()(uint256)" --block $block_num | sed 's/\[[^]]*\]//g')
-if [[ "$variant" == "ILiquidDelegation" ]]; then
+if [[ "$variant" == "LiquidStaking" ]]; then
     taxedRewardsBeforeStaking=$(cast call $1 "getTaxedRewards()(uint256)" --block $block_num | sed 's/\[[^]]*\]//g')
     echo taxedRewardsBeforeStaking = $taxedRewardsBeforeStaking
 

@@ -20,7 +20,7 @@ block=$(cast rpc eth_blockNumber)
 block_num=$(echo $block | tr -d '"' | cast to-dec --base-in 16)
 
 echo rewardsAfterClaiming = $(cast call $1 "getRewards()(uint256)" --block $block_num | sed 's/\[[^]]*\]//g')
-if [[ "$variant" == "ILiquidDelegation" ]]; then
+if [[ "$variant" == "LiquidStaking" ]]; then
     echo taxedRewardsAfterClaiming = $(cast call $1 "getTaxedRewards()(uint256)" --block $block_num | sed 's/\[[^]]*\]//g')
 fi
 
@@ -44,7 +44,7 @@ block_num=$((block_num-1))
 block=$(echo $block_num | cast to-hex --base-in 10)
 
 echo rewardsBeforeClaiming = $(cast call $1 "getRewards()(uint256)" --block $block_num | sed 's/\[[^]]*\]//g')
-if [[ "$variant" == "ILiquidDelegation" ]]; then
+if [[ "$variant" == "LiquidStaking" ]]; then
     echo taxedRewardsBeforeClaiming = $(cast call $1 "getTaxedRewards()(uint256)" --block $block_num | sed 's/\[[^]]*\]//g')
 fi
 

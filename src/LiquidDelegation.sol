@@ -5,18 +5,8 @@ import {IDelegation} from "src/IDelegation.sol";
 import {BaseDelegation} from "src/BaseDelegation.sol";
 import {NonRebasingLST} from "src/NonRebasingLST.sol";
 
-/**
- * @notice Minimal interface with functions specific to the {LiquidDelegation} variant.
- * There must be at least one function that makes the interface unique among all variants.
- *
- * @dev Do not change this interface, otherwise it will break the detection of the staking
- * variant of already deployed delegation contracts used in the `Upgrade` script.
- */
-interface ILiquidDelegation {
-    function interfaceId() external pure returns (bytes4);
-    function getLST() external view returns (address);
-    function getPrice() external view returns(uint256);
-}
+// keccak256(abi.encode(uint256(keccak256("zilliqa.storage.LiquidDelegation")) - 1)) & ~bytes32(uint256(0xff))
+bytes32 constant LIQUID_VARIANT = 0xfa57cbed4b267d0bc9f2cbdae86b4d1d23ca818308f873af9c968a23afadfd00;
 
 /**
  * @notice The liquid variant of the stake delegation contract. It uses {NonRebasingLST}
@@ -30,7 +20,7 @@ interface ILiquidDelegation {
  * staking pool, i.e. its balance can increase in every block. Since this does not
  * happen in form of transactions, the {receive} function will not notice it.
  */
-contract LiquidDelegation is IDelegation, BaseDelegation, ILiquidDelegation {
+contract LiquidDelegation is IDelegation, BaseDelegation {
 
     /**
     * @dev `lst` is the address of the {NonRebasingLST} token issued by the {LiquidDelegation}.
@@ -44,9 +34,8 @@ contract LiquidDelegation is IDelegation, BaseDelegation, ILiquidDelegation {
         uint256 taxedRewards;
     }
 
-    // keccak256(abi.encode(uint256(keccak256("zilliqa.storage.LiquidDelegation")) - 1)) & ~bytes32(uint256(0xff))
     // solhint-disable const-name-snakecase
-    bytes32 private constant LiquidDelegationStorageLocation = 0xfa57cbed4b267d0bc9f2cbdae86b4d1d23ca818308f873af9c968a23afadfd00;
+    bytes32 private constant LiquidDelegationStorageLocation = LIQUID_VARIANT;
 
     function _getLiquidDelegationStorage() private pure returns (LiquidDelegationStorage storage $) {
         assembly {
@@ -73,6 +62,11 @@ contract LiquidDelegation is IDelegation, BaseDelegation, ILiquidDelegation {
         __BaseDelegation_init(initialOwner);
         LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
         $.lst = address(new NonRebasingLST(name, symbol));
+    }
+
+    /// @inheritdoc BaseDelegation
+    function variant() public override pure returns(bytes32) {
+        return LIQUID_VARIANT;
     }
 
     /// @inheritdoc BaseDelegation
@@ -245,13 +239,6 @@ contract LiquidDelegation is IDelegation, BaseDelegation, ILiquidDelegation {
     }
 
     /**
-    * @inheritdoc IDelegation
-    */
-    function collectCommission() public override(BaseDelegation, IDelegation) onlyOwner {
-        taxRewards();
-    }
-
-    /**
     * @dev Return the amount of taxed rewards in the contract's balance.
     */
     function getTaxedRewards() public view returns(uint256) {
@@ -268,18 +255,10 @@ contract LiquidDelegation is IDelegation, BaseDelegation, ILiquidDelegation {
     }
 
     /**
-    * @dev See https://eips.ethereum.org/EIPS/eip-165
+    * @inheritdoc IDelegation
     */
-    function supportsInterface(bytes4 _interfaceId) public view override returns (bool) {
-       return _interfaceId == type(ILiquidDelegation).interfaceId || super.supportsInterface(_interfaceId);
-    }
-
-    /**
-    * @dev Return the interface id that can be used to identify which delegated staking
-    * variant the contract implements.  
-    */
-    function interfaceId() public pure returns (bytes4) {
-       return type(ILiquidDelegation).interfaceId;
+    function collectCommission() public override(BaseDelegation, IDelegation) onlyOwner {
+        taxRewards();
     }
 
 }

@@ -8,9 +8,9 @@ import {BaseDelegation} from "src/BaseDelegation.sol";
 import {WithdrawalQueue} from "src/WithdrawalQueue.sol";
 import {IDelegation} from "src/IDelegation.sol";
 import {Deposit} from "@zilliqa/zq2/deposit_v5.sol";
-import {Console} from "script/Console.sol";
+import {Console} from "script/Console.s.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
-import {Console} from "script/Console.sol";
+import {Console} from "script/Console.s.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 /* solhint-disable func-name-mixedcase */

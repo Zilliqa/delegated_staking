@@ -9,7 +9,7 @@ import {IDelegation} from "src/IDelegation.sol";
 import {Deposit} from "@zilliqa/zq2/deposit_v5.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {Test} from "forge-std/Test.sol";
-import {Console} from "script/Console.sol";
+import {Console} from "script/Console.s.sol";
 
 /* solhint-disable one-contract-per-file */
 abstract contract BaseDelegationTest is Test {

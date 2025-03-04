@@ -25,7 +25,7 @@ if [[ "$variant" == "$temp" ]]; then
     echo Incompatible delegation contract at $1
     exit 1
 fi
-if [[ "$variant" != "INonLiquidDelegation" ]]; then
+if [[ "$variant" != "NonLiquidStaking" ]]; then
     echo Reward withdrawal not supported by $1
     exit 1
 fi

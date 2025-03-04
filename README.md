@@ -1,8 +1,8 @@
 # Delegated Staking
 
 This repository contains the contracts and scripts needed to create a staking pool that users can delegate to. Currently, the contracts exist in two variants:
-1. When delegating stake to the **liquid variant**, users receive a non-rebasing liquid staking token (LST) that anyone can send to the validator's contract later on to withdraw the stake plus the corresponding share of the validator rewards.
-1. When delegating stake to the **non-liquid variant**, the users can regularly withdraw their share of the rewards without withdrawing their stake.
+1. When delegating stake to the **liquid variant**, users receive a non-rebasing liquid staking token (LST) that anyone can send to the pool's contract to withdraw the stake plus the corresponding share of the staking rewards.
+1. When delegating stake to the **non-liquid variant**, users become eligible to claim their share of the staking rewards without withdrawing their stake.
 
 
 ## Prerequisites
@@ -38,7 +38,7 @@ forge script script/Deploy.s.sol --broadcast --legacy --sig "liquidDelegation(st
 ```
 using the `Name` and the `Symbol` of your LST.
 
-To deploy ``NonLiquidDelegation` run
+To deploy `NonLiquidDelegation` run
 ```bash
 forge script script/Deploy.s.sol --broadcast --legacy --sig "nonLiquidDelegation()"
 ```
@@ -56,7 +56,7 @@ You will need the proxy address from the above output in all commands below. If 
 ```bash
 forge script script/CheckVariant.s.sol --sig "run(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2
 ```
-The output will be `ILiquidStaking`, `INonLiquidStaking` or none of them if the address is not a valid delegation contract.
+The output will be `LiquidStaking`, `NonLiquidStaking` or none of them if the address is not a valid delegation contract.
 
 You can upgrade the contract to the latest version by running
 ```bash
@@ -76,9 +76,6 @@ If you want to check the current version your contract was upgraded to, run
 ```bash
 forge script script/CheckVersion.s.sol --sig "run(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2
 ```
-
-To adapt the contract to your needs, create your own copy of `LiquidDelegation` or `NonLiquidDelegation` and run the above upgrade script again.
-
 
 ## Contract Configuration
 
@@ -164,7 +161,9 @@ cast call 0x7a0b7e6d24ede78260c9ddbd98e828b0e11a8ea2 "pendingWithdrawals(bytes)(
 0x92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c
 ```
 
-If the validator's deposit was lower than the value of your LST balance or staked ZIL then you can claim the difference after the unbonding period as explained in the section about unstaking. If the the validator's deposit was higher, then it can't leave the staking pool yet. First, its deposit is automatically reduced to the value of your LST balance or staked ZIL and the difference is redistributed among the validators remaining in the staking pool after the unbonding period. During the unbonding period i.e. before the redistribution, unstaking of larger amounts might fail if the remaining validators' deposits are insufficient to cover the amount to be unstaked. To complete the leaving of your validator, run the following command as soon as the unbonding period is over:
+If your validator's deposit was lower than the value of your LST balance or staked ZIL then you can claim the difference after the unbonding period as explained in the section about unstaking. If your validator's deposit was higher, then it can't leave the staking pool yet. First, its deposit is automatically reduced to the value of your LST balance or staked ZIL and the difference is redistributed among the validators remaining in the staking pool after the unbonding period. Note that during the unbonding period the amount to be redistributed is unavailable i.e. unstaking is temporarily limited to amounts less than the sum of all other validators' deposits exceeding the required minimum.
+
+To complete the leaving of your validator, run the following command as soon as the unbonding period is over:
 ```bash
 cast send --legacy --private-key 0x... \
 0x7a0b7e6d24ede78260c9ddbd98e828b0e11a8ea2 "completeLeaving(bytes)" \
@@ -399,6 +398,7 @@ Use the events and methods defined in the `IDeposit` interface and the `BaseDele
 event Staked(address indexed delegator, uint256 amount, bytes data);
 event Unstaked(address indexed delegator, uint256 amount, bytes data);
 event Claimed(address indexed delegator, uint256 amount, bytes data);
+event CommissionPaid(address indexed receiver, uint256 commission);
 
 function stake() external payable;
 function unstake(uint256) external returns(uint256 unstakedZil);

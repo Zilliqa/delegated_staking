@@ -5,18 +5,8 @@ import {IDelegation} from "src/IDelegation.sol";
 import {BaseDelegation} from "src/BaseDelegation.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
-/**
- * @notice Minimal interface with functions specific to the {NonLiquidDelegation} variant.
- * There must be at least one function that makes the interface unique among all variants.
- *
- * @dev Do not change this interface, otherwise it will break the detection of the staking
- * variant of already deployed delegation contracts used in the `Upgrade` script.
- */
-interface INonLiquidDelegation {
-    function interfaceId() external pure returns (bytes4);
-    function getDelegatedAmount() external view returns(uint256);
-    function rewards() external view returns(uint256);
-}
+// keccak256(abi.encode(uint256(keccak256("zilliqa.storage.NonLiquidDelegation")) - 1)) & ~bytes32(uint256(0xff))
+bytes32 constant NONLIQUID_VARIANT = 0x66c8dc4f9c8663296597cb1e39500488e05713d82a9122d4f548b19a70fc2000;
 
 /**
  * @notice The non-liquid variant of the stake delegation contract. It record every change
@@ -29,7 +19,7 @@ interface INonLiquidDelegation {
  * Note that the rewards accrued since the last {Staking} event are in the contract balance
  * which is increasing in every block.
  */
-contract NonLiquidDelegation is IDelegation, BaseDelegation, INonLiquidDelegation {
+contract NonLiquidDelegation is IDelegation, BaseDelegation {
     using SafeCast for int256;
 
     /**
@@ -67,8 +57,12 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation, INonLiquidDelegatio
     * - `immutableRewards` is the total of rewards in the {Staking} history after deducting
     * the commission, that has not been withdrawn or staked yet.
     *
-    * - `newAddress` maps a delegator's address to another address that replaces it as soon
+    * - `newAddress` maps delegator addressed to another address that replaces them as soon
     * as that other address calls {replaceOldAddress}.
+    *
+    * - `roundingErrors` maps delegator addresses to remainders of integer divisions smaller
+    * than 1 `wei` scaled up by a factor of `10**18` that have not been withdrawn as rewards
+    * by the respective delegators. `totalRoundingErrors` holds the sum of all remainders.
     */
     /// @custom:storage-location erc7201:zilliqa.storage.NonLiquidDelegation
     struct NonLiquidDelegationStorage {
@@ -84,9 +78,8 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation, INonLiquidDelegatio
         uint256 totalRoundingErrors;
     }
 
-    // keccak256(abi.encode(uint256(keccak256("zilliqa.storage.NonLiquidDelegation")) - 1)) & ~bytes32(uint256(0xff))
     // solhint-disable const-name-snakecase
-    bytes32 private constant NonLiquidDelegationStorageLocation = 0x66c8dc4f9c8663296597cb1e39500488e05713d82a9122d4f548b19a70fc2000;
+    bytes32 private constant NonLiquidDelegationStorageLocation = NONLIQUID_VARIANT;
 
     function _getNonLiquidDelegationStorage() private pure returns (NonLiquidDelegationStorage storage $) {
         assembly {
@@ -111,6 +104,11 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation, INonLiquidDelegatio
     */
     function initialize(address initialOwner) public initializer {
         __BaseDelegation_init(initialOwner);
+    }
+
+    /// @inheritdoc BaseDelegation
+    function variant() public override pure returns(bytes32) {
+        return NONLIQUID_VARIANT;
     }
 
     /**
@@ -403,8 +401,8 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation, INonLiquidDelegatio
     }
 
     /**
-    * @dev Returns the total amount of rewards in `wei * 10**18` that was not paid out due to
-    * rounding errors.
+    * @dev Returns the amount of rewards, scaled by a factor of `10**18`, that are remainders
+    * of integer divisions in the reward calculation that have not yet been withdrawn.
     */
     function totalRoundingErrors() public view returns(uint256) {
         NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
@@ -557,20 +555,5 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation, INonLiquidDelegatio
     * @dev Commission is deducted when delegators withdraw their share of the rewards.
     */
     function collectCommission() public override(BaseDelegation, IDelegation) {}
-
-    /**
-    * @dev See https://eips.ethereum.org/EIPS/eip-165
-    */
-    function supportsInterface(bytes4 _interfaceId) public view override returns (bool) {
-       return _interfaceId == type(INonLiquidDelegation).interfaceId || super.supportsInterface(_interfaceId);
-    }
-
-    /**
-    * @dev Return the interface id that can be used to identify which delegated staking
-    * variant the contract implements.  
-    */
-    function interfaceId() public pure returns (bytes4) {
-       return type(INonLiquidDelegation).interfaceId;
-    }
 
 }

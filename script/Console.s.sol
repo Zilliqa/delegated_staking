@@ -2,6 +2,7 @@
 pragma solidity ^0.8.26;
 
 /* solhint-disable no-console */
+import {Script} from "forge-std/Script.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {console} from "forge-std/console.sol";
 import {console2} from "forge-std/console2.sol";
@@ -121,4 +122,8 @@ library Console {
         return console.log(first);
     }
 
+}
+
+contract Test is Script {
+    function run() external {}
 }

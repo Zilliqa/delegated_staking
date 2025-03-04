@@ -6,7 +6,6 @@ import {WithdrawalQueue} from "src/WithdrawalQueue.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import {ERC165Upgradeable} from "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165Upgradeable.sol";
 
 /**
  * @notice The contract that all variants of delegated staking contracts are based on.
@@ -21,7 +20,7 @@ import {ERC165Upgradeable} from "@openzeppelin/contracts-upgradeable/utils/intro
  * instead of incremental version numbers and keep the original contract file names
  * across all versions to avoid updating the `Upgrade` script to import new files.
  */
-abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2StepUpgradeable, UUPSUpgradeable, ERC165Upgradeable {
+abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2StepUpgradeable, UUPSUpgradeable {
 
     using WithdrawalQueue for WithdrawalQueue.Fifo;
 
@@ -211,7 +210,7 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     /**
     * @dev The current version of all upgradeable contracts in the repository.
     */
-    uint64 internal immutable VERSION = encodeVersion(0, 5, 1);
+    uint64 internal immutable VERSION = encodeVersion(0, 5, 2);
 
     /**
     * @dev Return the contracts' version.
@@ -246,13 +245,17 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         major = uint24((v >> 40) & (2**20 - 1)); 
     }
 
+    /**
+    * @dev The staking variant implemented by the contract.
+    */
+    function variant() public virtual pure returns(bytes32);
+
     // solhint-disable func-name-mixedcase
     function __BaseDelegation_init(address initialOwner) internal onlyInitializing {
         __Pausable_init_unchained();
         __Ownable2Step_init_unchained();
         __Ownable_init_unchained(initialOwner);
         __UUPSUpgradeable_init_unchained();
-        __ERC165_init_unchained();
         __BaseDelegation_init_unchained(initialOwner);
     }
 
@@ -369,7 +372,7 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     /**
     * @dev Append an entry to the staking pool's list of validators to record the joining validator's
     * deposit, current reward address and control address. Set the validator's reward address to the
-    * pool contact's address. Increase the validator's deposit by `ùndepositedStake` that is not needed
+    * pool contact's address. Increase the validator's deposit by `undepositedStake` that is not needed
     * to cover {totalPendingWithdrawals}.
     */
     function _join(bytes calldata blsPubKey, address controlAddress) internal onlyOwner virtual {

@@ -5,7 +5,7 @@ pragma solidity ^0.8.26;
 import {Script} from "forge-std/Script.sol";
 import {NonLiquidDelegation} from "src/NonLiquidDelegation.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
-import {Console} from "script/Console.sol";
+import {Console} from "script/Console.s.sol";
 
 contract WithdrawRewards is Script {
     using Strings for string;
