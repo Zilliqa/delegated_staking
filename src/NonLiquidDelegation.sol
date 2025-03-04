@@ -80,6 +80,8 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation, INonLiquidDelegatio
         mapping(address => uint256) taxedSinceLastStaking;
         int256 immutableRewards;
         mapping(address => address) newAddress;
+        mapping(address => uint256) roundingErrors;
+        uint256 totalRoundingErrors;
     }
 
     // keccak256(abi.encode(uint256(keccak256("zilliqa.storage.NonLiquidDelegation")) - 1)) & ~bytes32(uint256(0xff))
@@ -314,17 +316,24 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation, INonLiquidDelegatio
     */
     function rewards(uint64 additionalSteps) public view returns(uint256) {
         NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
-        (uint256 resultInTotal, , , ) = _rewards(additionalSteps);
+        (uint256 resultInTotal, , , , ) = _rewards(additionalSteps);
         resultInTotal -= $.taxedSinceLastStaking[_msgSender()];
         return resultInTotal - resultInTotal * getCommissionNumerator() / DENOMINATOR + $.availableTaxedRewards[_msgSender()];
     }
+
+    /* this breaks the invariant that getRewards() is not decreasing over time and causes underflows
+    function getRewards() public view override returns(uint256 total) {
+        total = super.getRewards(); 
+        NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
+        total -= $.totalRoundingErrors / 1 ether;
+    }*/
 
     /**
     * @dev Return the total amount of taxed rewards the caller is eligible to withdraw.
     */
     function rewards() public view returns(uint256) {
         NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
-        (uint256 resultInTotal, , , ) = _rewards();
+        (uint256 resultInTotal, , , , ) = _rewards();
         resultInTotal -= $.taxedSinceLastStaking[_msgSender()];
         return resultInTotal - resultInTotal * getCommissionNumerator() / DENOMINATOR + $.availableTaxedRewards[_msgSender()];
     }
@@ -394,6 +403,15 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation, INonLiquidDelegatio
     }
 
     /**
+    * @dev Returns the total amount of rewards in `wei * 10**18` that was not paid out due to
+    * rounding errors.
+    */
+    function totalRoundingErrors() public view returns(uint256) {
+        NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
+        return $.totalRoundingErrors;
+    }
+ 
+    /**
     * @dev Make the requested `amount` of taxed rewards available to the caller for staking or
     * withdrawing by traversing the {Staking} history in `1 + additionalSteps`.
     * If `amount == type(uint256).max` then all rewards were requested. In that case return the
@@ -402,14 +420,19 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation, INonLiquidDelegatio
     */
     function _useRewards(uint256 amount, uint64 additionalSteps) internal whenNotPaused returns(uint256, uint256) {
         NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
+        uint256 oldRoundingError = $.roundingErrors[_msgSender()];
         (
             uint256 resultInTotal,
             uint256 resultAfterLastStaking,
             uint64 posInStakingIndices,
-            uint64 nextStakingIndex
+            uint64 nextStakingIndex,
+            uint256 roundingError
         ) = additionalSteps == type(uint64).max ?
             _rewards() :
             _rewards(additionalSteps);
+        $.roundingErrors[_msgSender()] = roundingError;
+        $.totalRoundingErrors -= oldRoundingError;
+        $.totalRoundingErrors += roundingError;
         // the caller has not delegated any stake yet
         if (nextStakingIndex == 0)
             return (0, 0);
@@ -442,7 +465,8 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation, INonLiquidDelegatio
         uint256 resultInTotal,
         uint256 resultAfterLastStaking,
         uint64 posInStakingIndices,
-        uint64 nextStakingIndex
+        uint64 nextStakingIndex,
+        uint256 roundingError
     ) {
         return _rewards(type(uint64).max);
     }
@@ -455,12 +479,14 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation, INonLiquidDelegatio
         uint256 resultInTotal,
         uint256 resultAfterLastStaking,
         uint64 posInStakingIndices,
-        uint64 nextStakingIndex
+        uint64 nextStakingIndex,
+        uint256 roundingError
     ) {
         NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
         uint64 firstStakingIndex;
         uint256 amount;
         uint256 total;
+        roundingError = $.roundingErrors[_msgSender()];
         for (
             posInStakingIndices = $.firstStakingIndex[_msgSender()];
             posInStakingIndices < $.stakingIndices[_msgSender()].length;
@@ -479,12 +505,27 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation, INonLiquidDelegatio
                 nextStakingIndex < $.stakings.length :
                 nextStakingIndex <= $.stakingIndices[_msgSender()][posInStakingIndices + 1]
             ) {
-                if (total > 0)
+                if (total > 0) {
                     resultInTotal += $.stakings[nextStakingIndex].rewards * amount / total;
+                    roundingError +=
+                        1 ether * $.stakings[nextStakingIndex].rewards * amount / total -
+                        1 ether * ($.stakings[nextStakingIndex].rewards * amount / total);
+                }
                 total = $.stakings[nextStakingIndex].total;
                 nextStakingIndex++;
-                if (nextStakingIndex - firstStakingIndex > additionalSteps)
-                    return (resultInTotal, resultAfterLastStaking, posInStakingIndices, nextStakingIndex);
+                if (nextStakingIndex - firstStakingIndex > additionalSteps) {
+                    if (getRewards() >= resultInTotal + roundingError / 1 ether) {
+                        resultInTotal += roundingError / 1 ether;
+                        roundingError -= 1 ether * (roundingError / 1 ether);
+                    }
+                    return (
+                        resultInTotal,
+                        resultAfterLastStaking, 
+                        posInStakingIndices, 
+                        nextStakingIndex, 
+                        roundingError
+                    );
+                }
             }    
         }
 
@@ -493,6 +534,9 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation, INonLiquidDelegatio
             // the last step is to add the rewards accrued since the last staking
             if (total > 0) {
                 resultAfterLastStaking = (int256(getRewards()) - $.immutableRewards).toUint256() * amount / total;
+                roundingError +=
+                    1 ether * (int256(getRewards()) - $.immutableRewards).toUint256() * amount / total -
+                    1 ether * ((int256(getRewards()) - $.immutableRewards).toUint256() * amount / total);
                 resultInTotal += resultAfterLastStaking;
             }
         }
@@ -502,6 +546,10 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation, INonLiquidDelegatio
         // existed during the current call of the function so that we can continue from there
         if (posInStakingIndices > 0)
             posInStakingIndices--;
+        if (getRewards() >= resultInTotal + roundingError / 1 ether) {
+            resultInTotal += roundingError / 1 ether;
+            roundingError -= 1 ether * (roundingError / 1 ether);
+        }
     }
 
     /**

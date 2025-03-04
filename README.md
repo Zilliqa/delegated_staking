@@ -352,8 +352,7 @@ To enable the tests to interact with the Zilliqa 2.0 deposit contract, the contr
 @zilliqa/zq2/=/home/user/zq2/zilliqa/src/contracts/
 ```
 
-To execute end-to-end tests on a local network, set `consensus.staker_withdrawal_period` to 5 and
-`consensus.blocks_per_epoch` to 3 in `config_docker.toml` and run
+To execute end-to-end tests on a local network, set the funds of the first item in `consensus.genesis_accounts` to `5000000000000000000000000`, `consensus.staker_withdrawal_period` to 5 and `consensus.blocks_per_epoch` to 3 in `config_docker.toml` and run
 ```bash
 chmod +x e2e_liquid.sh && ./e2e_liquid.sh
 chmod +x e2e_non-liquid.sh && ./e2e_non-liquid.sh
