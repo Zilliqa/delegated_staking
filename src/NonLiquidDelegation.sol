@@ -121,6 +121,17 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation {
     }
 
     /**
+    * @dev Return the number of `additionalSteps` that would be needed in {withdrawAllRewards}
+    * to withdraw all the rewards the caller is entitled to. Note that this number of steps may
+    * be too high to withdraw at once, in which case the rewards can be withdrawn in multiple
+    * transactions using a lower number of steps each.
+    */
+    function getAdditionalSteps() public view returns(uint256) {
+        NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
+        return $.stakings.length - $.lastTaxedStakingIndex[_msgSender()] - 1;
+    }
+
+    /**
     * @dev Return the history of `stakings`.
     * See {NonLiquidDelegationStorage}.
     */
