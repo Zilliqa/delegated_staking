@@ -317,16 +317,12 @@ using the private key of their account.
 
 Delegators of non-liquid staking pools can replace their address in 2 steps. First, use the private key of your current address to set the new address `0x092E5E57955437876dA9Df998C96e2BE19341670` by running
 ```bash
-cast send --legacy --private-key 0x... \
-0x7a0b7e6d24ede78260c9ddbd98e828b0e11a8ea2 "setNewAddress(address)" \
-0x092E5E57955437876dA9Df998C96e2BE19341670
+cast send --legacy --private-key 0x... 0x7a0b7e6d24ede78260c9ddbd98e828b0e11a8ea2 "setNewAddress(address)" 0x092E5E57955437876dA9Df998C96e2BE19341670
 ```
 
 Second, use the private key of the new address to replace the old address `0xd819fFcE7A58b1E835c25617Db7b46a00888B013` by running
 ```bash
-cast send --legacy --private-key 0x... \
-0x7a0b7e6d24ede78260c9ddbd98e828b0e11a8ea2 "replaceOldAddress(address)" \
-0xd819fFcE7A58b1E835c25617Db7b46a00888B013
+cast send --legacy --private-key 0x... 0x7a0b7e6d24ede78260c9ddbd98e828b0e11a8ea2 "replaceOldAddress(address)" 0xd819fFcE7A58b1E835c25617Db7b46a00888B013
 ```
 
 

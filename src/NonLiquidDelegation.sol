@@ -181,6 +181,14 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation {
     */
     function setNewAddress(address to) public {
         NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
+        require(
+            $.stakingIndices[_msgSender()].length != 0,
+            StakerNotFound(_msgSender())
+        );
+        require(
+            $.stakingIndices[to].length == 0,
+            StakerAlreadyExists(to)
+        );
         $.newAddress[_msgSender()] = to;
     }
 
@@ -219,11 +227,14 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation {
 
     /// @inheritdoc BaseDelegation
     function join(bytes calldata blsPubKey, address controlAddress) public override onlyOwner {
+        // when the validator joins, all available stake that is not deposited yet
+        // will be added to the validator's deposit, but the stake appended to the
+        // history shall only be the validator's own deposit before joining
+        uint256 depositBeforeJoining = getStake(blsPubKey);
         _join(blsPubKey, controlAddress);
-
         // the node's deposit must also be recorded in the staking history otherwise
         // its owner would not benefit from the rewards accrued due to the deposit
-        _append(int256(getStake(blsPubKey)), controlAddress);
+        _append(int256(depositBeforeJoining), controlAddress);
     }
 
     /// @inheritdoc BaseDelegation

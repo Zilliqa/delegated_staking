@@ -8,11 +8,11 @@ import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable/acces
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 /**
- * @notice The contract that all variants of delegated staking contracts are based on.
- * It manages the validators of the staking pool, the unbonding period, the commision
- * rate and the commission receiver, as well as the withdrawal of unstaked funds.
+ * @notice The base contract that all variants of delegated staking contracts inherit.
+ * from. It manages the validators of the staking pool, the unbonding period, commision
+ * rate and commission receiver, as well as the withdrawal of unstaked funds.
  *
- * @dev It is the only contract that calls functions of the `DEPOSIT_CONTRACT`
+ * @dev It is the only contract that calls the functions of the `DEPOSIT_CONTRACT`
  * and might need to be adjusted if the `DEPOSIT_CONTRACT` is upgraded. All variants
  * of delegated staking contracts inherit their {version} from the {BaseDelegation}
  * contract i.e even if the contracts of only one variant change, all variants are
@@ -208,9 +208,14 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     error StakerNotFound(address staker);
 
     /**
+    * @dev Thrown if the caller tried to set its new address to another `staker` address.
+    */
+    error StakerAlreadyExists(address staker);
+
+    /**
     * @dev The current version of all upgradeable contracts in the repository.
     */
-    uint64 internal immutable VERSION = encodeVersion(0, 5, 2);
+    uint64 internal immutable VERSION = encodeVersion(0, 5, 3);
 
     /**
     * @dev Return the contracts' version.
@@ -956,10 +961,10 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     }
 
     /**
-    * @dev Return the staked amount that is currently not deposited
-    * with any of the validators in the pool. 
+    * @dev Return the part of the pool's balance that does not represent
+    * rewards accrued due to the validators' deposits. 
     */
-    function getUndepositedStake() public view returns(uint256) {
+    function getNonRewards() public view returns(uint256) {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
         return $.nonRewards;
     }
