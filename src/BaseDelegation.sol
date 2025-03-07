@@ -464,7 +464,7 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         $.validatorIndex[blsPubKey] = $.validators.length;
 
         bytes memory callData =
-            abi.encodeWithSignature("depositFromPool(bytes,bytes,bytes,address,address)",
+            abi.encodeWithSignature("deposit(bytes,bytes,bytes,address,address)",
                 blsPubKey,
                 peerId,
                 signature,
