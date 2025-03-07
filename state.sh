@@ -32,7 +32,7 @@ owner_zil=$(cast to-unit $x ether)
 x=$(cast rpc eth_getBalance $2 $block | tr -d '"' | cast to-dec --base-in 16)
 staker_zil=$(cast to-unit $x ether)
 
-if [[ "$variant" == "ILiquidDelegation" ]]; then
+if [[ "$variant" == "LiquidStaking" ]]; then
     taxedRewardsBeforeUnstaking=$(cast call $1 "getTaxedRewards()(uint256)" --block $block_num | sed 's/\[[^]]*\]//g')
     echo taxedRewardsBeforeUnstaking = $taxedRewardsBeforeUnstaking
 
@@ -56,7 +56,7 @@ fi
 stake=$(cast call $1 "getStake()(uint256)" --block $block_num | sed 's/\[[^]]*\]//g')
 commissionNumerator=$(cast call $1 "getCommissionNumerator()(uint256)" --block $block_num | sed 's/\[[^]]*\]//g')
 denominator=$(cast call $1 "DENOMINATOR()(uint256)" --block $block_num | sed 's/\[[^]]*\]//g')
-if [[ "$variant" == "ILiquidDelegation" ]]; then
+if [[ "$variant" == "LiquidStaking" ]]; then
     totalSupply=$(cast call $lst "totalSupply()(uint256)" --block $block_num | sed 's/\[[^]]*\]//g')
     if [[ $totalSupply -ne 0 ]]; then
         price=$(bc -l <<< "scale=36; ($stake+$rewardsBeforeUnstaking-($rewardsBeforeUnstaking-$taxedRewardsBeforeUnstaking)*$commissionNumerator/$denominator)/$totalSupply")
@@ -76,10 +76,10 @@ fi
 claimable=$(cast call $1 "getClaimable()(uint256)" --from $2 --block $block_num | sed 's/\[[^]]*\]//g')
 echo staker claimable: $(cast to-unit $claimable ether) ZIL
 
-echo validator deposit: $(cast to-unit $stake ether) ZIL
+echo pool delegated stake: $(cast to-unit $stake ether) ZIL
 
 validatorBalance=$(cast rpc eth_getBalance $1 $block | tr -d '"' | cast to-dec --base-in 16)
-echo validator balance: $(cast to-unit $validatorBalance ether) ZIL
+echo pool balance: $(cast to-unit $validatorBalance ether) ZIL
 
 pendingWithdrawals=$(cast call $1 "totalPendingWithdrawals()(uint256)" --block $block_num | sed 's/\[[^]]*\]//g')
 echo pending withdrawals: $(cast to-unit $pendingWithdrawals ether) ZIL

@@ -20,7 +20,7 @@ block=$(cast rpc eth_blockNumber)
 block_num=$(echo $block | tr -d '"' | cast to-dec --base-in 16)
 
 echo rewardsAfterStaking = $(cast call $1 "getRewards()(uint256)" --block $block_num | sed 's/\[[^]]*\]//g')
-if [[ "$variant" == "ILiquidDelegation" ]]; then
+if [[ "$variant" == "LiquidStaking" ]]; then
     echo taxedRewardsAfterStaking = $(cast call $1 "getTaxedRewards()(uint256)" --block $block_num | sed 's/\[[^]]*\]//g')
 fi
 
@@ -48,15 +48,18 @@ echo rewardsBeforeStaking = $rewardsBeforeStaking
 stake=$(cast call $1 "getStake()(uint256)" --block $block_num | sed 's/\[[^]]*\]//g')
 commissionNumerator=$(cast call $1 "getCommissionNumerator()(uint256)" --block $block_num | sed 's/\[[^]]*\]//g')
 denominator=$(cast call $1 "DENOMINATOR()(uint256)" --block $block_num | sed 's/\[[^]]*\]//g')
-if [[ "$variant" == "ILiquidDelegation" ]]; then
+if [[ "$variant" == "LiquidStaking" ]]; then
     taxedRewardsBeforeStaking=$(cast call $1 "getTaxedRewards()(uint256)" --block $block_num | sed 's/\[[^]]*\]//g')
     echo taxedRewardsBeforeStaking = $taxedRewardsBeforeStaking
 
     lst=$(cast call $1 "getLST()(address)" --block $block_num)
     symbol=$(cast call $lst "symbol()(string)" --block $block_num | tr -d '"')
 
+    price=1
     totalSupply=$(cast call $lst "totalSupply()(uint256)" --block $block_num | sed 's/\[[^]]*\]//g')
-    price=$(bc -l <<< "scale=36; ($stake+$rewardsBeforeStaking-($rewardsBeforeStaking-$taxedRewardsBeforeStaking)*$commissionNumerator/$denominator)/$totalSupply")
+    if [[ $totalSupply -gt 0 ]]; then
+        price=$(bc -l <<< "scale=36; ($stake+$rewardsBeforeStaking-($rewardsBeforeStaking-$taxedRewardsBeforeStaking)*$commissionNumerator/$denominator)/$totalSupply")
+    fi
     price0=$(cast call $1 "getPrice()(uint256)" --block $block_num | sed 's/\[[^]]*\]//g')
 
     echo $symbol price: $price \~ $(cast to-unit $price0 ether)

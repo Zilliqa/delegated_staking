@@ -43,6 +43,8 @@ library WithdrawalQueue {
 
     /**
     * @dev Remove an {Item} from the front of the queue and returns it.
+    *
+    * Revert with {EmptyQueue} if `fifo` is empty. 
     */
     function dequeue(Fifo storage fifo) internal returns(Item memory result) {
         require(fifo.first < fifo.last, EmptyQueue());

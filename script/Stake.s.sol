@@ -5,12 +5,11 @@ pragma solidity ^0.8.26;
 import {Script} from "forge-std/Script.sol";
 import {NonRebasingLST} from "src/NonRebasingLST.sol";
 import {BaseDelegation} from "src/BaseDelegation.sol";
-import {ILiquidDelegation, LiquidDelegation} from "src/LiquidDelegation.sol";
-import {ERC165Checker} from "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
-import {Console} from "script/Console.sol";
+import {LiquidDelegation, LIQUID_VARIANT} from "src/LiquidDelegation.sol";
+import {variant} from "script/CheckVariant.s.sol";
+import {Console} from "script/Console.s.sol";
 
 contract Stake is Script {
-    using ERC165Checker for address;
 
     function run(address payable proxy, uint256 amount) external {
         address staker = msg.sender;
@@ -31,7 +30,7 @@ contract Stake is Script {
             delegation.getRewards()
         );
 
-        if (address(delegation).supportsInterface(type(ILiquidDelegation).interfaceId)) {
+        if (variant(proxy) == LIQUID_VARIANT) {
             NonRebasingLST lst = NonRebasingLST(LiquidDelegation(payable(address(delegation))).getLST());
             Console.log("LST address: %s",
                 address(lst)
@@ -54,7 +53,7 @@ contract Stake is Script {
             value: amount
         }();
 
-        if (address(delegation).supportsInterface(type(ILiquidDelegation).interfaceId)) {
+        if (variant(proxy) == LIQUID_VARIANT) {
             NonRebasingLST lst = NonRebasingLST(LiquidDelegation(payable(address(delegation))).getLST());
             Console.log("Staker balance after: %s wei %s %s",
                 staker.balance,

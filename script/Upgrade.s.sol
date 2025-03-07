@@ -4,13 +4,12 @@ pragma solidity ^0.8.26;
 /* solhint-disable no-console */
 import {Script} from "forge-std/Script.sol";
 import {BaseDelegation} from "src/BaseDelegation.sol";
-import {ILiquidDelegation, LiquidDelegation} from "src/LiquidDelegation.sol";
-import {INonLiquidDelegation, NonLiquidDelegation} from "src/NonLiquidDelegation.sol";
-import {ERC165Checker} from "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
-import {Console} from "script/Console.sol";
+import {LiquidDelegation, LIQUID_VARIANT} from "src/LiquidDelegation.sol";
+import {NonLiquidDelegation, NONLIQUID_VARIANT} from "src/NonLiquidDelegation.sol";
+import {variant} from "script/CheckVariant.s.sol";
+import {Console} from "script/Console.s.sol";
 
 contract Upgrade is Script {
-    using ERC165Checker for address;
 
     function run(address payable proxy) external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
@@ -50,9 +49,9 @@ contract Upgrade is Script {
 
         address payable newImplementation;
 
-        if (address(oldDelegation).supportsInterface(type(ILiquidDelegation).interfaceId))
+        if (variant(proxy) == LIQUID_VARIANT)
             newImplementation = payable(new LiquidDelegation());
-        else if (address(oldDelegation).supportsInterface(type(INonLiquidDelegation).interfaceId))
+        else if (variant(proxy) == NONLIQUID_VARIANT)
             newImplementation = payable(new NonLiquidDelegation());
         else
             return;
