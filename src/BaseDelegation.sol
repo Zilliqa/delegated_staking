@@ -213,7 +213,7 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     // ************************************************************************
 
     /// @dev The current version of all upgradeable contracts in the repository.
-    uint64 internal immutable VERSION = encodeVersion(0, 5, 3);
+    uint64 internal immutable VERSION = encodeVersion(0, 6, 0);
 
     /**
     * @dev Return the contracts' version.
