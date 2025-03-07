@@ -63,7 +63,7 @@ join_one() {
 
 
 
-leavePool(_one() {
+leave_one() {
     # $1 = blsPubKey
     # $2 = privKey
     echo "🔽🔽🔽🔽🔽🔽🔽🔽🔽🔽🔽🔽🔽🔽🔽🔽"
@@ -456,7 +456,7 @@ stake_all() {
 
 
 
-leavePool(_all() {
+leave_all() {
     echo "############################### LEAVING ##############################"
     echo -n "🟢 exposure: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedTotal()(uint256)" | sed 's/\[[^]]*\]//g') ether)+$(echo $(rewards))"
     echo -n "🟢 funds: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether)+0.9*$(cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether)"
@@ -464,28 +464,28 @@ leavePool(_all() {
     echo -n "🟢 total deposited: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether
     echo -n "🟢 immutable rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getImmutableRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
     echo -n "🟢 total rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
-    leavePool(_one $BLS_PUB_KEY_1 $CONTROL_KEY_1
+    leave_one $BLS_PUB_KEY_1 $CONTROL_KEY_1
     echo -n "🟢 exposure: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedTotal()(uint256)" | sed 's/\[[^]]*\]//g') ether)+$(echo $(rewards))"
     echo -n "🟢 funds: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether)+0.9*$(cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether)"
     echo -n "🟢 total delegated: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedTotal()(uint256)" | sed 's/\[[^]]*\]//g') ether
     echo -n "🟢 total deposited: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether
     echo -n "🟢 immutable rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getImmutableRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
     echo -n "🟢 total rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
-    leavePool(_one $BLS_PUB_KEY_2 $CONTROL_KEY_2
+    leave_one $BLS_PUB_KEY_2 $CONTROL_KEY_2
     echo -n "🟢 exposure: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedTotal()(uint256)" | sed 's/\[[^]]*\]//g') ether)+$(echo $(rewards))"
     echo -n "🟢 funds: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether)+0.9*$(cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether)"
     echo -n "🟢 total delegated: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedTotal()(uint256)" | sed 's/\[[^]]*\]//g') ether
     echo -n "🟢 total deposited: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether
     echo -n "🟢 immutable rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getImmutableRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
     echo -n "🟢 total rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
-    leavePool(_one $BLS_PUB_KEY_3 $CONTROL_KEY_3
+    leave_one $BLS_PUB_KEY_3 $CONTROL_KEY_3
     echo -n "🟢 exposure: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedTotal()(uint256)" | sed 's/\[[^]]*\]//g') ether)+$(echo $(rewards))"
     echo -n "🟢 funds: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether)+0.9*$(cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether)"
     echo -n "🟢 total delegated: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedTotal()(uint256)" | sed 's/\[[^]]*\]//g') ether
     echo -n "🟢 total deposited: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether
     echo -n "🟢 immutable rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getImmutableRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
     echo -n "🟢 total rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
-    leavePool(_one $BLS_PUB_KEY_4 $CONTROL_KEY_4
+    leave_one $BLS_PUB_KEY_4 $CONTROL_KEY_4
     #🟪 move the line below to mark the location where execution shall continue when running the script again  🟪
     #🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪'
     echo -n "🟢 exposure: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedTotal()(uint256)" | sed 's/\[[^]]*\]//g') ether)+$(echo $(rewards))"
@@ -560,7 +560,7 @@ report() {
 
 join_all # all validators join the pool
 stake_all # all users stake, withdraw rewards, unstake and claim part of it
-leavePool(_all # all validators leavePool( and withdraw rewards
+leave_all # all validators leave and withdraw rewards
 unstake_all # all users unstake everything and withdraw rewards
 report # print the status
 echo "1️⃣ 1️⃣ 1️⃣ 1️⃣ 1️⃣ 1️⃣ 1️⃣ 1️⃣ 1️⃣ 1️⃣ 1️⃣ 1️⃣ 1️⃣ 1️⃣ 1️⃣ 1️⃣"
@@ -576,7 +576,7 @@ sleep 5s
 
 join_all
 stake_all
-leavePool(_all
+leave_all
 unstake_all
 report
 echo "3️⃣ 3️⃣ 3️⃣ 3️⃣ 3️⃣ 3️⃣ 3️⃣ 3️⃣ 3️⃣ 3️⃣ 3️⃣ 3️⃣ 3️⃣ 3️⃣ 3️⃣ 3️⃣"
