@@ -22,6 +22,12 @@ bytes32 constant LIQUID_VARIANT = 0xfa57cbed4b267d0bc9f2cbdae86b4d1d23ca818308f8
  */
 contract LiquidDelegation is IDelegation, BaseDelegation {
 
+    // ************************************************************************
+    // 
+    //                                 STATE
+    // 
+    // ************************************************************************
+
     /**
     * @dev `lst` is the address of the {NonRebasingLST} token issued by the {LiquidDelegation}.
     * `taxedRewards` is the amount of rewards accrued that the {LiquidDelegation} contract is
@@ -42,6 +48,12 @@ contract LiquidDelegation is IDelegation, BaseDelegation {
             $.slot := LiquidDelegationStorageLocation
         }
     }
+
+    // ************************************************************************
+    // 
+    //                                 VERSION
+    // 
+    // ************************************************************************
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -69,34 +81,14 @@ contract LiquidDelegation is IDelegation, BaseDelegation {
         return LIQUID_VARIANT;
     }
 
-    /// @inheritdoc BaseDelegation
-    function join(bytes calldata blsPubKey, address controlAddress) public override onlyOwner {
-        // deduct the commission from the yet untaxed rewards before calculating the number of shares
-        taxRewards();
-        _stake(getStake(blsPubKey), controlAddress);
-        // increases the deposited stake hence it must be called after calculating the shares
-        _join(blsPubKey, controlAddress);
-    }
+    // ************************************************************************
+    // 
+    //                                 VALIDATORS
+    // 
+    // ************************************************************************
 
     /// @inheritdoc BaseDelegation
-    function leave(bytes calldata blsPubKey) public override {
-        if (!_preparedToLeave(blsPubKey))
-            return;
-        // deduct the commission from the yet untaxed rewards before calculating the amount
-        taxRewards();
-        LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
-        uint256 amount = _unstake(NonRebasingLST($.lst).balanceOf(_msgSender()), _msgSender());
-        uint256 currentDeposit = getStake(blsPubKey);
-        if (amount > currentDeposit) {
-            _initiateLeaving(blsPubKey, currentDeposit);
-            _enqueueWithdrawal(amount - currentDeposit);
-            _decreaseDeposit(amount - currentDeposit);
-        } else
-            _initiateLeaving(blsPubKey, amount);
-    }
-
-    /// @inheritdoc BaseDelegation
-    function deposit(
+    function depositFromPool(
         bytes calldata blsPubKey,
         bytes calldata peerId,
         bytes calldata signature
@@ -105,12 +97,44 @@ contract LiquidDelegation is IDelegation, BaseDelegation {
             _stake(msg.value, _msgSender());
         // the total stake must not be increased before the price is determined
         _increaseStake(msg.value);
-        _deposit(
+        _depositAndAddToPool(
             blsPubKey,
             peerId,
             signature
         );
     } 
+
+    /// @inheritdoc BaseDelegation
+    function joinPool(bytes calldata blsPubKey, address controlAddress) public override onlyOwner {
+        // deduct the commission from the yet untaxed rewards before calculating the number of shares
+        taxRewards();
+        _stake(getDeposit(blsPubKey), controlAddress);
+        // increases the deposited stake hence it must be called after calculating the shares
+        _addToPool(blsPubKey, controlAddress);
+    }
+
+    /// @inheritdoc BaseDelegation
+    function leavePool(bytes calldata blsPubKey) public override {
+        if (!_preparedToLeave(blsPubKey))
+            return;
+        // deduct the commission from the yet untaxed rewards before calculating the amount
+        taxRewards();
+        LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
+        uint256 amount = _unstake(NonRebasingLST($.lst).balanceOf(_msgSender()), _msgSender());
+        uint256 currentDeposit = getDeposit(blsPubKey);
+        if (amount > currentDeposit) {
+            _initiateLeaving(blsPubKey, currentDeposit);
+            _enqueueWithdrawal(amount - currentDeposit);
+            _decreaseDeposit(amount - currentDeposit);
+        } else
+            _initiateLeaving(blsPubKey, amount);
+    }
+
+    // ************************************************************************
+    // 
+    //                       STAKE, REWARDS, COMMISSION
+    // 
+    // ************************************************************************
 
     /**
     * @inheritdoc IDelegation
@@ -137,7 +161,12 @@ contract LiquidDelegation is IDelegation, BaseDelegation {
 
     /**
     * @dev Calculate the shares of the `staker` based on the delegated `value` and mint the
-    * corresponding amount of liquid staking tokens.
+    * corresponding amount of liquid staking tokens (LST).
+    *
+    * Emit {Staked} containing the `staker` address, the `value` staked, and the corresponding
+    * amount of LST minted to the `staker`.
+    *
+    * Revert with {DelegatedAmountTooLow} containing the `value` lower than {MIN_DELEGATION}.
     */
     function _stake(uint256 value, address staker) internal {
         require(value >= MIN_DELEGATION, DelegatedAmountTooLow(value));
@@ -157,7 +186,12 @@ contract LiquidDelegation is IDelegation, BaseDelegation {
     * corresponding to the unstaked liquid staking tokens. Decrease the deposit of the validators
     * in the staking pool by the calculated amount.
     */
-    function unstake(uint256 shares) public override(BaseDelegation, IDelegation) whenNotPaused returns(uint256 amount) {
+    function unstake(uint256 shares)
+        public
+        override(BaseDelegation, IDelegation)
+        whenNotPaused
+        returns(uint256 amount)
+    {
         // if we are in the fundraising phase getRewards() would return 0 and taxedRewards would
         // be greater i.e. the commission calculated in taxRewards() would be negative, therefore
         if (_isActivated())
@@ -170,7 +204,10 @@ contract LiquidDelegation is IDelegation, BaseDelegation {
 
     /**
     * @dev Calculate and return the `amount` of ZIL corresponding to the unstaked `shares` i.e.
-    * liquid staking tokens of the `staker` and burn the unstaked liquid staking tokens.
+    * liquid staking tokens of the `staker` and burn the unstaked liquid staking tokens (LST).
+    *
+    * Emit {Unstaked} containing the `staker` address, the amount of ZIL unstaked, and the
+    * number of LST `shares` burned.
     */
     function _unstake(uint256 shares, address staker) internal returns(uint256 amount) {
         LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
@@ -199,6 +236,11 @@ contract LiquidDelegation is IDelegation, BaseDelegation {
     /**
     * @dev Deduct the commission from the yet untaxed rewards and transfer it to the configured
     * commission receiver address.
+    *
+    * Emit {CommissionPaid} containing the receiver address and the amount transferred.
+    *
+    * Revert with {TransferFailed} containing the reciever address and the amount to be
+    * transferred if the transfer failed.
     */
     function taxRewards() internal {
         LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
@@ -217,6 +259,9 @@ contract LiquidDelegation is IDelegation, BaseDelegation {
 
     /**
     * @inheritdoc IDelegation
+    *
+    * @dev Revert with {StakingPoolNotActivated} if the staking pool has not earned
+    * any rewards yet.
     */
     function stakeRewards() public override(BaseDelegation, IDelegation) onlyOwner {
         require(_isActivated(), StakingPoolNotActivated());

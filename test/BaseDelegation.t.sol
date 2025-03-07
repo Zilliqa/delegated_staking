@@ -79,7 +79,7 @@ abstract contract BaseDelegationTest is Test {
 
     enum DepositMode {Bootstrapping, Fundraising, Transforming}
 
-    function deposit(
+    function depositFromPool(
         BaseDelegation delegation,
         uint256 depositAmount,
         DepositMode mode
@@ -114,7 +114,7 @@ abstract contract BaseDelegationTest is Test {
             vm.startPrank(owner);
             blsPubKey = bytes(hex"01fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c");
             blsPubKey[47] = currentDeploymentId;
-            delegation.deposit{
+            delegation.depositFromPool{
                 value: depositAmount - (mode == DepositMode.Fundraising ? 2 : 0) * preStaked
             }(
                 blsPubKey,
@@ -128,10 +128,10 @@ abstract contract BaseDelegationTest is Test {
         }
 
         if (mode == DepositMode.Transforming)
-            join(delegation, depositAmount, owner, 1);
+            joinPool(delegation, depositAmount, owner, 1);
     }
 
-    function join(
+    function joinPool(
         BaseDelegation delegation,
         uint256 depositAmount,
         address controlAddress,
@@ -158,7 +158,7 @@ abstract contract BaseDelegationTest is Test {
         vm.stopPrank();
 
         vm.startPrank(owner);
-        delegation.join(
+        delegation.joinPool(
             blsPubKey,
             controlAddress
         );
@@ -177,7 +177,7 @@ abstract contract BaseDelegationTest is Test {
         uint256 i;
         uint256 x;
 
-        deposit(BaseDelegation(delegation), 10_000_000 ether, DepositMode.Bootstrapping);
+        depositFromPool(BaseDelegation(delegation), 10_000_000 ether, DepositMode.Bootstrapping);
 
         // wait 2 epochs for the change to the deposit to take affect
         vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);

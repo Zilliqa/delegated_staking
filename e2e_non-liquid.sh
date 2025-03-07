@@ -51,11 +51,11 @@ join_one() {
     else
         echo "🔴 setControlAddress($1, $(cast wallet address $2))"
     fi
-    status=$(cast send --legacy --json --private-key $OWNER_KEY $CONTRACT_ADDRESS "join(bytes,address)" $1 $(cast wallet address $2) | jq '.status') 1>/dev/null
+    status=$(cast send --legacy --json --private-key $OWNER_KEY $CONTRACT_ADDRESS "joinPool(bytes,address)" $1 $(cast wallet address $2) | jq '.status') 1>/dev/null
     if [[ "$status" == "\"0x1\"" ]]; then
-        echo "🟢 join($1, $(cast wallet address $2))"
+        echo "🟢 joinPool($1, $(cast wallet address $2))"
     else
-        echo "🔴 join($1, $(cast wallet address $2))"
+        echo "🔴 joinPool($1, $(cast wallet address $2))"
     fi
     echo -n "🟢 validators: " && cast call $CONTRACT_ADDRESS "validators()((bytes,uint256,bool,bool,bool,bool)[])" | sed 's/ \[[0-9]e[0-9][0-9]\]//g' | sed 's/, true//g' | sed 's/, false//g' | sed 's/0x[0-9a-f]*,//g' | sed 's/( //g' | sed 's/)//g'
     echo "🔼🔼🔼🔼🔼🔼🔼🔼🔼🔼🔼🔼🔼🔼🔼🔼"
@@ -63,7 +63,7 @@ join_one() {
 
 
 
-leave_one() {
+leavePool(_one() {
     # $1 = blsPubKey
     # $2 = privKey
     echo "🔽🔽🔽🔽🔽🔽🔽🔽🔽🔽🔽🔽🔽🔽🔽🔽"
@@ -74,11 +74,11 @@ leave_one() {
     echo -n "🟢 pending withdrawals: " && echo $pending
 
     while [[ "$pending" == "true" ]]; do
-        status=$(cast send --legacy --json --private-key $2 $CONTRACT_ADDRESS "leave(bytes)" $1 | jq '.status') 1>/dev/null
+        status=$(cast send --legacy --json --private-key $2 $CONTRACT_ADDRESS "leavePool(bytes)" $1 | jq '.status') 1>/dev/null
         if [[ "$status" == "\"0x1\"" ]]; then
-            echo "🟢 leave($1)"
+            echo "🟢 leavePool($1)"
         else
-            echo "🔴 leave($1)"
+            echo "🔴 leavePool($1)"
         fi
 
         echo "############################### UNBONDING ##############################"
@@ -96,13 +96,13 @@ leave_one() {
 
     count=$(cast call $CONTRACT_ADDRESS "validators()((bytes,uint256,bool,bool,bool,bool)[])" | grep -c -o "$1")
     if [[ $count -gt 0 ]]; then
-        temp=$(cast send --legacy --gas-limit 1000000 --json --private-key $2 $CONTRACT_ADDRESS "leave(bytes)" $1)
-        #temp=$(cast send --legacy --json --private-key $2 $CONTRACT_ADDRESS "leave(bytes)" $1)
+        temp=$(cast send --legacy --gas-limit 1000000 --json --private-key $2 $CONTRACT_ADDRESS "leavePool(bytes)" $1)
+        #temp=$(cast send --legacy --json --private-key $2 $CONTRACT_ADDRESS "leavePool(bytes)" $1)
         status=$(echo $temp | jq '.status')
         if [[ "$status" == "\"0x1\"" ]]; then
-            echo "🟢 leave($1) $(echo $temp | jq '.transactionHash')"
+            echo "🟢 leavePool($1) $(echo $temp | jq '.transactionHash')"
         else
-            echo "🔴 leave($1) $(echo $temp | jq '.transactionHash')"
+            echo "🔴 leavePool($1) $(echo $temp | jq '.transactionHash')"
         fi
     fi
 
@@ -456,7 +456,7 @@ stake_all() {
 
 
 
-leave_all() {
+leavePool(_all() {
     echo "############################### LEAVING ##############################"
     echo -n "🟢 exposure: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedTotal()(uint256)" | sed 's/\[[^]]*\]//g') ether)+$(echo $(rewards))"
     echo -n "🟢 funds: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether)+0.9*$(cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether)"
@@ -464,28 +464,28 @@ leave_all() {
     echo -n "🟢 total deposited: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether
     echo -n "🟢 immutable rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getImmutableRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
     echo -n "🟢 total rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
-    leave_one $BLS_PUB_KEY_1 $CONTROL_KEY_1
+    leavePool(_one $BLS_PUB_KEY_1 $CONTROL_KEY_1
     echo -n "🟢 exposure: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedTotal()(uint256)" | sed 's/\[[^]]*\]//g') ether)+$(echo $(rewards))"
     echo -n "🟢 funds: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether)+0.9*$(cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether)"
     echo -n "🟢 total delegated: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedTotal()(uint256)" | sed 's/\[[^]]*\]//g') ether
     echo -n "🟢 total deposited: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether
     echo -n "🟢 immutable rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getImmutableRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
     echo -n "🟢 total rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
-    leave_one $BLS_PUB_KEY_2 $CONTROL_KEY_2
+    leavePool(_one $BLS_PUB_KEY_2 $CONTROL_KEY_2
     echo -n "🟢 exposure: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedTotal()(uint256)" | sed 's/\[[^]]*\]//g') ether)+$(echo $(rewards))"
     echo -n "🟢 funds: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether)+0.9*$(cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether)"
     echo -n "🟢 total delegated: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedTotal()(uint256)" | sed 's/\[[^]]*\]//g') ether
     echo -n "🟢 total deposited: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether
     echo -n "🟢 immutable rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getImmutableRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
     echo -n "🟢 total rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
-    leave_one $BLS_PUB_KEY_3 $CONTROL_KEY_3
+    leavePool(_one $BLS_PUB_KEY_3 $CONTROL_KEY_3
     echo -n "🟢 exposure: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedTotal()(uint256)" | sed 's/\[[^]]*\]//g') ether)+$(echo $(rewards))"
     echo -n "🟢 funds: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether)+0.9*$(cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether)"
     echo -n "🟢 total delegated: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedTotal()(uint256)" | sed 's/\[[^]]*\]//g') ether
     echo -n "🟢 total deposited: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether
     echo -n "🟢 immutable rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getImmutableRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
     echo -n "🟢 total rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
-    leave_one $BLS_PUB_KEY_4 $CONTROL_KEY_4
+    leavePool(_one $BLS_PUB_KEY_4 $CONTROL_KEY_4
     #🟪 move the line below to mark the location where execution shall continue when running the script again  🟪
     #🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪'
     echo -n "🟢 exposure: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedTotal()(uint256)" | sed 's/\[[^]]*\]//g') ether)+$(echo $(rewards))"
@@ -560,7 +560,7 @@ report() {
 
 join_all # all validators join the pool
 stake_all # all users stake, withdraw rewards, unstake and claim part of it
-leave_all # all validators leave and withdraw rewards
+leavePool(_all # all validators leavePool( and withdraw rewards
 unstake_all # all users unstake everything and withdraw rewards
 report # print the status
 echo "1️⃣ 1️⃣ 1️⃣ 1️⃣ 1️⃣ 1️⃣ 1️⃣ 1️⃣ 1️⃣ 1️⃣ 1️⃣ 1️⃣ 1️⃣ 1️⃣ 1️⃣ 1️⃣"
@@ -576,7 +576,7 @@ sleep 5s
 
 join_all
 stake_all
-leave_all
+leavePool(_all
 unstake_all
 report
 echo "3️⃣ 3️⃣ 3️⃣ 3️⃣ 3️⃣ 3️⃣ 3️⃣ 3️⃣ 3️⃣ 3️⃣ 3️⃣ 3️⃣ 3️⃣ 3️⃣ 3️⃣ 3️⃣"

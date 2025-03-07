@@ -91,7 +91,7 @@ The output will contain the following information:
   New commission rate: 10.0%
 ```
 
-If you only want to view the current commission rate and leave it unchanged, run
+If you only want to view the current commission rate and leavePool( it unchanged, run
 ```bash
 forge script script/Configure.s.sol --broadcast --legacy --sig "commissionRate(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2
 ```
@@ -120,7 +120,7 @@ The output will contain the following information:
 
 Using the above command the commission can be redirected to a cold wallet, a multisig wallet or a smart contract which splits the commission proportionally to the deposit of the validators who join the staking pool.
 
-If you only want to view the current commission receiver and leave it unchanged, run
+If you only want to view the current commission receiver and leavePool( it unchanged, run
 ```bash
 forge script script/Configure.s.sol --broadcast --legacy --sig "commissionReceiver(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2
 ```
@@ -138,19 +138,19 @@ cast send --legacy --private-key 0x... \
 using the private key that you used to deposit your node, the BLS public key of your node and the address of the staking pool's delegation contract. Afterwards the staking pool contract owner must run
 ```bash
 cast send --legacy --private-key $PRIVATE_KEY \
-0x7a0b7e6d24ede78260c9ddbd98e828b0e11a8ea2 "join(bytes,address)" \
+0x7a0b7e6d24ede78260c9ddbd98e828b0e11a8ea2 "joinPool(bytes,address)" \
 0x92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c \
 0xe0c6f3d59b8cda6ce4fd66418212404a63ad8517
 ```
 using the BLS public key and the original control address that you used when you deposited the node. 
 
-To leave a staking pool, run 
+To leavePool( a staking pool, run 
 ```bash
 cast send --legacy --private-key 0x... \
-0x7a0b7e6d24ede78260c9ddbd98e828b0e11a8ea2 "leave(bytes)" \
+0x7a0b7e6d24ede78260c9ddbd98e828b0e11a8ea2 "leavePool(bytes)" \
 0x92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c
 ```
-using the private key that you used to deposit your node, the BLS public key of your node and the address of the staking pool's delegation contract. Note that your validator can't leave the staking pool as long as there are pending stake withdrawals. The following event emitted by the above transaction indicates whether it was successful or not:
+using the private key that you used to deposit your node, the BLS public key of your node and the address of the staking pool's delegation contract. Note that your validator can't leavePool( the staking pool as long as there are pending stake withdrawals. The following event emitted by the above transaction indicates whether it was successful or not:
 ```solidity
 event ValidatorLeaving(bytes indexed blsPubKey, bool success);
 ```
@@ -161,7 +161,7 @@ cast call 0x7a0b7e6d24ede78260c9ddbd98e828b0e11a8ea2 "pendingWithdrawals(bytes)(
 0x92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c
 ```
 
-If your validator's deposit was lower than the value of your LST balance or staked ZIL then you can claim the difference after the unbonding period as explained in the section about unstaking. If your validator's deposit was higher, then it can't leave the staking pool yet. First, its deposit is automatically reduced to the value of your LST balance or staked ZIL and the difference is redistributed among the validators remaining in the staking pool after the unbonding period. Note that during the unbonding period the amount to be redistributed is unavailable i.e. unstaking is temporarily limited to amounts less than the sum of all other validators' deposits exceeding the required minimum.
+If your validator's deposit was lower than the value of your LST balance or staked ZIL then you can claim the difference after the unbonding period as explained in the section about unstaking. If your validator's deposit was higher, then it can't leavePool( the staking pool yet. First, its deposit is automatically reduced to the value of your LST balance or staked ZIL and the difference is redistributed among the validators remaining in the staking pool after the unbonding period. Note that during the unbonding period the amount to be redistributed is unavailable i.e. unstaking is temporarily limited to amounts less than the sum of all other validators' deposits exceeding the required minimum.
 
 To complete the leaving of your validator, run the following command as soon as the unbonding period is over:
 ```bash
@@ -174,7 +174,7 @@ After leaving the staking pool, your node will remain a validator.
 If you don't have an activated validator node yet, but have already deployed a delegation contract and your balance as the contract owner cover the required minimum stake, you can make a fully synced node the first validator of your staking pool by submitting a transaction with e.g. 10 million ZIL through
 ```bash
 cast send --legacy --value 10000000ether --private-key $PRIVATE_KEY \
-0x7a0b7e6d24ede78260c9ddbd98e828b0e11a8ea2 "deposit(bytes,bytes,bytes)" \
+0x7a0b7e6d24ede78260c9ddbd98e828b0e11a8ea2 "depositFromPool(bytes,bytes,bytes)" \
 0x92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c \
 0x002408011220d5ed74b09dcbe84d3b32a56c01ab721cf82809848b6604535212a219d35c412f \
 0xb14832a866a49ddf8a3104f8ee379d29c136f29aeb8fccec9d7fb17180b99e8ed29bee2ada5ce390cb704bc6fd7f5ce814f914498376c4b8bc14841a57ae22279769ec8614e2673ba7f36edc5a4bf5733aa9d70af626279ee2b2cde939b4bd8a
@@ -187,7 +187,7 @@ echo '{"secret_key":"...", "chain_id":..., "control_address":"0x7a0b7e6d24ede782
 Even if you don't own the required minimum stake to deposit a validator, your delegation contract can start collecting delegated stake and as soon as its funds plus your balance cover the required minimum stake, you can activate a fully synced node as your first validator by providing e.g. 5 million ZIL in addition to your delegation contract's funds in the command introduced above:
 ```bash
 cast send --legacy --value 5000000ether --private-key $PRIVATE_KEY \
-0x7a0b7e6d24ede78260c9ddbd98e828b0e11a8ea2 "deposit(bytes,bytes,bytes)" \
+0x7a0b7e6d24ede78260c9ddbd98e828b0e11a8ea2 "depositFromPool(bytes,bytes,bytes)" \
 0x92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c \
 0x002408011220d5ed74b09dcbe84d3b32a56c01ab721cf82809848b6604535212a219d35c412f \
 0xb14832a866a49ddf8a3104f8ee379d29c136f29aeb8fccec9d7fb17180b99e8ed29bee2ada5ce390cb704bc6fd7f5ce814f914498376c4b8bc14841a57ae22279769ec8614e2673ba7f36edc5a4bf5733aa9d70af626279ee2b2cde939b4bd8a
@@ -277,7 +277,7 @@ cast to-unit $(cast call 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 "getClaimabl
 ```
 with the address of the account that unstaked above as an argument.
 
-Note that if a delegation contract represents a staking pool with multiple validators, each staking and unstaking will increase and decrease all validators' deposit proportionally to their current deposit. In case an unstaking would reduce a validator's deposit below the required minimum, the validator will be forced to leave the staking pool as soon as its pending unstaked deposit is withdrawn by the delegation contract.
+Note that if a delegation contract represents a staking pool with multiple validators, each staking and unstaking will increase and decrease all validators' deposit proportionally to their current deposit. In case an unstaking would reduce a validator's deposit below the required minimum, the validator will be forced to leavePool( the staking pool as soon as its pending unstaked deposit is withdrawn by the delegation contract.
 
 Of course, delegators will not be using the CLI to stake, unstake and claim their funds. To enable delegators to access your staking pool through the staking portal maintained by the Zilliqa team, get in touch and provide your delegation contract address once you have set up the validator node and delegation contract. If you want to integrate staking into your dapp, see the [Development and Testing](#development-and-testing) section below.
 
@@ -307,9 +307,9 @@ cast call 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 "getAdditionalSteps()(uint2
 
 If the result is less than `10000` then it is safe to withdraw all rewards at once, otherwise you can simulate the withdrawal transaction without submitting it by running
 ```bash
-cast estimate 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 "withdrawlAllRewards()" --from 0xd819fFcE7A58b1E835c25617Db7b46a00888B013
+cast estimate 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 "withdrawlAllRewards()" --from 0xd819fFcE7A58b1E835c25617Db7b46a00888B013 --gas-limit 84000000
 ```
-If the estimation fails due to the estimated gas exceeding the block limit, divide `n` between several partial withdrawal transactions.
+If the estimation fails due to the gas exceeding the block limit, divide `n` between several partial withdrawal transactions.
 
 You can also specify the exact amount you want to withdraw. To withdraw e.g. 1000 ZIL using `n = 100`, run
 ```bash
@@ -430,11 +430,12 @@ event RewardPaid(address indexed delegator, uint256 reward);
 
 function getDelegatedAmount() external view returns(uint256 result);
 function getDelegatedTotal() external view returns(uint256 result);
-function setNewAddress(address to) external;
-function replaceOldAddress(address old) external;
-function rewards() external view returns(uint256 total);
 function withdrawAllRewards() external returns(uint256 taxedRewards);
-function withdrawRewards(uint256 amount) external returns(uint256 taxedRewards);
 function stakeRewards() external;
 ```
 and a few more for the non-liquid variant.
+
+To generate and view the comprehensive NatSpec documentation, run
+```bash
+forge doc --serve --open
+```
