@@ -2,15 +2,15 @@
 pragma solidity ^0.8.26;
 
 /**
- * @notice Queue of pending withdrawals. Unstaked amounts are enqueued for withdrawal
- * after the unbonding period. When users claim their available unstaked funds, the
- * corresponding {Item}s are dequeued.
+ * @notice Queue of pending withdrawals. Unstaked amounts are enqueued for
+ * withdrawal after the unbonding period. When users claim their available
+ * unstaked funds, the corresponding {Item}s are dequeued.
  */
 library WithdrawalQueue {
 
     /**
-    * @dev Each item in the queue consists of the `blockNumber` when the unbonding
-    * period ends and the `amount` that can be withdrawn afterwards.
+    * @dev Each item in the queue consists of the `blockNumber` when the
+    * unbonding period ends and the `amount` that can be withdrawn afterwards.
     */
     struct Item {
         uint256 blockNumber;
@@ -54,24 +54,24 @@ library WithdrawalQueue {
     }
 
     /**
-    * @dev Return whether an {Item} at `index` has already been enqueued and is now
-    * ready to be dequeued i.e. its unbonding period is over.
+    * @dev Return whether an {Item} at `index` has already been enqueued and is
+    * now ready to be dequeued i.e. its unbonding period is over.
     */
     function ready(Fifo storage fifo, uint256 index) internal view returns(bool) {
         return index < fifo.last && fifo.items[index].blockNumber <= block.number;
     }
 
     /**
-    * @dev Return whether an {Item} at `index` has already been enqueued but is not
-    * yet ready to be dequeued i.e. its unbonding period is not over.
+    * @dev Return whether an {Item} at `index` has already been enqueued but is
+    * not yet ready to be dequeued i.e. its unbonding period is not over.
     */
     function notReady(Fifo storage fifo, uint256 index) internal view returns(bool) {
         return index < fifo.last && fifo.items[index].blockNumber > block.number;
     }
 
     /**
-    * @dev Return whether the first {Item} is ready to be dequeued i.e. its unbonding
-    * period is over.
+    * @dev Return whether the first {Item} is ready to be dequeued i.e. its
+    * unbonding period is over.
     */
     function ready(Fifo storage fifo) internal view returns(bool) {
         return ready(fifo, fifo.first);

@@ -8,18 +8,20 @@ import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable/acces
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 /**
- * @notice The base contract that all variants of delegated staking contracts inherit.
- * from. It manages the validators of the staking pool, the unbonding period, commision
- * rate and commission receiver, as well as the withdrawal of unstaked funds.
+ * @notice The base contract that all variants of delegated staking contracts
+ * inherit from. It manages the validators of the staking pool and their deposited
+ * stake, the unbonding period and the withdrawal of unstaked funds by delegators,
+ * as well as the commission rate and the commission receiver.
  *
  * @dev It is the only contract that calls the functions of the `DEPOSIT_CONTRACT`
  * and might need to be adjusted if the `DEPOSIT_CONTRACT` is upgraded. All variants
  * of delegated staking contracts inherit their {version} from the {BaseDelegation}
- * contract i.e even if the contracts of only one variant change, all variants are
- * supposed to be upgraded to the same latest version. We use semantic versioning
- * instead of incremental version numbers and keep the original contract file names
+ * contract, i.e even if the contracts of only one variant change, all variants are
+ * supposed to be upgraded to the same latest version. It uses semantic versioning
+ * instead of incremental version numbers and keeps the original contract file names
  * across all versions to avoid updating the `Upgrade` script to import new files.
  */
+// solhint-disable comprehensive-interface
 abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2StepUpgradeable, UUPSUpgradeable {
 
     using WithdrawalQueue for WithdrawalQueue.Fifo;
@@ -44,9 +46,9 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     * @dev The validator's `futureStake` i.e. its deposit after all pending changes
     * become effective is cached to avoid unnecessary calls to the `DEPOSIT_CONTRACT`.
     * The `rewardAddress` and the `controlAddress` are stored so that their original
-    * values can be restored in the `DEPOSIT_CONTRACT` if the validator leavePool(s the pool.
-    * The `pendingWithdrawals` is the total amount of unstaked deposit waiting for the
-    * unbonding period to end. 
+    * values can be restored in the `DEPOSIT_CONTRACT` if the validator leaves the
+    * pool. The `pendingWithdrawals` is the total amount of unstaked deposit waiting
+    * for the unbonding period to end. 
     */
     struct Validator {
         bytes blsPubKey;
@@ -119,21 +121,21 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     // ************************************************************************
 
     /**
-    * @dev Thrown if the amount `withdrawn` from the leaving validator's deposit identified by
-    * `blsPubKey` does not match the amount that had to be `unstaked` from its deposit because
-    * it was not fully covered by the stake held by the validator's control address.
+    * @dev Thrown if the amount `withdrawn` from the leaving validator's deposit
+    * identified by `blsPubKey` is not equal to the amount that was `unstaked`
+    * from its deposit to match the stake held by the validator's control address.
     */
     error UnstakedDepositMismatch(bytes blsPubKey, uint256 withdrawn, uint256 unstaked);
 
     /**
-    * @dev Thrown if the {Validator} identified by `blsPubKey` can not be found in the validator
-    * list of the staking pool.
+    * @dev Thrown if the {Validator} identified by `blsPubKey` can not be found
+    * in the validator list of the staking pool.
     */
     error ValidatorNotFound(bytes blsPubKey);
 
     /**
-    * @dev Thrown if the {Validator} identified by `blsPubKey` trying to join is already
-    * in the staking pool.
+    * @dev Thrown if the {Validator} identified by `blsPubKey` trying to join is
+    * already in the staking pool.
     */
     error ValidatorAlreadyAdded(bytes blsPubKey);
 
@@ -143,29 +145,32 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     error InvalidCaller(address caller, address expectedCaller);
 
     /**
-    * @dev Thrown if a call to the `DEPOSIT_CONTRACT` using `callData` failed and returned `errorData`.
+    * @dev Thrown if a call to the `DEPOSIT_CONTRACT` using `callData` failed
+    * and returned `errorData`.
     */
     error DepositContractCallFailed(bytes callData, bytes errorData);
 
     /**
-    * @dev Thrown if the `status` of the {Validator} identified by `blsPubKey` is `currentStatus`
-    * instead of `expectedStatus`.
+    * @dev Thrown if the `status` of the {Validator} identified by `blsPubKey`
+    * is `currentStatus` instead of `expectedStatus`.
     */
     error InvalidValidatorStatus(bytes blsPubKey, ValidatorStatus currentStatus, ValidatorStatus expectedStatus);
 
     /**
-    * @dev Thrown if the transfer of `amount` commissions, rewards or unstaked funds to `recipient` failed.
+    * @dev Thrown if the transfer of `amount` commissions, rewards or unstaked
+    * funds to `recipient` failed.
     */
     error TransferFailed(address recipient, uint256 amount);
 
     /**
-    * @dev Thrown if the validator identified by `blsPubKey` has `amount` of withdrawals pendinbg
-    * when it should not have any.
+    * @dev Thrown if the validator identified by `blsPubKey` has `amount`
+    * of withdrawals pending when it should not have any.
     */
     error WithdrawalsPending(bytes blsPubKey, uint256 amount);
 
     /**
-    * @dev Thrown if the staking pool has less undeposited stake `available` than `required`.
+    * @dev Thrown if the staking pool has less undeposited stake `available`
+    * than `required`.
     */
     error InsufficientUndepositedStake(uint256 available, uint256 required);
 
@@ -185,14 +190,14 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     error DelegatedAmountTooLow(uint256 amount);
 
     /**
-    * @dev Thrown if the `requested` amount to be unstaked or reward to be withdrawn is more
-    * than currently `available`.
+    * @dev Thrown if the `requested` amount to be unstaked or reward to be
+    * withdrawn is more than currently `available`.
     */
     error RequestedAmountTooHigh(uint256 requested, uint256 available);
 
     /**
-    * @dev Thrown if the operation requires the staking pool to be activated i.e.
-    * at least one validator to be deposited.
+    * @dev Thrown if the operation requires the staking pool to be activated
+    * i.e. at least one validator to be deposited.
     */
     error StakingPoolNotActivated();
 
@@ -232,10 +237,10 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     /**
     * @dev Return the version number composed of the `major`, `minor` and `patch` version.
     *
-    * Revert with {InvalidVersionNumber} containing the `major`, `minor` or `patch` version
-    * number if it is has 20 bits or more.
+    * Revert with {InvalidVersionNumber} containing the `major`, `minor` or `patch`
+    * version number if it is has 20 bits or more.
     */
-    function encodeVersion(uint24 major, uint24 minor, uint24 patch) pure public returns(uint64) {
+    function encodeVersion(uint24 major, uint24 minor, uint24 patch) public pure returns(uint64) {
         require(major < 2**20, InvalidVersionNumber(major));
         require(minor < 2**20, InvalidVersionNumber(minor));
         require(patch < 2**20, InvalidVersionNumber(patch));
@@ -245,14 +250,14 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     /**
     * @dev Decompose the version number `v` into `major`, `minor` and `patch` version.
     */
-    function decodeVersion(uint64 v) pure public returns(uint24 major, uint24 minor, uint24 patch) {
+    function decodeVersion(uint64 v) public pure returns(uint24 major, uint24 minor, uint24 patch) {
         patch = uint24(v & (2**20 - 1));
         minor = uint24((v >> 20) & (2**20 - 1)); 
         major = uint24((v >> 40) & (2**20 - 1)); 
     }
 
     /**
-    * @dev The staking variant implemented by the contract.
+    * @dev Return the staking variant identifier implemented by the contract.
     */
     function variant() public virtual pure returns(bytes32);
 
@@ -271,8 +276,8 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     }
 
     /**
-    * @dev Deprecated part of the storage layout used in version 0.2.x that needs to be
-    * modified during the migration to higher versions.
+    * @dev Deprecated part of the storage layout used in version 0.2.x that needs
+    * to be modified during the migration to higher versions.
     */
     struct DeprecatedStorage {
         bytes blsPubKey;
@@ -280,10 +285,11 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     }
 
     /**
-    * @dev Perform storage modifications needed to upgrade `fromVersion` to the current {VERSION}.
+    * @dev Perform storage modifications needed to upgrade `fromVersion` to the
+    * current {VERSION}.
     *
-    * Revert with {DepositContractCallFailed} containing the call data and the error data returned
-    * if the call to the `DEPOSIT_CONTRACT` fails.
+    * Revert with {DepositContractCallFailed} containing the call data and the
+    * error data returned if the call to the `DEPOSIT_CONTRACT` fails.
     */
     function migrate(uint64 fromVersion) internal {
 
@@ -325,8 +331,9 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
             peerIdLength := sload(add(BaseDelegationStorageLocation, 1))
         }
 
-        // if the upgraded contract hadn't been migrated yet then the peerIdLength stored
-        // in the same slot as activated would be larger, but it was overwritten with true
+        // if the upgraded contract hadn't been migrated yet then the
+        // peerIdLength stored in the same slot as activated would be larger,
+        // but it was overwritten with true
         if (peerIdLength == 1)
             return;
 
@@ -353,10 +360,12 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
 
         $.validatorIndex[temp.blsPubKey] = $.validators.length;
 
-        // it overwrites the peerId length with 1 and prevents repeating the whole migration again
+        // it overwrites the peerId length with 1 and prevents repeating the
+        // whole migration again
         $.activated = true;
 
-        // remove the blsPubKey stored in the same slot at the validatorIndex of 0x before the migration 
+        // remove the blsPubKey stored in the same slot at the validatorIndex
+        // of 0x before the migration 
         delete $.validatorIndex[""];
     }
 
@@ -377,10 +386,10 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     /// @dev Emitted when validator identified by `blsPubKey` joins the staking pool.
     event ValidatorJoined(bytes indexed blsPubKey);
     
-    /// @dev Emitted when validator identified by `blsPubKey` completes leaving the staking pool.
+    /// @dev Emitted when validator identified by `blsPubKey` completes leaving of the staking pool.
     event ValidatorLeft(bytes indexed blsPubKey);
 
-    /// @dev Emitted when validator identified by `blsPubKey` requests leaving the staking pool.
+    /// @dev Emitted when validator identified by `blsPubKey` requests leaving of the staking pool.
     event ValidatorLeaving(bytes indexed blsPubKey, bool success);
 
     /**
@@ -392,10 +401,10 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     }
 
     /**
-    * @dev Turn a fully synced node into a validator using the stake in the pool's balance.
-    * Must be called by the contract owner. The staking pool must have at least the minimum
-    * stake required of validators in its balance including the amount transferred by the
-    * contract owner in the current transaction.
+    * @dev Turn a fully synced node into a validator using the stake in the pool's
+    * balance. It must be called by the contract owner. The staking pool must have
+    * at least the minimum stake required of validators in its balance including
+    * the amount transferred by the contract owner in the current transaction.
     */
     function depositFromPool(
         bytes calldata blsPubKey,
@@ -404,45 +413,51 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     ) public virtual payable;
 
     /**
-    * @dev Add the validator identified by `blsPubKey` to the staking pool. Can be called by
-    * the contract owner if the `controlAddress` has called the `setControlAddress` function
-    * of the `DEPOSIT_CONTRACT` before. The joining validator's deposit is treated as if staked
-    * by the `controlAddress`. The `controlAddress` is restored in the `DEPOSIT_CONTRACT` when
-    * the validator leavePool(s the pool later.
+    * @dev Add the validator identified by `blsPubKey` to the staking pool. It
+    * can be called by the contract owner if the `controlAddress` has called the
+    * `setControlAddress` function of the `DEPOSIT_CONTRACT` before. The joining
+    * validator's deposit is treated as if staked by the `controlAddress`. The
+    * `controlAddress` is restored in the `DEPOSIT_CONTRACT` when the validator
+    * leaves the pool later.
     */
-    function joinPool(bytes calldata blsPubKey, address controlAddress) public virtual;
+    function joinPool(
+        bytes calldata blsPubKey,
+        address controlAddress
+    ) public virtual;
 
     /**
-    * @dev Remove the validator identified by `blsPubKey` from the staking pool. Must be
-    * called by the validator's original control address.
+    * @dev Release the validator identified by `blsPubKey` from the staking pool.
+    *It must be called by the validator's original control address.
     *
-    * If there are pending withdrawals from the validator's deposit, the validator can
-    * not proceed with leaving, but no further deposit withdrawals will be initiated
+    * If there are pending withdrawals from the validator's deposit, the validator
+    * can't proceed with leaving, but no further deposit withdrawals will be initiated
     * by delegators' unstaking requests. As soon as the unbonding period of the last
-    * pending deposit withdrawal is over, {leavePool} must be called again to proceed with
-    * one of the following scenarios:
+    * pending deposit withdrawal is over, {leavePool} must be called again to proceed
+    * with one of the following scenarios:
     * 
     * 1. If the caller's current stake is higher than the validator's current deposit
     * then the caller can withdraw the surplus after the unbonding period.
     *
     * 2. If the validator's deposit is higher than the caller's stake then the deposit
     * is reduced to match the caller's stake unless it becomes lower than the minimum
-    * deposit required and reverts the transaction. If {leavePool} was successful the control
-    * address must call {BaseDelegation-completeLeaving} after the unbonding period to
-    * withdraw the unstaked surplus from the validator's deposit and distribute it among
-    * the validators remaining in the pool.
+    * deposit required and reverts the transaction. If {leavePool} was successful the
+    * control address must call {BaseDelegation-completeLeaving} after the unbonding
+    * period to withdraw the unstaked surplus from the validator's deposit and to
+    * distribute it among the validators remaining in the pool.
     */
-    function leavePool(bytes calldata blsPubKey) public virtual;
+    function leavePool(
+        bytes calldata blsPubKey
+    ) public virtual;
 
     /**
-    * @dev Append an entry to the staking pool's list of validators. Use the pool contract's
-    * owner address as reward address and control address in the entry. Register the validator
-    * by transferring the available stake to the `DEPOSIT_CONTRACT`.
+    * @dev Append an entry to the staking pool's list of validators. Use the pool
+    * contract's owner address as reward address and control address in the entry.
+    * Register the validator by transferring the available stake to `DEPOSIT_CONTRACT`.
     *
     * Emit {ValidatorJoined} containing the `blsPubKey` of the validator.
     *
-    * Revert with {DepositContractCallFailed} containing the call data and the error data
-    * returned if the call to the `DEPOSIT_CONTRACT` fails.
+    * Revert with {DepositContractCallFailed} containing the call data and the
+    * error data returned if the call to the `DEPOSIT_CONTRACT` fails.
     */
     function _depositAndAddToPool(
         bytes calldata blsPubKey,
@@ -481,20 +496,24 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     }
 
     /**
-    * @dev Append an entry to the staking pool's list of validators to record the joining validator's
-    * deposit, current reward address and control address. Set the validator's reward address to the
-    * pool contact's address. Increase the validator's deposit by `undepositedStake` that is not needed
-    * to cover {totalPendingWithdrawals}.
+    * @dev Append an entry to the staking pool's list of validators to record
+    * the joining validator's deposit, current reward address and control address.
+    * Set the validator's reward address to the pool contact's address. Increase
+    * the validator's deposit by `undepositedStake` that is not needed to cover
+    * {totalPendingWithdrawals}.
     *
     * Emit {ValidatorJoined} containing the `blsPubKey` of the validator.
     *
-    * Revert with {DepositContractCallFailed} containing the call data and the error data returned
-    * if the call to the `DEPOSIT_CONTRACT` fails.
+    * Revert with {DepositContractCallFailed} containing the call data and
+    * the error data returned if the call to the `DEPOSIT_CONTRACT` fails.
     *
-    * Revert with {ValidatorAlreadyAdded} containing `blsPubKey` if the validator identified by it
-    * has already been added to the staking pool.
+    * Revert with {ValidatorAlreadyAdded} containing `blsPubKey` if the
+    * validator identified by it has already been added to the staking pool.
     */
-    function _addToPool(bytes calldata blsPubKey, address controlAddress) internal onlyOwner virtual {
+    function _addToPool(
+        bytes calldata blsPubKey,
+        address controlAddress
+    ) internal onlyOwner virtual {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
         $.activated = true;
         require($.validatorIndex[blsPubKey] == 0, ValidatorAlreadyAdded(blsPubKey));
@@ -551,7 +570,9 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     * Revert with {ValidatorNotFound} containing `blsPubKey` if the validator
     * identified by it is not part of the staking pool.
     */
-    function _preparedToLeave(bytes calldata blsPubKey) internal virtual returns(bool prepared) {
+    function _preparedToLeave(
+        bytes calldata blsPubKey
+    ) internal virtual returns(bool prepared) {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
         uint256 i = $.validatorIndex[blsPubKey];
         require(i-- > 0, ValidatorNotFound(blsPubKey));
@@ -563,26 +584,31 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     }
 
     /**
-    * @dev Unstake the difference between the `leavingStake` of the original control
-    * address and the validator's current deposit. If there is no difference call
-    * {_removeFromPool} to remove the validator.
+    * @dev Unstake the difference between the `leavingStake` of the original
+    * control address and the validator's current deposit. If there is no
+    * difference call {_removeFromPool} to remove the validator.
     *
-    * Revert with {DepositContractCallFailed} containing the call data and the error
-    * data returned if the call to the `DEPOSIT_CONTRACT` fails.
+    * Revert with {DepositContractCallFailed} containing the call data and the
+    * error data returned if the call to the `DEPOSIT_CONTRACT` fails.
     *
-    * Revert with {ValidatorNotFound} containing `blsPubKey` if the validator identified
-    * by it is not part of the staking pool.
+    * Revert with {ValidatorNotFound} containing `blsPubKey` if the validator
+    * identified by it is not part of the staking pool.
     *
-    * Revert with {InvalidCaller} containing the address of the caller and the address of
-    * that validator's original control address that was expected to call the function.
+    * Revert with {InvalidCaller} containing the address of the caller and the
+    * address of that validator's original control address that was expected to
+    * call the function.
     *
-    * Revert with {InvalidValidatorStatus} containing the validator's `blsPubKey`, its
-    * current status and the expected status.
+    * Revert with {InvalidValidatorStatus} containing the validator's `blsPubKey`,
+    * its current status and the expected status.
     *
-    * Revert with {WithdrawalsPending} containing the `blsPubKey` and the total amount of
-    * pending withdrawals from the validator's deposit that prevent the validator's leaving.
+    * Revert with {WithdrawalsPending} containing the `blsPubKey` and the total
+    * amount of pending withdrawals from the validator's deposit that prevent
+    * the validator's leaving.
     */
-    function _initiateLeaving(bytes calldata blsPubKey, uint256 leavingStake) internal virtual {
+    function _initiateLeaving(
+        bytes calldata blsPubKey,
+        uint256 leavingStake
+    ) internal virtual {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
         uint256 i = $.validatorIndex[blsPubKey];
         require(i-- > 0, ValidatorNotFound(blsPubKey));
@@ -615,22 +641,23 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     }
 
     /**
-    * @dev Try to withdraw the deposit unstaked in {_initiateLeaving} and if successful
-    * i.e. the unbonding period is over, distribute the withdrawn amount among the other
-    * validators to increase their deposit. If there is no unstaked deposit to withdraw
-    * call {_removeFromPool} to remove the validator.
+    * @dev Try to withdraw the deposit unstaked in {_initiateLeaving} and if
+    * successful i.e. the unbonding period is over, distribute the withdrawn
+    * amount among the other validators to increase their deposit. If there is
+    * no unstaked deposit to withdraw call {_removeFromPool} to remove the validator.
     *
-    * Revert with {DepositContractCallFailed} containing the call data and the error data
-    * returned if the call to the `DEPOSIT_CONTRACT` fails.
+    * Revert with {DepositContractCallFailed} containing the call data and the
+    * error data returned if the call to the `DEPOSIT_CONTRACT` fails.
     *
-    * Revert with {ValidatorNotFound} containing `blsPubKey` if the validator identified
-    * by it is not part of the staking pool.
+    * Revert with {ValidatorNotFound} containing `blsPubKey` if the validator
+    * identified by it is not part of the staking pool.
     *
-    * Revert with {InvalidCaller} containing the address of the caller and the address of
-    * that validator's original control address that was expected to call the function.
+    * Revert with {InvalidCaller} containing the address of the caller and the
+    * address of that validator's original control address that was expected to
+    * call the function.
     *
-    * Revert with {InvalidValidatorStatus} containing the validator's `blsPubKey`, its
-    * current status and the expected status.
+    * Revert with {InvalidValidatorStatus} containing the validator's `blsPubKey`,
+    * its current status and the expected status.
     */
     function completeLeaving(bytes calldata blsPubKey) public virtual {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
@@ -664,8 +691,8 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     }
 
     /**
-    * @dev Set the validator's reward address and control address to
-    * the original value and remove the entry from the validator list.
+    * @dev Set the validator's reward address and control address to the
+    * original value and remove the entry from the validator list.
     *
     * Emit {ValidatorLeft} containing the `blsPubKey` of the validator.
     *
@@ -705,11 +732,12 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     }
 
     /**
-    * @dev Return whether the validator has any pending withdrawals. The withdrawal necessary to match
-    * the stake of the control address when the validator's `status` is `ReadyToLeave` does not count.
+    * @dev Return whether the validator has any pending withdrawals. The withdrawal
+    * required to match the stake of the control address when the validator's `status`
+    * is `ReadyToLeave` does not count.
     *
-    * Revert with {ValidatorNotFound} containing `blsPubKey` if the validator identified by it is not
-    * part of the staking pool.
+    * Revert with {ValidatorNotFound} containing `blsPubKey` if the validator
+    * identified by it is not part of the staking pool.
     */
     function pendingWithdrawals(bytes calldata blsPubKey) public virtual view returns(bool) {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
@@ -719,9 +747,9 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     }
 
     /**
-    * @dev Return the `total` pending withdrawals of all validators in the pool. The withdrawal
-    * necessary to match the stake of the control address when the validator's `status` is
-    * `ReadyToLeave` does not count.
+    * @dev Return the `total` pending withdrawals of all validators in the pool.
+    * The withdrawal necessary to match the stake of the control address when the
+    * validator's `status` is `ReadyToLeave` does not count.
     */
     function totalPendingWithdrawals() public virtual view returns(uint256 total) {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
@@ -858,12 +886,12 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     }
 
     /**
-    * @dev Return the deposit of the validator identified by `blsPubKey`
-    * after applying all pending changes to it. Note that the validator
-    * does not have to be part of the staking pool.
+    * @dev Return the deposit of the validator identified by `blsPubKey` after
+    * applying all pending changes to it. Note that the validator does not have
+    * to be part of the staking pool.
     *
-    * Revert with {DepositContractCallFailed} containing the call data and
-    * the error data returned if the call to the `DEPOSIT_CONTRACT` fails.
+    * Revert with {DepositContractCallFailed} containing the call data and the
+    * error data returned if the call to the `DEPOSIT_CONTRACT` fails.
     */
     function getDeposit(bytes calldata blsPubKey) public virtual view returns(uint256) {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
@@ -887,10 +915,10 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     uint256 public constant MIN_DELEGATION = 10 ether;
 
     /**
-    * @dev Increase `nonRewards` to reflect the amount of stake withdrawn from the
-    * validators' deposits and added to the contract's balance.
+    * @dev Increase `nonRewards` to reflect the amount of stake withdrawn from
+    * the validators' deposits and added to the contract's balance.
     *
-    * Revert with {InvalidCaller} containing the sender if it's not the `DEPOSIT_CONTRACT`.
+    * Revert with {InvalidCaller} containing the sender if it's not `DEPOSIT_CONTRACT`.
     */
     receive() external payable {
         require(
@@ -912,8 +940,8 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     }
 
     /**
-    * @dev Increase the `nonRewards` portion of the balance by the `amount` either staked
-    * by a delegator or staked out of the rewards in the contract balance.
+    * @dev Increase the `nonRewards` portion of the balance by the `amount` either
+    * staked by a delegator or staked out of the rewards in the contract balance.
     */
     function _increaseStake(uint256 amount) internal {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
@@ -936,8 +964,8 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     *
     * @dev Emit {Claimed} containing the caller address and the total amount transferred.
     *
-    * Revert with {TransferFailed} containing the caller address and the amount to be
-    * transferred if the transfer failed.
+    * Revert with {TransferFailed} containing the caller address and the amount
+    * to be transferred if the transfer failed.
     */
     function claim() public virtual whenNotPaused {
         uint256 total = _dequeueWithdrawals();
@@ -1088,8 +1116,8 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     /**
     * @dev Set the commission rate to `_commissionNumerator / DENOMINATOR`.
     *
-    * Revert with {InvalidCommissionRate} containing `_commissionNumerator` if it's greater
-    * or equal to the {DENOMINATOR}.
+    * Revert with {InvalidCommissionRate} containing `_commissionNumerator` if
+    * it's greater or equal to the {DENOMINATOR}.
     */
     function setCommissionNumerator(uint256 _commissionNumerator) public virtual onlyOwner {
         require(_commissionNumerator < DENOMINATOR, InvalidCommissionRate(_commissionNumerator));
@@ -1113,8 +1141,8 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     }
 
     /**
-    * @dev Set the address the commission is to be transferred to. Must be called by the
-    * contract owner.
+    * @dev Set the address the commission is to be transferred to. It must be
+    * called by the contract owner.
     */
     function setCommissionReceiver(address _commissionReceiver) public virtual onlyOwner {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();

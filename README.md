@@ -437,5 +437,5 @@ and a few more for the non-liquid variant.
 
 To generate and view the comprehensive NatSpec documentation, run
 ```bash
-forge doc --serve --open
+forge doc --serve --open --port 3001
 ```
