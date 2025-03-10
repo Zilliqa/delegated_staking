@@ -53,7 +53,7 @@ interface IDelegation {
 
     /**
     * @notice Transfer all outstanding commissions to the configured receiver.
-    * Must be called by the contract owner.
+    * It must be called by the contract owner.
     */
     function collectCommission() external;
 
