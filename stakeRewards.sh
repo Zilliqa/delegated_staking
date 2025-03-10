@@ -16,7 +16,7 @@ fi
 
 owner=$(cast call $1 "owner()(address)" --block latest)
 
-if [ "$variant" == "ILiquidDelegation" ] && [ "$staker" != "$owner" ]; then
+if [ "$variant" == "LiquidStaking" ] && [ "$staker" != "$owner" ]; then
     echo Rewards must be staked by the validator and it is not $staker
     exit 1
 fi
@@ -64,7 +64,7 @@ echo rewardsBeforeStaking = $rewardsBeforeStaking
 echo taxedRewardsBeforeStaking = $taxedRewardsBeforeStaking
 echo depositBeforeStaking = $depositBeforeStaking
 
-if [[ "$variant" == "ILiquidDelegation" ]];  then
+if [[ "$variant" == "LiquidStaking" ]];  then
     echo validator commission - gas fee = $(bc -l <<< "scale=18; $ownerWeiAfter-$ownerWeiBefore") wei
 else
     echo staker gas fee = $(bc -l <<< "scale=18; $stakerWeiAfter-$stakerWeiBefore") wei

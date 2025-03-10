@@ -51,11 +51,11 @@ join_one() {
     else
         echo "🔴 setControlAddress($1, $(cast wallet address $2))"
     fi
-    status=$(cast send --legacy --json --private-key $OWNER_KEY $CONTRACT_ADDRESS "join(bytes,address)" $1 $(cast wallet address $2) | jq '.status') 1>/dev/null
+    status=$(cast send --legacy --json --private-key $OWNER_KEY $CONTRACT_ADDRESS "joinPool(bytes,address)" $1 $(cast wallet address $2) | jq '.status') 1>/dev/null
     if [[ "$status" == "\"0x1\"" ]]; then
-        echo "🟢 join($1, $(cast wallet address $2))"
+        echo "🟢 joinPool($1, $(cast wallet address $2))"
     else
-        echo "🔴 join($1, $(cast wallet address $2))"
+        echo "🔴 joinPool($1, $(cast wallet address $2))"
     fi
     echo -n "🟢 validators: " && cast call $CONTRACT_ADDRESS "validators()((bytes,uint256,bool,bool,bool,bool)[])" | sed 's/ \[[0-9]e[0-9][0-9]\]//g' | sed 's/, true//g' | sed 's/, false//g' | sed 's/0x[0-9a-f]*,//g' | sed 's/( //g' | sed 's/)//g'
     echo "🔼🔼🔼🔼🔼🔼🔼🔼🔼🔼🔼🔼🔼🔼🔼🔼"
@@ -74,11 +74,11 @@ leave_one() {
     echo -n "🟢 pending withdrawals: " && echo $pending
 
     while [[ "$pending" == "true" ]]; do
-        status=$(cast send --legacy --json --private-key $2 $CONTRACT_ADDRESS "leave(bytes)" $1 | jq '.status') 1>/dev/null
+        status=$(cast send --legacy --json --private-key $2 $CONTRACT_ADDRESS "leavePool(bytes)" $1 | jq '.status') 1>/dev/null
         if [[ "$status" == "\"0x1\"" ]]; then
-            echo "🟢 leave($1)"
+            echo "🟢 leavePool($1)"
         else
-            echo "🔴 leave($1)"
+            echo "🔴 leavePool($1)"
         fi
 
         echo "############################### UNBONDING ##############################"
@@ -96,13 +96,13 @@ leave_one() {
 
     count=$(cast call $CONTRACT_ADDRESS "validators()((bytes,uint256,bool,bool,bool,bool)[])" | grep -c -o "$1")
     if [[ $count -gt 0 ]]; then
-        temp=$(cast send --legacy --gas-limit 1000000 --json --private-key $2 $CONTRACT_ADDRESS "leave(bytes)" $1)
-        #temp=$(cast send --legacy --json --private-key $2 $CONTRACT_ADDRESS "leave(bytes)" $1)
+        temp=$(cast send --legacy --gas-limit 1000000 --json --private-key $2 $CONTRACT_ADDRESS "leavePool(bytes)" $1)
+        #temp=$(cast send --legacy --json --private-key $2 $CONTRACT_ADDRESS "leavePool(bytes)" $1)
         status=$(echo $temp | jq '.status')
         if [[ "$status" == "\"0x1\"" ]]; then
-            echo "🟢 leave($1) $(echo $temp | jq '.transactionHash')"
+            echo "🟢 leavePool($1) $(echo $temp | jq '.transactionHash')"
         else
-            echo "🔴 leave($1) $(echo $temp | jq '.transactionHash')"
+            echo "🔴 leavePool($1) $(echo $temp | jq '.transactionHash')"
         fi
     fi
 
