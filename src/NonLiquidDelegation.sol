@@ -111,7 +111,7 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation {
     * @dev Let {BaseDelegation} migrate `fromVersion` to the current `VERSION`.
     */
     function reinitialize(uint64 fromVersion) public reinitializer(VERSION) {
-        migrate(fromVersion);
+        _migrate(fromVersion);
     }
 
     /**
@@ -256,7 +256,7 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation {
     * @dev Set an address that is supposed to replace the caller as delegator.
     * The previously set address is overwritten or deleted if `to == address(0)`.
     *
-    * Revert with {StakerNotFound} containing the caller address it can't be
+    * Revert with {StakerNotFound} containing the caller address if it can't be
     * found among the stakers.
     *
     * Revert with {StakerAlreadyExists} containing the `to` address if it is
@@ -413,13 +413,6 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation {
             $.availableTaxedRewards[_msgSender()];
     }
 
-    /* breaks the invariant that getRewards() is not decreasing and causes underflows
-    function getRewards() public view override returns(uint256 total) {
-        total = super.getRewards(); 
-        NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
-        total -= $.totalRoundingErrors / 1 ether;
-    }*/
-
     /**
     * @dev Return the total amount of taxed rewards the caller is eligible to withdraw.
     */
@@ -442,7 +435,7 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation {
     * Revert with {TransferFailed} containing the reciever address and the amount
     * to be transferred if the transfer failed.
     */
-    function taxRewards(uint256 untaxedRewards) internal returns (uint256) {
+    function _taxRewards(uint256 untaxedRewards) internal returns (uint256) {
         NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
         uint256 commission = untaxedRewards * getCommissionNumerator() / DENOMINATOR;
         if (commission == 0)
@@ -549,7 +542,7 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation {
     function _useRewards(
         uint256 amount,
         uint64 additionalSteps
-    ) internal whenNotPaused returns(uint256, uint256) {
+    ) internal returns(uint256, uint256) {
         NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
         uint256 oldRoundingError = $.roundingErrors[_msgSender()];
         (
@@ -579,7 +572,7 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation {
             resultAfterLastStaking,
             resultInTotal - $.taxedSinceLastStaking[_msgSender()]
         );
-        uint256 taxedRewards = taxRewards(resultInTotal);
+        uint256 taxedRewards = _taxRewards(resultInTotal);
         $.availableTaxedRewards[_msgSender()] += taxedRewards;
         $.firstStakingIndex[_msgSender()] = posInStakingIndices;
         $.lastTaxedStakingIndex[_msgSender()] = nextStakingIndex - 1;

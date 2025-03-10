@@ -67,7 +67,7 @@ contract LiquidDelegation is IDelegation, BaseDelegation {
     * @dev Let {BaseDelegation} migrate `fromVersion` to the current  `VERSION`.
     */
     function reinitialize(uint64 fromVersion) public reinitializer(VERSION) {
-        migrate(fromVersion);
+        _migrate(fromVersion);
     }
 
     /**
@@ -118,7 +118,7 @@ contract LiquidDelegation is IDelegation, BaseDelegation {
     ) public override onlyOwner {
         // deduct the commission from the yet untaxed rewards
         // before calculating the number of shares
-        taxRewards();
+        _taxRewards();
         _stake(getDeposit(blsPubKey), controlAddress);
         // increases the deposited stake hence it must
         // be called after calculating the shares
@@ -126,12 +126,14 @@ contract LiquidDelegation is IDelegation, BaseDelegation {
     }
 
     /// @inheritdoc BaseDelegation
-    function leavePool(bytes calldata blsPubKey) public override {
+    function leavePool(
+        bytes calldata blsPubKey
+    ) public override {
         if (!_preparedToLeave(blsPubKey))
             return;
         // deduct the commission from the yet untaxed rewards
         // before calculating the amount
-        taxRewards();
+        _taxRewards();
         LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
         uint256 amount = _unstake(NonRebasingLST($.lst).balanceOf(_msgSender()), _msgSender());
         uint256 currentDeposit = getDeposit(blsPubKey);
@@ -159,13 +161,13 @@ contract LiquidDelegation is IDelegation, BaseDelegation {
         LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
         // if we are in the fundraising phase getRewards() would return 0 and
         // taxedRewards would be greater i.e. the commission calculated in
-        // taxRewards() would be negative, therefore
+        // _taxRewards() would be negative, therefore
         if (_isActivated()) {
             // the amount just delegated is now part of the rewards since
             // it was added to the balance therefore add it to the taxed
             // rewards too to avoid commission and remove it after taxing
             $.taxedRewards += msg.value;
-            taxRewards();
+            _taxRewards();
             $.taxedRewards -= msg.value;
         }
         _stake(msg.value, _msgSender());
@@ -210,11 +212,11 @@ contract LiquidDelegation is IDelegation, BaseDelegation {
     {
         // if we are in the fundraising phase getRewards() would return 0 and
         // taxedRewards would be greater i.e. the commission calculated in
-        // taxRewards() would be negative, therefore
+        // _taxRewards() would be negative, therefore
         if (_isActivated())
             // deduct the commission from the yet untaxed rewards
             // before calculating the amount
-            taxRewards();
+            _taxRewards();
         amount = _unstake(shares, _msgSender());
         _enqueueWithdrawal(amount);
         _decreaseDeposit(amount);
@@ -262,7 +264,7 @@ contract LiquidDelegation is IDelegation, BaseDelegation {
     * Revert with {TransferFailed} containing the reciever address and the amount
     * to be transferred if the transfer failed.
     */
-    function taxRewards() internal {
+    function _taxRewards() internal {
         LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
         uint256 rewards = getRewards();
         uint256 commission = (rewards - $.taxedRewards) * getCommissionNumerator() / DENOMINATOR;
@@ -296,7 +298,7 @@ contract LiquidDelegation is IDelegation, BaseDelegation {
         LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
         // rewards must be taxed before being deposited since
         // they will not be taxed when they are unstaked later
-        taxRewards();
+        _taxRewards();
         uint256 amount = getRewards();
         _increaseStake(amount);
         $.taxedRewards -= amount;
@@ -323,7 +325,7 @@ contract LiquidDelegation is IDelegation, BaseDelegation {
     * @inheritdoc IDelegation
     */
     function collectCommission() public override(BaseDelegation, IDelegation) onlyOwner {
-        taxRewards();
+        _taxRewards();
     }
 
 }

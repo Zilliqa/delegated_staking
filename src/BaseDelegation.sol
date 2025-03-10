@@ -291,7 +291,7 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     * Revert with {DepositContractCallFailed} containing the call data and the
     * error data returned if the call to the `DEPOSIT_CONTRACT` fails.
     */
-    function migrate(uint64 fromVersion) internal {
+    function _migrate(uint64 fromVersion) internal {
 
         // the contract has been deployed but not upgraded yet
         if (fromVersion == 1)
