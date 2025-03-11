@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 pragma solidity ^0.8.28;
 
-import {IDelegation} from "src/IDelegation.sol";
-import {WithdrawalQueue} from "src/WithdrawalQueue.sol";
-import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
-import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
-import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import { Ownable2StepUpgradeable } from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
+import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
+import { IDelegation } from "src/IDelegation.sol";
+import { WithdrawalQueue } from "src/WithdrawalQueue.sol";
 
 /**
  * @notice The base contract that all variants of delegated staking contracts
@@ -21,7 +21,6 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
  * instead of incremental version numbers and keeps the original contract file names
  * across all versions to avoid updating the `Upgrade` script to import new files.
  */
-// solhint-disable comprehensive-interface
 abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2StepUpgradeable, UUPSUpgradeable {
 
     using WithdrawalQueue for WithdrawalQueue.Fifo;
@@ -105,8 +104,9 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     }
 
     // keccak256(abi.encode(uint256(keccak256("zilliqa.storage.BaseDelegation")) - 1)) & ~bytes32(uint256(0xff))
-    // solhint-disable const-name-snakecase
-    bytes32 private constant BaseDelegationStorageLocation = 0xc8ff0e571ef581b660c1651f85bbac921a40f9489bd04631c07fa723c13c6000;
+    // solhint-disable const-name-snakecase, private-vars-leading-underscore
+    bytes32 private constant BaseDelegationStorageLocation = 
+        0xc8ff0e571ef581b660c1651f85bbac921a40f9489bd04631c07fa723c13c6000;
 
     function _getBaseDelegationStorage() private pure returns (BaseDelegationStorage storage $) {
         assembly {
@@ -618,7 +618,11 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         );
         require(
             $.validators[i].status == ValidatorStatus.RequestedToLeave,
-            InvalidValidatorStatus(blsPubKey, $.validators[i].status, ValidatorStatus.RequestedToLeave)
+            InvalidValidatorStatus(
+                blsPubKey,
+                $.validators[i].status,
+                ValidatorStatus.RequestedToLeave
+            )
         );
         require(
             $.validators[i].pendingWithdrawals == 0,
@@ -669,7 +673,10 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         );
         require(
             $.validators[i].status == ValidatorStatus.ReadyToLeave,
-            InvalidValidatorStatus(blsPubKey, $.validators[i].status, ValidatorStatus.ReadyToLeave)
+            InvalidValidatorStatus(
+                blsPubKey,
+                $.validators[i].status, ValidatorStatus.ReadyToLeave
+            )
         );
         uint256 amount = address(this).balance;
         bytes memory callData =
@@ -686,7 +693,11 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
             $.validators[i].pendingWithdrawals = 0;
             _increaseDeposit(amount);
         } else
-            revert UnstakedDepositMismatch(blsPubKey, amount, $.validators[i].pendingWithdrawals);
+            revert UnstakedDepositMismatch(
+                blsPubKey,
+                amount,
+                $.validators[i].pendingWithdrawals
+            );
         _removeFromPool(i);
     }
 
@@ -743,7 +754,9 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
         uint256 i = $.validatorIndex[blsPubKey];
         require(i-- > 0, ValidatorNotFound(blsPubKey));
-        return $.validators[i].status < ValidatorStatus.ReadyToLeave && $.validators[i].pendingWithdrawals > 0;
+        return 
+            $.validators[i].status < ValidatorStatus.ReadyToLeave &&
+            $.validators[i].pendingWithdrawals > 0;
     }
 
     /**
@@ -753,7 +766,8 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     */
     function totalPendingWithdrawals() public virtual view returns(uint256 total) {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
-        for(uint256 i = 0; i < $.validators.length; i++ )
+        uint256 len = $.validators.length;
+        for(uint256 i = 0; i < len; i++)
             if ($.validators[i].status < ValidatorStatus.ReadyToLeave)
                 total += $.validators[i].pendingWithdrawals;
     }
@@ -769,13 +783,14 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
         uint256[] memory contribution = new uint256[]($.validators.length);
         uint256 totalContribution;
-        for (uint256 i = 0; i < $.validators.length; i++)
+        uint256 len = $.validators.length;
+        for (uint256 i = 0; i < len; i++)
             if ($.validators[i].status < ValidatorStatus.ReadyToLeave) {
                 contribution[i] = $.validators[i].futureStake;
                 totalContribution += contribution[i];
             }
         uint256 totalDeposited;
-        for (uint256 i = 0; i < $.validators.length; i++)
+        for (uint256 i = 0; i < len; i++)
             if (contribution[i] > 0) {
                 uint256 value = amount * contribution[i] / totalContribution;
                 totalDeposited += value;
@@ -812,7 +827,8 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         uint256 minimumDeposit = abi.decode(data, (uint256));
         uint256[] memory contribution = new uint256[]($.validators.length);
         uint256 totalContribution;
-        for (uint256 i = 0; i < $.validators.length; i++)
+        uint256 len = $.validators.length;
+        for (uint256 i = 0; i < len; i++)
             if ($.validators[i].status == ValidatorStatus.Active) {
                 contribution[i] = $.validators[i].futureStake - minimumDeposit;
                 totalContribution += contribution[i];
@@ -821,24 +837,27 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
             $.depositedClaims += amount - totalContribution;
             require(
                 $.nonRewards - $.undepositedClaims >= $.depositedClaims,
-                InsufficientUndepositedStake($.nonRewards - $.undepositedClaims, $.depositedClaims)
+                InsufficientUndepositedStake(
+                    $.nonRewards - $.undepositedClaims,
+                    $.depositedClaims
+                )
             );
             amount = totalContribution;
         }
         uint256[] memory undeposited = new uint256[]($.validators.length);
         uint256 totalUndeposited;
-        for (uint256 i = 0; i < $.validators.length; i++)
+        for (uint256 i = 0; i < len; i++)
             if (contribution[i] > 0) {
                 undeposited[i] = amount * contribution[i] / totalContribution;
                 totalUndeposited += undeposited[i];
             }
-        // rounding error that was not unstaked from the deposits but can be claimed
-        // after the unbonding period
+        // rounding error that was not unstaked from the deposits but can be
+        // claimed after the unbonding period
         uint256 delta = amount - totalUndeposited;
         // increment the values to be undeposited unless they equal the respective
         // validator's contribution i.e. the validator can't contribute more, until
         // the delta bounded by the number of contributing validators becomes zero
-        for (uint256 i = 0; i < $.validators.length; i++) {
+        for (uint256 i = 0; i < len; i++) {
             uint256 value = undeposited[i];
             if (value > 0) {
                 if (delta > 0 && value < contribution[i]) {
@@ -866,9 +885,10 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     */
     function _withdrawDeposit() internal virtual returns(uint256 total) {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
-        // we accept the constant amount of gas wasted per validator whose unbonding
-        // period is not over i.e. there is nothing to withdraw yet
-        for (uint256 i = 0; i < $.validators.length; i++)
+        uint256 len = $.validators.length;
+        // we accept the constant amount of gas wasted per validator whose
+        // unbonding period is not over i.e. there is nothing to withdraw yet
+        for (uint256 i = 0; i < len; i++)
             if ($.validators[i].pendingWithdrawals > 0) {
                 // currently all validators have the same reward address,
                 // which is the address of this delegation contract
@@ -975,8 +995,8 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         // withdraw the unstaked deposit once the unbonding period is over
         uint256 withdrawn = _withdrawDeposit();
         $.undepositedClaims += withdrawn;
-        // if the pool has not been activated yet, all the stake lands in nonRewards
-        // and withdrawn is zero hence undepositedClaims is zero too
+        // if the pool has not been activated yet, all the stake lands in
+        // nonRewards and withdrawn is zero hence undepositedClaims is zero too
         if (_isActivated())
             if ($.undepositedClaims >= total) 
                 // total is part of withdrawn now or it has already been withdrawn before
@@ -1088,7 +1108,8 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     function getStake() public virtual view returns(uint256 total) {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
         total = $.nonRewards;
-        for (uint256 i = 0; i < $.validators.length; i++)
+        uint256 len = $.validators.length;
+        for (uint256 i = 0; i < len; i++)
             if ($.validators[i].status < ValidatorStatus.ReadyToLeave)
                 total += $.validators[i].futureStake;
         total += $.pendingRebalancedDeposit;
@@ -1114,7 +1135,8 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     }
 
     /**
-    * @dev Set the commission rate to `_commissionNumerator / DENOMINATOR`.
+    * @dev Set the commission rate to `_commissionNumerator / DENOMINATOR`. It
+    * must be called by the contract owner.
     *
     * Revert with {InvalidCommissionRate} containing `_commissionNumerator` if
     * it's greater or equal to the {DENOMINATOR}.
@@ -1126,7 +1148,10 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     }
 
     /// @inheritdoc IDelegation
-    function getCommission() public virtual view returns(uint256 numerator, uint256 denominator) {
+    function getCommission() public virtual view returns(
+        uint256 numerator,
+        uint256 denominator
+    ) {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
         numerator = $.commissionNumerator;
         denominator = DENOMINATOR;

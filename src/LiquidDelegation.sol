@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 pragma solidity ^0.8.28;
 
-import {IDelegation} from "src/IDelegation.sol";
 import {BaseDelegation} from "src/BaseDelegation.sol";
+import {IDelegation} from "src/IDelegation.sol";
 import {NonRebasingLST} from "src/NonRebasingLST.sol";
 
 // keccak256(abi.encode(uint256(keccak256("zilliqa.storage.LiquidDelegation")) - 1)) & ~bytes32(uint256(0xff))
@@ -21,7 +21,6 @@ bytes32 constant LIQUID_VARIANT = 0xfa57cbed4b267d0bc9f2cbdae86b4d1d23ca818308f8
  * staking pool, i.e. its balance can increase in every block. Since this does not
  * happen in form of transactions, the {receive} function will not notice it.
  */
-// solhint-disable comprehensive-interface
 contract LiquidDelegation is IDelegation, BaseDelegation {
 
     // ************************************************************************
@@ -43,7 +42,7 @@ contract LiquidDelegation is IDelegation, BaseDelegation {
         uint256 taxedRewards;
     }
 
-    // solhint-disable const-name-snakecase
+    // solhint-disable const-name-snakecase, private-vars-leading-underscore
     bytes32 private constant LiquidDelegationStorageLocation = LIQUID_VARIANT;
 
     function _getLiquidDelegationStorage() private pure returns (LiquidDelegationStorage storage $) {

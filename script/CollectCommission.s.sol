@@ -2,11 +2,11 @@
 pragma solidity ^0.8.28;
 
 /* solhint-disable no-console */
-import {Script} from "forge-std/Script.sol";
-import {BaseDelegation} from "src/BaseDelegation.sol";
-import {Console} from "script/Console.s.sol";
-import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
-import {Console} from "script/Console.s.sol";
+import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
+import { Script } from "forge-std/Script.sol";
+import { Console } from "script/Console.s.sol";
+import { Console } from "script/Console.s.sol";
+import { BaseDelegation } from "src/BaseDelegation.sol";
 
 contract CollectCommission is Script {
     using Strings for string;

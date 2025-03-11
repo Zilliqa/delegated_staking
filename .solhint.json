@@ -15,12 +15,12 @@
     "gas-calldata-parameters": "warn",
     "gas-indexed-events": "warn",
     "gas-length-in-loops": "warn",
-    "comprehensive-interface": "warn",
+    "comprehensive-interface": "off",
     "gas-increment-by-one": "off",
-    "private-vars-leading-underscore": ["off", {"strict": false}],
+    "private-vars-leading-underscore": ["warn", {"strict": false}],
     "named-parameters-mapping": "off",
     "foundry-test-functions": ["off"],
-    "imports-order": "off",
-    "max-line-length": ["off", 120]
+    "imports-order": "warn",
+    "max-line-length": ["warn", 120]
   }
 }

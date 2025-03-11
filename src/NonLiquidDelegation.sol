@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 pragma solidity ^0.8.28;
 
-import {IDelegation} from "src/IDelegation.sol";
-import {BaseDelegation} from "src/BaseDelegation.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {BaseDelegation} from "src/BaseDelegation.sol";
+import {IDelegation} from "src/IDelegation.sol";
 
 // keccak256(abi.encode(uint256(keccak256("zilliqa.storage.NonLiquidDelegation")) - 1)) & ~bytes32(uint256(0xff))
 bytes32 constant NONLIQUID_VARIANT = 0x66c8dc4f9c8663296597cb1e39500488e05713d82a9122d4f548b19a70fc2000;
@@ -19,7 +19,6 @@ bytes32 constant NONLIQUID_VARIANT = 0x66c8dc4f9c8663296597cb1e39500488e05713d82
  * the rewards during that period. Note that the rewards accrued since the last
  * {Staking} event are in the contract balance which is increasing in every block.
  */
-// solhint-disable comprehensive-interface
 contract NonLiquidDelegation is IDelegation, BaseDelegation {
     using SafeCast for int256;
 
@@ -87,7 +86,7 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation {
         uint256 totalRoundingErrors;
     }
 
-    // solhint-disable const-name-snakecase
+    // solhint-disable const-name-snakecase, private-vars-leading-underscore
     bytes32 private constant NonLiquidDelegationStorageLocation = NONLIQUID_VARIANT;
 
     function _getNonLiquidDelegationStorage() private pure returns (NonLiquidDelegationStorage storage $) {
@@ -147,7 +146,7 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation {
         // the owner's deposit must also be recorded as staking otherwise
         // the owner would not benefit from the rewards accrued by the deposit
         if (msg.value > 0)
-            _append(int256(msg.value), _msgSender());
+            _appendToHistory(int256(msg.value), _msgSender());
     }
 
     /// @inheritdoc BaseDelegation
@@ -162,7 +161,7 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation {
         _addToPool(blsPubKey, controlAddress);
         // the node's deposit must also be recorded in the staking history otherwise
         // its owner would not benefit from the rewards accrued due to the deposit
-        _append(int256(depositBeforeJoining), controlAddress);
+        _appendToHistory(int256(depositBeforeJoining), controlAddress);
     }
 
     /**
@@ -181,7 +180,7 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation {
         uint256 amount = $.stakings[
             $.stakingIndices[_msgSender()][$.stakingIndices[_msgSender()].length - 1]
         ].amount;
-        _append(-int256(amount), _msgSender());
+        _appendToHistory(-int256(amount), _msgSender());
         uint256 currentDeposit = getDeposit(blsPubKey);
         if (amount > currentDeposit) {
             _initiateLeaving(blsPubKey, currentDeposit);
@@ -315,7 +314,7 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation {
     function stake() public override(BaseDelegation, IDelegation) payable whenNotPaused {
         _increaseStake(msg.value);
         _increaseDeposit(msg.value);
-        _append(int256(msg.value), _msgSender());
+        _appendToHistory(int256(msg.value), _msgSender());
         emit Staked(_msgSender(), msg.value, "");
     }
 
@@ -330,7 +329,7 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation {
         whenNotPaused
         returns(uint256 amount)
     {
-        _append(-int256(value), _msgSender());
+        _appendToHistory(-int256(value), _msgSender());
         _decreaseDeposit(uint256(value));
         _enqueueWithdrawal(value);
         emit Unstaked(_msgSender(), value, "");
@@ -347,7 +346,7 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation {
     * Revert with {RequestedAmountTooHigh} containing the negative `value` and the
     * caller's stake if the `value` to be unstaked is greater than the current stake.
     */
-    function _append(int256 value, address staker) internal {
+    function _appendToHistory(int256 value, address staker) internal {
         if (value > 0)
             require(uint256(value) >= MIN_DELEGATION, DelegatedAmountTooLow(uint256(value)));
         NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
@@ -505,7 +504,7 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation {
         (uint256 amount, ) = _useRewards(type(uint256).max, type(uint64).max);
         _increaseStake(amount);
         _increaseDeposit(amount);
-        _append(int256(amount), _msgSender());
+        _appendToHistory(int256(amount), _msgSender());
         emit Staked(_msgSender(), amount, "");
     }
 
@@ -616,9 +615,10 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation {
         uint256 amount;
         uint256 total;
         roundingError = $.roundingErrors[_msgSender()];
+        uint256 len = $.stakingIndices[_msgSender()].length;
         for (
             posInStakingIndices = $.firstStakingIndex[_msgSender()];
-            posInStakingIndices < $.stakingIndices[_msgSender()].length;
+            posInStakingIndices < len;
             posInStakingIndices++
         ) {
             nextStakingIndex = $.stakingIndices[_msgSender()][posInStakingIndices];
