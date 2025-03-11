@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
-pragma solidity ^0.8.26;
+pragma solidity ^0.8.28;
 
 /* solhint-disable no-console */
-import {Script} from "forge-std/Script.sol";
-import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
-import {console} from "forge-std/console.sol";
-import {console2} from "forge-std/console2.sol";
+import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
+import { console } from "forge-std/console.sol";
+import { console2 } from "forge-std/console2.sol";
+import { Script } from "forge-std/Script.sol";
 
 // A library wrapping and extending console.sol from Hardhat and console2.sol from
 // the Forge Standard Library. It is only meant to be used in Forge tests and scripts.

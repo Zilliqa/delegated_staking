@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
-pragma solidity ^0.8.26;
+pragma solidity ^0.8.28;
 
 /* solhint-disable no-console */
-import {Script} from "forge-std/Script.sol";
-import {BaseDelegation} from "src/BaseDelegation.sol";
-import {LIQUID_VARIANT} from "src/LiquidDelegation.sol";
-import {NONLIQUID_VARIANT} from "src/NonLiquidDelegation.sol";
-import {Console} from "script/Console.s.sol";
+import { Script } from "forge-std/Script.sol";
+import { Console } from "script/Console.s.sol";
+import { BaseDelegation } from "src/BaseDelegation.sol";
+import { LIQUID_VARIANT } from "src/LiquidDelegation.sol";
+import { NONLIQUID_VARIANT } from "src/NonLiquidDelegation.sol";
 
 function variant(address proxy) view returns(bytes32) {
         BaseDelegation delegation = BaseDelegation(payable(proxy));

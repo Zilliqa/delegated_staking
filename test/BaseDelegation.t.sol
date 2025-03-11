@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
-pragma solidity ^0.8.26;
+pragma solidity ^0.8.28;
 
 /* solhint-disable no-console */
-import {BlsVerifyPrecompile} from "test/BlsVerifyPrecompile.t.sol";
-import {BaseDelegation} from "src/BaseDelegation.sol";
-import {WithdrawalQueue} from "src/WithdrawalQueue.sol";
-import {IDelegation} from "src/IDelegation.sol";
-import {Deposit} from "@zilliqa/zq2/deposit_v5.sol";
-import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {Test} from "forge-std/Test.sol";
-import {Console} from "script/Console.s.sol";
+import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import { Deposit } from "@zilliqa/zq2/deposit_v5.sol";
+import { Test } from "forge-std/Test.sol";
+import { Console } from "script/Console.s.sol";
+import { BaseDelegation } from "src/BaseDelegation.sol";
+import { IDelegation } from "src/IDelegation.sol";
+import { WithdrawalQueue } from "src/WithdrawalQueue.sol";
+import { BlsVerifyPrecompile } from "test/BlsVerifyPrecompile.t.sol";
 
 /* solhint-disable one-contract-per-file */
 abstract contract BaseDelegationTest is Test {

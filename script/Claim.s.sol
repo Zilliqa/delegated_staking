@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
-pragma solidity ^0.8.26;
+pragma solidity ^0.8.28;
 
 /* solhint-disable no-console */
-import {Script} from "forge-std/Script.sol";
-import {BaseDelegation} from "src/BaseDelegation.sol";
-import {Console} from "script/Console.s.sol";
+import { Script } from "forge-std/Script.sol";
+import { Console } from "script/Console.s.sol";
+import { BaseDelegation } from "src/BaseDelegation.sol";
 
 contract Claim is Script {
     function run(address payable proxy) external {

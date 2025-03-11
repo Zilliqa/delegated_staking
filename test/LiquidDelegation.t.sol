@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
-pragma solidity ^0.8.26;
+pragma solidity ^0.8.28;
 
 /* solhint-disable no-console */
-import {BaseDelegationTest} from "test/BaseDelegation.t.sol";
-import {LiquidDelegation} from "src/LiquidDelegation.sol";
-import {NonRebasingLST} from "src/NonRebasingLST.sol";
-import {BaseDelegation} from "src/BaseDelegation.sol";
-import {WithdrawalQueue} from "src/WithdrawalQueue.sol";
-import {IDelegation} from "src/IDelegation.sol";
-import {Deposit} from "@zilliqa/zq2/deposit_v5.sol";
-import {Console} from "script/Console.s.sol";
-import {Vm} from "forge-std/Test.sol";
-import {Console} from "script/Console.s.sol";
+import { Deposit } from "@zilliqa/zq2/deposit_v5.sol";
+import { Vm } from "forge-std/Test.sol";
+import { Console } from "script/Console.s.sol";
+import { Console } from "script/Console.s.sol";
+import { BaseDelegation } from "src/BaseDelegation.sol";
+import { IDelegation } from "src/IDelegation.sol";
+import { LiquidDelegation } from "src/LiquidDelegation.sol";
+import { NonRebasingLST } from "src/NonRebasingLST.sol";
+import { WithdrawalQueue } from "src/WithdrawalQueue.sol";
+import { BaseDelegationTest } from "test/BaseDelegation.t.sol";
 
 /* solhint-disable func-name-mixedcase */
 contract LiquidDelegationTest is BaseDelegationTest {
@@ -1816,7 +1816,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         uint256 totalUnstakedZil;
         uint256 totalWithdrawnZil;
         uint256 totalEarnedZil;
-        for (uint i = 0; i < numOfRounds; i++) {
+        for (uint256 i = 0; i < numOfRounds; i++) {
             uint256 blocks = vm.randomUint(0, 100);
             vm.roll(block.number + blocks);
             uint256 rewards = 51_000 ether * blocks * depositAmount / 3_600 / totalDeposit;

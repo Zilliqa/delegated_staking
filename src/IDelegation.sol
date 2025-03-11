@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
-pragma solidity ^0.8.26;
+pragma solidity ^0.8.28;
 
 /**
  * @notice The minimum interface delegation contracts are supposed to implement.
@@ -53,7 +53,7 @@ interface IDelegation {
 
     /**
     * @notice Transfer all outstanding commissions to the configured receiver.
-    * Must be called by the contract owner.
+    * It must be called by the contract owner.
     */
     function collectCommission() external;
 
