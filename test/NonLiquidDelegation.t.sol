@@ -889,6 +889,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
             availableRewards2,
             withdrawnRewards2
         );
+        address staker = stakers[4-1];
         // stake and unstake to make pendingWithdrawals > 0 before leaving is initiated
         vm.startPrank(owner);
         vm.deal(owner, owner.balance + 100_000 ether);
@@ -902,7 +903,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         assertTrue(delegation.pendingWithdrawals(validator(2)), "there should be pending withdrawals");
         vm.stopPrank();
         // if staker claims which calls withdrawDeposit() before the unbonding period, pendingWithdrawals will not be 0
-        vm.startPrank(stakers[4-1]);
+        vm.startPrank(staker);
         delegation.claim();
         assertTrue(delegation.pendingWithdrawals(validator(2)), "there should be pending withdrawals");
         vm.roll(block.number + delegation.unbondingPeriod());
@@ -914,17 +915,32 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         delegation.unstake(100_000 ether);
         vm.stopPrank();
         // if staker claims which calls withdrawDeposit() after the unbonding period, pendingWithdrawals will be 0
-        vm.startPrank(stakers[4-1]);
+        vm.startPrank(staker);
         delegation.claim();
         assertFalse(delegation.pendingWithdrawals(validator(2)), "there should not be pending withdrawals");
         vm.stopPrank();
         // initiate leaving again, the validator's deposit gets decreased
         vm.startPrank(makeAddr("2"));
         delegation.leavePool(validator(2));
+        // if staker unstakes after the validator requested leaving, the validator's pendingWithdrawals remain 0
+        vm.stopPrank();
+        vm.deal(staker, staker.balance + 10_000 ether);
+        vm.startPrank(staker);
+        delegation.stake{value: 10_000 ether}();
+        delegation.unstake(10_000 ether);
+        vm.stopPrank();
+        assertFalse(delegation.pendingWithdrawals(validator(2)), "there should not be pending withdrawals");
+        vm.startPrank(makeAddr("2"));
         // completion of leaving has to wait for the unbonding period
         delegation.completeLeaving(validator(2));
         assertEq(delegation.validators().length, 2, "validator leaving should not be completed yet");
         vm.roll(block.number + delegation.unbondingPeriod());
+        // if staker claimes before the validator's control address completes leaving, the validator's deposit is not withdrawn
+        vm.stopPrank();
+        vm.startPrank(staker);
+        delegation.claim();
+        vm.stopPrank();
+        vm.startPrank(makeAddr("2"));
         // completion of leaving is finally possible 
         delegation.completeLeaving(validator(2));
         assertEq(delegation.validators().length, 1, "validator leaving should be completed");
@@ -948,6 +964,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
             50_000 ether, //uint256 rewardsBeforeStaking,
             10_000 ether //uint256 rewardsAccruedAfterEach
         );
+        address staker = stakers[1-1];
         vm.startPrank(owner);
         delegation.unstake(depositAmount);
         vm.stopPrank();
@@ -984,17 +1001,32 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         );
         vm.roll(block.number + delegation.unbondingPeriod());
         // if staker claims which calls withdrawDeposit() after the unbonding period, pendingWithdrawals will be 0
-        vm.startPrank(stakers[4-1]);
+        vm.startPrank(staker);
         delegation.claim();
         assertFalse(delegation.pendingWithdrawals(validator(2)), "there should not be pending withdrawals");
         vm.stopPrank();
         // initiate leaving, the validator's deposit gets decreased
         vm.startPrank(makeAddr("2"));
         delegation.leavePool(validator(2));
+        // if staker unstakes after the validator requested leaving, the validator's pendingWithdrawals remain 0
+        vm.stopPrank();
+        vm.deal(staker, staker.balance + 10_000 ether);
+        vm.startPrank(staker);
+        delegation.stake{value: 10_000 ether}();
+        delegation.unstake(10_000 ether);
+        vm.stopPrank();
+        assertFalse(delegation.pendingWithdrawals(validator(2)), "there should not be pending withdrawals");
+        vm.startPrank(makeAddr("2"));
         // completion of leaving has to wait for the unbonding period
         delegation.completeLeaving(validator(2));
         assertEq(delegation.validators().length, 2, "validator leaving should not be completed yet");
         vm.roll(block.number + delegation.unbondingPeriod());
+        // if staker claimes before the validator's control address completes leaving, the validator's deposit is not withdrawn
+        vm.stopPrank();
+        vm.startPrank(staker);
+        delegation.claim();
+        vm.stopPrank();
+        vm.startPrank(makeAddr("2"));
         // completion of leaving is finally possible 
         delegation.completeLeaving(validator(2));
         assertEq(delegation.validators().length, 1, "validator leaving should be completed");
@@ -1052,6 +1084,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
             availableRewards2,
             withdrawnRewards2
         );
+        address staker = stakers[4-1];
         // stake and unstake to make pendingWithdrawals > 0 before leaving is initiated
         vm.startPrank(owner);
         vm.deal(owner, owner.balance + 100_000 ether);
@@ -1065,7 +1098,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         assertTrue(delegation.pendingWithdrawals(validator(2)), "there should be pending withdrawals");
         vm.stopPrank();
         // if staker claims which calls withdrawDeposit() before the unbonding period, pendingWithdrawals will not be 0
-        vm.startPrank(stakers[4-1]);
+        vm.startPrank(staker);
         delegation.claim();
         assertTrue(delegation.pendingWithdrawals(validator(2)), "there should be pending withdrawals");
         vm.roll(block.number + delegation.unbondingPeriod());
@@ -1087,7 +1120,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         uint256 refund = delegation.getDelegatedAmount() - delegation.getDeposit(validator(2));
         vm.stopPrank();
         // if staker claims which calls withdrawDeposit() after the unbonding period, pendingWithdrawals will be 0
-        vm.startPrank(stakers[4-1]);
+        vm.startPrank(staker);
         delegation.claim();
         assertFalse(delegation.pendingWithdrawals(validator(2)), "there should not be pending withdrawals");
         vm.stopPrank();
@@ -1158,6 +1191,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
             availableRewards2,
             withdrawnRewards2
         );
+        address staker = stakers[4-1];
         // control address stakes more than the validator's deposit
         vm.startPrank(makeAddr("2"));
         uint256 amount =
@@ -1170,7 +1204,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         vm.stopPrank();
         vm.roll(block.number + delegation.unbondingPeriod());
         // if staker claims which calls withdrawDeposit() after the unbonding period, pendingWithdrawals will be 0
-        vm.startPrank(stakers[4-1]);
+        vm.startPrank(staker);
         delegation.claim();
         assertFalse(delegation.pendingWithdrawals(validator(2)), "there should not be pending withdrawals");
         vm.stopPrank();
@@ -1241,6 +1275,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
             availableRewards2,
             withdrawnRewards2
         );
+        address staker = stakers[4-1];
         // stake and unstake to make pendingWithdrawals > 0 before leaving is initiated
         vm.startPrank(owner);
         vm.deal(owner, owner.balance + 1_000_000 ether);
@@ -1254,7 +1289,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         assertTrue(delegation.pendingWithdrawals(validator(2)), "there should be pending withdrawals");
         vm.stopPrank();
         // if staker claims which calls withdrawDeposit() before the unbonding period, pendingWithdrawals will not be 0
-        vm.startPrank(stakers[4-1]);
+        vm.startPrank(staker);
         delegation.claim();
         assertTrue(delegation.pendingWithdrawals(validator(2)), "there should be pending withdrawals");
         vm.roll(block.number + delegation.unbondingPeriod());
@@ -1274,7 +1309,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         delegation.stake{value: amount}();
         vm.stopPrank();
         // if staker claims which calls withdrawDeposit() after the unbonding period, pendingWithdrawals will be 0
-        vm.startPrank(stakers[4-1]);
+        vm.startPrank(staker);
         delegation.claim();
         assertFalse(delegation.pendingWithdrawals(validator(2)), "there should not be pending withdrawals");
         vm.stopPrank();
@@ -1341,6 +1376,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
             availableRewards2,
             withdrawnRewards2
         );
+        address staker = stakers[4-1];
         // control address stakes as much as the validator's deposit
         vm.startPrank(makeAddr("2"));
         uint256 amount =
@@ -1351,7 +1387,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         vm.stopPrank();
         vm.roll(block.number + delegation.unbondingPeriod());
         // if staker claims which calls withdrawDeposit() after the unbonding period, pendingWithdrawals will be 0
-        vm.startPrank(stakers[4-1]);
+        vm.startPrank(staker);
         delegation.claim();
         assertFalse(delegation.pendingWithdrawals(validator(2)), "there should not be pending withdrawals");
         vm.stopPrank();
@@ -1511,7 +1547,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         assertEq(delegation.getDeposit(validator(4)), 10 * depositAmount / 10, "validator deposits are decreased equally");
     }
 
-    function test_RevertWhen_UnstakeTooMuch() public {
+    function test_UnstakeTooMuchUndepositValidators() public {
         uint256 depositAmount = 10_000_000 ether;
         depositFromPool(BaseDelegation(delegation), 2 * depositAmount, DepositMode.Bootstrapping);
         stakers.push(owner);
@@ -1521,23 +1557,46 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         stakers.push(makeAddr("3"));
         joinPool(BaseDelegation(delegation), 2 * depositAmount, makeAddr("4"), 4);
         stakers.push(makeAddr("4"));
+        assertEq(delegation.getStake(), 80 * depositAmount / 10, "incorrect stake");
         vm.startPrank(makeAddr("2"));
-        delegation.unstake(2 * depositAmount);
-        vm.stopPrank();
+        delegation.unstake(20 * depositAmount / 10);
         assertEq(delegation.getDeposit(validator(1)), 15 * depositAmount / 10, "validator deposits are decreased equally");
         assertEq(delegation.getDeposit(validator(2)), 15 * depositAmount / 10, "validator deposits are decreased equally");
         assertEq(delegation.getDeposit(validator(3)), 15 * depositAmount / 10, "validator deposits are decreased equally");
         assertEq(delegation.getDeposit(validator(4)), 15 * depositAmount / 10, "validator deposits are decreased equally");
-        vm.startPrank(makeAddr("3"));
-        delegation.unstake(2 * depositAmount);
+        vm.roll(block.number + delegation.unbondingPeriod());
+        uint256 balanceBefore = makeAddr("2").balance;
+        delegation.claim();
+        assertEq(makeAddr("2").balance - balanceBefore, 2 * depositAmount, "unstaked vs claimed amount mismatch");
+        assertEq(delegation.getStake(), 60 * depositAmount / 10, "incorrect stake");
+        assertEq(delegation.validators().length, 4, "incorrect number of validators");
         vm.stopPrank();
+        vm.startPrank(makeAddr("3"));
+        delegation.unstake(20 * depositAmount / 10);
         assertEq(delegation.getDeposit(validator(1)), 10 * depositAmount / 10, "validator deposits are decreased equally");
         assertEq(delegation.getDeposit(validator(2)), 10 * depositAmount / 10, "validator deposits are decreased equally");
         assertEq(delegation.getDeposit(validator(3)), 10 * depositAmount / 10, "validator deposits are decreased equally");
         assertEq(delegation.getDeposit(validator(4)), 10 * depositAmount / 10, "validator deposits are decreased equally");
-        vm.expectRevert(); //vm.expectPartialRevert(BaseDelegation.InsufficientUndepositedStak.selector);
+        vm.roll(block.number + delegation.unbondingPeriod());
+        balanceBefore = makeAddr("3").balance;
+        delegation.claim();
+        assertEq(makeAddr("3").balance - balanceBefore, 2 * depositAmount, "unstaked vs claimed amount mismatch");
+        assertEq(delegation.getStake(), 40 * depositAmount / 10, "incorrect stake");
+        assertEq(delegation.validators().length, 4, "incorrect number of validators");
+        vm.stopPrank();
         vm.startPrank(makeAddr("4"));
-        delegation.unstake(2 * depositAmount);
+        delegation.unstake(15 * depositAmount / 10);
+        assertEq(delegation.getStake(), 25 * depositAmount / 10, "incorrect stake");
+        assertEq(delegation.getDeposit(validator(1)), 10 * depositAmount / 10, "validator deposit mismatch");
+        assertEq(delegation.getDeposit(validator(2)), 10 * depositAmount / 10, "validator deposit mismatch");
+        vm.roll(block.number + delegation.unbondingPeriod());
+        balanceBefore = makeAddr("4").balance;
+        delegation.claim();
+        assertEq(makeAddr("4").balance - balanceBefore, 15 * depositAmount / 10, "unstaked vs claimed amount mismatch");
+        assertEq(delegation.getStake(), 25 * depositAmount / 10, "incorrect stake");
+        assertEq(delegation.validators().length, 2, "incorrect number of validators");
+        assertEq(delegation.getDeposit(validator(1)), 125 * depositAmount / 100, "validator deposit mismatch");
+        assertEq(delegation.getDeposit(validator(2)), 125 * depositAmount / 100, "validator deposit mismatch");
         vm.stopPrank();
     }
 

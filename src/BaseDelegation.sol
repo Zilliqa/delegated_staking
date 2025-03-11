@@ -37,9 +37,13 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     * the validator's leaving. If the status is `ReadyToLeave` then there are
     * no more pending withdrawals due to delegators unstaking but the validator
     * deposit had to be decreased to match the value of the stake of its original
-    * control address and the unbonding is not over.
+    * control address. If the status in `FullyUndeposited` then the validator's
+    * entire deposit had to be unstaked to cover the amount a delegator unstaked
+    * because the remaining deposit would have been less than the minimum required.
+    * In this status the validator's `futureStake` stores the excess deposit that
+    * in not claimable by the delegator.
     */
-    enum ValidatorStatus {Active, RequestedToLeave, ReadyToLeave}
+    enum ValidatorStatus {Active, RequestedToLeave, ReadyToLeave, FullyUndeposited}
 
     /**
     * @dev The validator's `futureStake` i.e. its deposit after all pending changes
@@ -73,8 +77,12 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     * - `withdrawals` holds the withdrawal queues of addresses that unstaked.
     *
     * - `pendingRebalancedDeposit` is the total amount of pending withdrawals
-    * initiated to reduce the deposits of leaving validators to match the stake
-    * of their control address.
+    * that were either unstaked to reduce the deposits of leaving validators to
+    * match the stake of their control address or were unstaked because of the
+    * minimim stake requirement which did not allow to unstake enough deposit to
+    * match the amount unstaked by a delegator and required to unstake the full 
+    * deposit of a validator including the surplus that will not be claimed by
+    * the delegator.
     *
     * - `validators` holds the current {Validator} list of the staking pool.
     *
@@ -169,12 +177,6 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     error WithdrawalsPending(bytes blsPubKey, uint256 amount);
 
     /**
-    * @dev Thrown if the staking pool has less undeposited stake `available`
-    * than `required`.
-    */
-    error InsufficientUndepositedStake(uint256 available, uint256 required);
-
-    /**
     * @dev Thrown if the commission rate specified by `numerator` is invalid.
     */
     error InvalidCommissionRate(uint256 numerator);
@@ -218,7 +220,7 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     // ************************************************************************
 
     /// @dev The current version of all upgradeable contracts in the repository.
-    uint64 internal immutable VERSION = encodeVersion(0, 6, 0);
+    uint64 internal immutable VERSION = encodeVersion(0, 6, 1);
 
     /**
     * @dev Return the contracts' version.
@@ -833,15 +835,41 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
                 contribution[i] = $.validators[i].futureStake - minimumDeposit;
                 totalContribution += contribution[i];
             }
+        uint256 j = len;
+        while (
+            j > 0 &&
+            (
+                $.nonRewards + totalContribution < 
+                $.undepositedClaims + $.depositedClaims + amount
+            )
+        )
+            if ($.validators[--j].status == ValidatorStatus.Active) {
+                $.validators[j].pendingWithdrawals +=
+                    $.validators[j].futureStake;
+                callData =
+                    abi.encodeWithSignature("unstake(bytes,uint256)",
+                        $.validators[j].blsPubKey,
+                        $.validators[j].futureStake
+                    );
+                (success, data) = DEPOSIT_CONTRACT.call(callData);
+                require(success, DepositContractCallFailed(callData, data));
+                $.validators[j].futureStake = 0;
+                $.validators[j].status = ValidatorStatus.FullyUndeposited;
+                totalContribution -= contribution[j];
+                contribution[j] = 0;
+                if (amount > minimumDeposit)
+                    amount -= minimumDeposit;
+                else {
+                    // store the excess deposit withdrawn that was not requested
+                    // by the unstaking delegator so that we can distuingish it
+                    // later from the claimable amount unstaked by the delegator
+                    $.validators[j].futureStake = minimumDeposit - amount;
+                    $.pendingRebalancedDeposit += $.validators[j].futureStake;
+                    return;
+                }
+            }
         if (totalContribution < amount) {
             $.depositedClaims += amount - totalContribution;
-            require(
-                $.nonRewards - $.undepositedClaims >= $.depositedClaims,
-                InsufficientUndepositedStake(
-                    $.nonRewards - $.undepositedClaims,
-                    $.depositedClaims
-                )
-            );
             amount = totalContribution;
         }
         uint256[] memory undeposited = new uint256[]($.validators.length);
@@ -888,8 +916,12 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         uint256 len = $.validators.length;
         // we accept the constant amount of gas wasted per validator whose
         // unbonding period is not over i.e. there is nothing to withdraw yet
-        for (uint256 i = 0; i < len; i++)
-            if ($.validators[i].pendingWithdrawals > 0) {
+        for (uint256 j = 1; j <= len; j++) {
+            uint256 i = len - j;
+            if (
+                $.validators[i].pendingWithdrawals > 0 &&
+                $.validators[i].status != ValidatorStatus.ReadyToLeave
+            ) {
                 // currently all validators have the same reward address,
                 // which is the address of this delegation contract
                 uint256 amount = address(this).balance;
@@ -900,15 +932,31 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
                 (bool success, bytes memory data) = DEPOSIT_CONTRACT.call(callData);
                 require(success, DepositContractCallFailed(callData, data));
                 amount = address(this).balance - amount;
-                total += amount;
                 $.validators[i].pendingWithdrawals -= amount;
+                total += amount;
+                // if it is the final withdrawal of a fully undeposited validator
+                // then subtract its remaining futureStake from total since it is
+                // not part of the claimable amount but is part of the undeposited
+                // stake in the contract's balance and shall be distributed among
+                // the remaining validators to top up their deposits
+                if (
+                    $.validators[i].pendingWithdrawals == 0 &&
+                    $.validators[i].status == ValidatorStatus.FullyUndeposited
+                ) {
+                    total -= $.validators[i].futureStake;
+                    $.pendingRebalancedDeposit -= $.validators[i].futureStake;
+                    _increaseDeposit($.validators[i].futureStake);
+                    $.validators[i].futureStake = 0;
+                    _removeFromPool(i);
+                }
             }
+        }
     }
 
     /**
     * @dev Return the deposit of the validator identified by `blsPubKey` after
-    * applying all pending changes to it. Note that the validator does not have
-    * to be part of the staking pool.
+    * applying all pending changes to it. If the validator is not part of the
+    * staking pool, retrieve its deposit from `DEPOSIT_CONTRACT`.
     *
     * Revert with {DepositContractCallFailed} containing the call data and the
     * error data returned if the call to the `DEPOSIT_CONTRACT` fails.
@@ -917,7 +965,9 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
         uint256 i = $.validatorIndex[blsPubKey];
         if (i > 0)
-            return $.validators[--i].futureStake;
+            return $.validators[--i].status != ValidatorStatus.FullyUndeposited ?
+                $.validators[i].futureStake :
+                0;
         bytes memory callData =
             abi.encodeWithSignature("getFutureStake(bytes)", blsPubKey);
         (bool success, bytes memory data) = DEPOSIT_CONTRACT.staticcall(callData);
