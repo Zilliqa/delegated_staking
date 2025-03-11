@@ -91,7 +91,7 @@ The output will contain the following information:
   New commission rate: 10.0%
 ```
 
-If you only want to view the current commission rate and leavePool( it unchanged, run
+If you only want to view the current commission rate and leave it unchanged, run
 ```bash
 forge script script/Configure.s.sol --broadcast --legacy --sig "commissionRate(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2
 ```
@@ -120,7 +120,7 @@ The output will contain the following information:
 
 Using the above command the commission can be redirected to a cold wallet, a multisig wallet or a smart contract which splits the commission proportionally to the deposit of the validators who join the staking pool.
 
-If you only want to view the current commission receiver and leavePool( it unchanged, run
+If you only want to view the current commission receiver and leave it unchanged, run
 ```bash
 forge script script/Configure.s.sol --broadcast --legacy --sig "commissionReceiver(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2
 ```
@@ -144,13 +144,13 @@ cast send --legacy --private-key $PRIVATE_KEY \
 ```
 using the BLS public key and the original control address that you used when you deposited the node. 
 
-To leavePool( a staking pool, run 
+To leave a staking pool, run 
 ```bash
 cast send --legacy --private-key 0x... \
 0x7a0b7e6d24ede78260c9ddbd98e828b0e11a8ea2 "leavePool(bytes)" \
 0x92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c
 ```
-using the private key that you used to deposit your node, the BLS public key of your node and the address of the staking pool's delegation contract. Note that your validator can't leavePool( the staking pool as long as there are pending stake withdrawals. The following event emitted by the above transaction indicates whether it was successful or not:
+using the private key that you used to deposit your node, the BLS public key of your node and the address of the staking pool's delegation contract. Note that your validator can't leave the staking pool as long as there are pending stake withdrawals. The following event emitted by the above transaction indicates whether it was successful or not:
 ```solidity
 event ValidatorLeaving(bytes indexed blsPubKey, bool success);
 ```
@@ -161,7 +161,7 @@ cast call 0x7a0b7e6d24ede78260c9ddbd98e828b0e11a8ea2 "pendingWithdrawals(bytes)(
 0x92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c
 ```
 
-If your validator's deposit was lower than the value of your LST balance or staked ZIL then you can claim the difference after the unbonding period as explained in the section about unstaking. If your validator's deposit was higher, then it can't leavePool( the staking pool yet. First, its deposit is automatically reduced to the value of your LST balance or staked ZIL and the difference is redistributed among the validators remaining in the staking pool after the unbonding period. Note that during the unbonding period the amount to be redistributed is unavailable i.e. unstaking is temporarily limited to amounts less than the sum of all other validators' deposits exceeding the required minimum.
+If your validator's deposit was lower than the value of your LST balance or staked ZIL then you can claim the difference after the unbonding period as explained in the section about unstaking. If your validator's deposit was higher, then it can't leave the staking pool yet. First, its deposit is automatically reduced to the value of your LST balance or staked ZIL and the difference is redistributed among the validators remaining in the staking pool after the unbonding period. Note that during the unbonding period the amount to be redistributed is unavailable i.e. unstaking is temporarily limited to amounts less than the sum of all other validators' deposits exceeding the required minimum.
 
 To complete the leaving of your validator, run the following command as soon as the unbonding period is over:
 ```bash
@@ -277,7 +277,7 @@ cast to-unit $(cast call 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 "getClaimabl
 ```
 with the address of the account that unstaked above as an argument.
 
-Note that if a delegation contract represents a staking pool with multiple validators, each staking and unstaking will increase and decrease all validators' deposit proportionally to their current deposit. In case an unstaking would reduce a validator's deposit below the required minimum, the validator will be forced to leavePool( the staking pool as soon as its pending unstaked deposit is withdrawn by the delegation contract.
+Note that if a delegation contract represents a staking pool with multiple validators, each staking and unstaking will increase and decrease all validators' deposit proportionally to their current deposit. In case an unstaking would reduce a validator's deposit below the required minimum, the validator will be forced to leave the staking pool as soon as its pending unstaked deposit is withdrawn by the delegation contract.
 
 Of course, delegators will not be using the CLI to stake, unstake and claim their funds. To enable delegators to access your staking pool through the staking portal maintained by the Zilliqa team, get in touch and provide your delegation contract address once you have set up the validator node and delegation contract. If you want to integrate staking into your dapp, see the [Development and Testing](#development-and-testing) section below.
 
