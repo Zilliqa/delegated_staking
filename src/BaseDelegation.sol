@@ -853,17 +853,18 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
                     );
                 (success, data) = DEPOSIT_CONTRACT.call(callData);
                 require(success, DepositContractCallFailed(callData, data));
-                $.validators[j].futureStake = 0;
                 $.validators[j].status = ValidatorStatus.FullyUndeposited;
                 totalContribution -= contribution[j];
                 contribution[j] = 0;
-                if (amount > minimumDeposit)
-                    amount -= minimumDeposit;
+                if (amount > $.validators[j].futureStake) {
+                    amount -= $.validators[j].futureStake;
+                    $.validators[j].futureStake = 0;
+                }
                 else {
                     // store the excess deposit withdrawn that was not requested
                     // by the unstaking delegator so that we can distuingish it
                     // later from the claimable amount unstaked by the delegator
-                    $.validators[j].futureStake = minimumDeposit - amount;
+                    $.validators[j].futureStake -= amount;
                     $.pendingRebalancedDeposit += $.validators[j].futureStake;
                     return;
                 }

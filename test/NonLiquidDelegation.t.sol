@@ -1521,7 +1521,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         assertEq(totalStaked, 100 ether, "Incorrect total stake");
     }
 
-    function test_UnstakeNotTooMuch() public {
+    function test_LargeUnstakeUndepositValidators() public {
         uint256 depositAmount = 10_000_000 ether;
         depositFromPool(BaseDelegation(delegation), 2 * depositAmount, DepositMode.Bootstrapping);
         stakers.push(owner);
@@ -1531,33 +1531,17 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         stakers.push(makeAddr("3"));
         joinPool(BaseDelegation(delegation), 2 * depositAmount, makeAddr("4"), 4);
         stakers.push(makeAddr("4"));
-        vm.startPrank(makeAddr("2"));
-        delegation.unstake(2 * depositAmount);
+        joinPool(BaseDelegation(delegation), 2 * depositAmount, makeAddr("5"), 5);
+        stakers.push(makeAddr("5"));
+        vm.startPrank(makeAddr("5"));
+        delegation.leavePool(validator(5));
         vm.stopPrank();
-        assertEq(delegation.getDeposit(validator(1)), 15 * depositAmount / 10, "validator deposits are decreased equally");
-        assertEq(delegation.getDeposit(validator(2)), 15 * depositAmount / 10, "validator deposits are decreased equally");
-        assertEq(delegation.getDeposit(validator(3)), 15 * depositAmount / 10, "validator deposits are decreased equally");
-        assertEq(delegation.getDeposit(validator(4)), 15 * depositAmount / 10, "validator deposits are decreased equally");
-        vm.startPrank(makeAddr("3"));
-        delegation.unstake(2 * depositAmount);
-        vm.stopPrank();
-        assertEq(delegation.getDeposit(validator(1)), 10 * depositAmount / 10, "validator deposits are decreased equally");
-        assertEq(delegation.getDeposit(validator(2)), 10 * depositAmount / 10, "validator deposits are decreased equally");
-        assertEq(delegation.getDeposit(validator(3)), 10 * depositAmount / 10, "validator deposits are decreased equally");
-        assertEq(delegation.getDeposit(validator(4)), 10 * depositAmount / 10, "validator deposits are decreased equally");
-    }
-
-    function test_UnstakeTooMuchUndepositValidators() public {
-        uint256 depositAmount = 10_000_000 ether;
-        depositFromPool(BaseDelegation(delegation), 2 * depositAmount, DepositMode.Bootstrapping);
-        stakers.push(owner);
-        joinPool(BaseDelegation(delegation), 2 * depositAmount, makeAddr("2"), 2);
-        stakers.push(makeAddr("2"));
-        joinPool(BaseDelegation(delegation), 2 * depositAmount, makeAddr("3"), 3);
-        stakers.push(makeAddr("3"));
-        joinPool(BaseDelegation(delegation), 2 * depositAmount, makeAddr("4"), 4);
-        stakers.push(makeAddr("4"));
         assertEq(delegation.getStake(), 80 * depositAmount / 10, "incorrect stake");
+        assertEq(delegation.validators().length, 4, "incorrect number of validators");
+        assertEq(delegation.getDeposit(validator(1)), 20 * depositAmount / 10, "validator deposits are decreased equally");
+        assertEq(delegation.getDeposit(validator(2)), 20 * depositAmount / 10, "validator deposits are decreased equally");
+        assertEq(delegation.getDeposit(validator(3)), 20 * depositAmount / 10, "validator deposits are decreased equally");
+        assertEq(delegation.getDeposit(validator(4)), 20 * depositAmount / 10, "validator deposits are decreased equally");
         vm.startPrank(makeAddr("2"));
         delegation.unstake(20 * depositAmount / 10);
         assertEq(delegation.getDeposit(validator(1)), 15 * depositAmount / 10, "validator deposits are decreased equally");
@@ -1587,8 +1571,11 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         vm.startPrank(makeAddr("4"));
         delegation.unstake(15 * depositAmount / 10);
         assertEq(delegation.getStake(), 25 * depositAmount / 10, "incorrect stake");
+        assertEq(delegation.validators().length, 4, "incorrect number of validators");
         assertEq(delegation.getDeposit(validator(1)), 10 * depositAmount / 10, "validator deposit mismatch");
         assertEq(delegation.getDeposit(validator(2)), 10 * depositAmount / 10, "validator deposit mismatch");
+        assertEq(delegation.getDeposit(validator(3)), 0, "validator deposit mismatch");
+        assertEq(delegation.getDeposit(validator(4)), 0, "validator deposit mismatch");
         vm.roll(block.number + delegation.unbondingPeriod());
         balanceBefore = makeAddr("4").balance;
         delegation.claim();
@@ -1597,6 +1584,46 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         assertEq(delegation.validators().length, 2, "incorrect number of validators");
         assertEq(delegation.getDeposit(validator(1)), 125 * depositAmount / 100, "validator deposit mismatch");
         assertEq(delegation.getDeposit(validator(2)), 125 * depositAmount / 100, "validator deposit mismatch");
+        assertEq(delegation.getDeposit(validator(3)), 0, "validator deposit mismatch");
+        assertEq(delegation.getDeposit(validator(4)), 0, "validator deposit mismatch");
+        vm.stopPrank();
+        vm.startPrank(owner);
+        delegation.unstake(20 * depositAmount / 10);
+        assertEq(delegation.getStake(), 5 * depositAmount / 10, "incorrect stake");
+        assertEq(delegation.validators().length, 2, "incorrect number of validators");
+        assertEq(delegation.getDeposit(validator(1)), 0, "validator deposit mismatch");
+        assertEq(delegation.getDeposit(validator(2)), 0, "validator deposit mismatch");
+        assertEq(delegation.getDeposit(validator(3)), 0, "validator deposit mismatch");
+        assertEq(delegation.getDeposit(validator(4)), 0, "validator deposit mismatch");
+        vm.roll(block.number + delegation.unbondingPeriod());
+        balanceBefore = owner.balance;
+        delegation.claim();
+        assertEq(owner.balance - balanceBefore, 20 * depositAmount / 10, "unstaked vs claimed amount mismatch");
+        assertEq(delegation.getStake(), 5 * depositAmount / 10, "incorrect stake");
+        assertEq(delegation.validators().length, 0, "incorrect number of validators");
+        assertEq(delegation.getDeposit(validator(1)), 0, "validator deposit mismatch");
+        assertEq(delegation.getDeposit(validator(2)), 0, "validator deposit mismatch");
+        assertEq(delegation.getDeposit(validator(3)), 0, "validator deposit mismatch");
+        assertEq(delegation.getDeposit(validator(4)), 0, "validator deposit mismatch");
+        vm.stopPrank();
+        vm.startPrank(makeAddr("4"));
+        delegation.unstake(5 * depositAmount / 10);
+        assertEq(delegation.getStake(), 0, "incorrect stake");
+        assertEq(delegation.validators().length, 0, "incorrect number of validators");
+        assertEq(delegation.getDeposit(validator(1)), 0, "validator deposit mismatch");
+        assertEq(delegation.getDeposit(validator(2)), 0, "validator deposit mismatch");
+        assertEq(delegation.getDeposit(validator(3)), 0, "validator deposit mismatch");
+        assertEq(delegation.getDeposit(validator(4)), 0, "validator deposit mismatch");
+        vm.roll(block.number + delegation.unbondingPeriod());
+        balanceBefore = makeAddr("4").balance;
+        delegation.claim();
+        assertEq(makeAddr("4").balance - balanceBefore, 5 * depositAmount / 10, "unstaked vs claimed amount mismatch");
+        assertEq(delegation.getStake(), 0, "incorrect stake");
+        assertEq(delegation.validators().length, 0, "incorrect number of validators");
+        assertEq(delegation.getDeposit(validator(1)), 0, "validator deposit mismatch");
+        assertEq(delegation.getDeposit(validator(2)), 0, "validator deposit mismatch");
+        assertEq(delegation.getDeposit(validator(3)), 0, "validator deposit mismatch");
+        assertEq(delegation.getDeposit(validator(4)), 0, "validator deposit mismatch");
         vm.stopPrank();
     }
 
