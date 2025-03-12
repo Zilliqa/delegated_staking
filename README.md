@@ -161,7 +161,7 @@ cast call 0x7a0b7e6d24ede78260c9ddbd98e828b0e11a8ea2 "pendingWithdrawals(bytes)(
 0x92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c
 ```
 
-If your validator's deposit was lower than the value of your LST balance or staked ZIL then you can claim the difference after the unbonding period as explained in the section about unstaking. If your validator's deposit was higher, then it can't leave the staking pool yet. First, its deposit is automatically reduced to the value of your LST balance or staked ZIL and the difference is redistributed among the validators remaining in the staking pool after the unbonding period. Note that during the unbonding period the amount to be redistributed is unavailable i.e. unstaking is temporarily limited to amounts less than the sum of all other validators' deposits exceeding the required minimum.
+If your validator's deposit was lower than the value of your LST balance or staked ZIL then you can claim the difference after the unbonding period as explained in the section about unstaking. If your validator's deposit was higher, then it can't leave the staking pool yet. First, its deposit is automatically reduced to the value of your LST balance or staked ZIL and the difference is redistributed among the validators remaining in the staking pool after the unbonding period.
 
 To complete the leaving of your validator, run the following command as soon as the unbonding period is over:
 ```bash
@@ -171,7 +171,7 @@ cast send --legacy --private-key 0x... \
 ```
 After leaving the staking pool, your node will remain a validator.
 
-If you don't have an activated validator node yet, but have already deployed a delegation contract and your balance as the contract owner cover the required minimum stake, you can make a fully synced node the first validator of your staking pool by submitting a transaction with e.g. 10 million ZIL through
+If you don't have an activated validator node yet, but have already deployed a delegation contract and your balance as the contract owner covers the required minimum stake, you can turn a fully synced node into the first validator in your staking pool by submitting a transaction with e.g. 10 million ZIL through
 ```bash
 cast send --legacy --value 10000000ether --private-key $PRIVATE_KEY \
 0x7a0b7e6d24ede78260c9ddbd98e828b0e11a8ea2 "depositFromPool(bytes,bytes,bytes)" \
@@ -277,7 +277,7 @@ cast to-unit $(cast call 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 "getClaimabl
 ```
 with the address of the account that unstaked above as an argument.
 
-Note that if a delegation contract represents a staking pool with multiple validators, each staking and unstaking will increase and decrease all validators' deposit proportionally to their current deposit. In case an unstaking would reduce a validator's deposit below the required minimum, the validator will be forced to leave the staking pool as soon as its pending unstaked deposit is withdrawn by the delegation contract.
+Note that if a delegation contract represents a staking pool with multiple validators, each staking and unstaking will increase and decrease all validators' deposit proportionally to their current deposit. In case the surplus of the deposits exceeding the required minimum is insufficient to match an unstaking request, one or more validators will be removed entirely from both the deposit contract and the staking pool. The required fraction of the removed validators' withdrawn deposits will be reserved for claims and the rest will be distributed among the remaining validators to increase their deposits.
 
 Of course, delegators will not be using the CLI to stake, unstake and claim their funds. To enable delegators to access your staking pool through the staking portal maintained by the Zilliqa team, get in touch and provide your delegation contract address once you have set up the validator node and delegation contract. If you want to integrate staking into your dapp, see the [Development and Testing](#development-and-testing) section below.
 
@@ -339,7 +339,7 @@ cast send --legacy --private-key 0x... 0x7a0b7e6d24ede78260c9ddbd98e828b0e11a8ea
 
 ## Development and Testing
 
-Staking pool operators are encouraged to fork and adapt the above contracts to implement features such as instant unstaking for a premium fee, automated staking of rewards to achieve the best possible APR or issuing a rebasing liquid staking token with a constant price of 1 ZIL but holder balances adjusted according to the rewards accrued.
+Staking pool operators are encouraged to fork and adapt the above contracts to implement features such as instant unstaking for a premium fee, automated staking of rewards to achieve the best possible APR or issuing a rebasing liquid staking token with a constant price of 1 ZIL and holder balances adjusted according to the rewards accrued.
 
 The tests included in this repository should also be adjusted and extended accordingly. They can be executed by running
 ```bash
@@ -437,5 +437,5 @@ and a few more for the non-liquid variant.
 
 To generate and view the comprehensive NatSpec documentation, run
 ```bash
-forge doc --serve --open --port 3001
+forge doc --serve --open --port 3111
 ```
