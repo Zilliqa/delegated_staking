@@ -79,7 +79,7 @@ abstract contract BaseDelegationTest is Test {
 
     enum DepositMode {Bootstrapping, Fundraising, Transforming}
 
-    function depositFromPool(
+    function addValidator(
         BaseDelegation delegation,
         uint256 depositAmount,
         DepositMode mode
@@ -110,25 +110,33 @@ abstract contract BaseDelegationTest is Test {
             }
             
         if (mode == DepositMode.Fundraising || mode == DepositMode.Bootstrapping) {
-            vm.deal(owner, owner.balance + depositAmount - (mode == DepositMode.Fundraising ? 2 : 0) * preStaked);
-            vm.startPrank(owner);
-            blsPubKey = bytes(hex"01fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c");
-            blsPubKey[47] = currentDeploymentId;
-            delegation.depositFromPool{
-                value: depositAmount - (mode == DepositMode.Fundraising ? 2 : 0) * preStaked
-            }(
-                blsPubKey,
-                bytes(hex"002408011220d5ed74b09dcbe84d3b32a56c01ab721cf82809848b6604535212a219d35c412f"),
-                bytes(hex"b14832a866a49ddf8a3104f8ee379d29c136f29aeb8fccec9d7fb17180b99e8ed29bee2ada5ce390cb704bc6fd7f5ce814f914498376c4b8bc14841a57ae22279769ec8614e2673ba7f36edc5a4bf5733aa9d70af626279ee2b2cde939b4bd8a")
-            );
-            vm.stopPrank();
-
+            depositFromPool(delegation, depositAmount - (mode == DepositMode.Fundraising ? 2 : 0) * preStaked, 1);
             // wait 2 epochs for the change to the deposit to take affect
             vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
         }
 
         if (mode == DepositMode.Transforming)
             joinPool(delegation, depositAmount, owner, 1);
+    }
+
+    function depositFromPool(
+        BaseDelegation delegation,
+        uint256 depositAmount,
+        uint8 validatorId
+    ) internal {
+        vm.deal(owner, owner.balance + depositAmount);
+        vm.startPrank(owner);
+        bytes memory blsPubKey = bytes(hex"92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c");
+        blsPubKey[47] = currentDeploymentId;
+        blsPubKey[0] = bytes1(validatorId);
+        delegation.depositFromPool{
+            value: depositAmount
+        }(
+            blsPubKey,
+            bytes(hex"002408011220d5ed74b09dcbe84d3b32a56c01ab721cf82809848b6604535212a219d35c412f"),
+            bytes(hex"b14832a866a49ddf8a3104f8ee379d29c136f29aeb8fccec9d7fb17180b99e8ed29bee2ada5ce390cb704bc6fd7f5ce814f914498376c4b8bc14841a57ae22279769ec8614e2673ba7f36edc5a4bf5733aa9d70af626279ee2b2cde939b4bd8a")
+        );
+        vm.stopPrank();
     }
 
     function joinPool(
@@ -177,7 +185,7 @@ abstract contract BaseDelegationTest is Test {
         uint256 i;
         uint256 x;
 
-        depositFromPool(BaseDelegation(delegation), 10_000_000 ether, DepositMode.Bootstrapping);
+        addValidator(BaseDelegation(delegation), 10_000_000 ether, DepositMode.Bootstrapping);
 
         // wait 2 epochs for the change to the deposit to take affect
         vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);

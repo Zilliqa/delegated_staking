@@ -353,7 +353,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         uint256 taxedRewardsAfterStaking =
             rewardsBeforeStaking - (rewardsBeforeStaking - taxedRewardsBeforeStaking) / uint256(10);
         Console.log18("taxedRewardsAfterStaking = %s.%s%s", taxedRewardsAfterStaking);
-        depositFromPool(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
         run(
             rewardsBeforeStaking,
             taxedRewardsBeforeStaking,
@@ -374,7 +374,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         uint256 taxedRewardsAfterStaking =
             rewardsBeforeStaking - (rewardsBeforeStaking - taxedRewardsBeforeStaking) / uint256(10);
         Console.log18("taxedRewardsAfterStaking = %s.%s%s", taxedRewardsAfterStaking);
-        depositFromPool(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
         run(
             rewardsBeforeStaking,
             taxedRewardsBeforeStaking,
@@ -395,7 +395,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         uint256 taxedRewardsAfterStaking =
             rewardsBeforeStaking - (rewardsBeforeStaking - taxedRewardsBeforeStaking) / uint256(10);
         Console.log18("taxedRewardsAfterStaking = %s.%s%s", taxedRewardsAfterStaking);
-        depositFromPool(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
         run(
             rewardsBeforeStaking,
             taxedRewardsBeforeStaking,
@@ -416,7 +416,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         uint256 taxedRewardsAfterStaking =
             rewardsBeforeStaking - (rewardsBeforeStaking - taxedRewardsBeforeStaking) / uint256(10);
         Console.log18("taxedRewardsAfterStaking = %s.%s%s", taxedRewardsAfterStaking);
-        depositFromPool(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
         run(
             rewardsBeforeStaking,
             taxedRewardsBeforeStaking,
@@ -439,7 +439,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         uint256 taxedRewardsAfterStaking =
             rewardsBeforeStaking - (rewardsBeforeStaking - taxedRewardsBeforeStaking) / uint256(10);
         Console.log18("taxedRewardsAfterStaking = %s.%s%s", taxedRewardsAfterStaking);
-        depositFromPool(BaseDelegation(delegation), depositAmount, DepositMode.Transforming);
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Transforming);
         run(
             rewardsBeforeStaking,
             taxedRewardsBeforeStaking,
@@ -460,7 +460,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         uint256 taxedRewardsAfterStaking =
             rewardsBeforeStaking - (rewardsBeforeStaking - taxedRewardsBeforeStaking) / uint256(10);
         Console.log18("taxedRewardsAfterStaking = %s.%s%s", taxedRewardsAfterStaking);
-        depositFromPool(BaseDelegation(delegation), depositAmount, DepositMode.Transforming);
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Transforming);
         run(
             rewardsBeforeStaking,
             taxedRewardsBeforeStaking,
@@ -481,7 +481,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         uint256 taxedRewardsAfterStaking =
             rewardsBeforeStaking - (rewardsBeforeStaking - taxedRewardsBeforeStaking) / uint256(10);
         Console.log18("taxedRewardsAfterStaking = %s.%s%s", taxedRewardsAfterStaking);
-        depositFromPool(BaseDelegation(delegation), depositAmount, DepositMode.Transforming);
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Transforming);
         run(
             rewardsBeforeStaking,
             taxedRewardsBeforeStaking,
@@ -502,7 +502,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         uint256 taxedRewardsAfterStaking =
             rewardsBeforeStaking - (rewardsBeforeStaking - taxedRewardsBeforeStaking) / uint256(10);
         Console.log18("taxedRewardsAfterStaking = %s.%s%s", taxedRewardsAfterStaking);
-        depositFromPool(BaseDelegation(delegation), depositAmount, DepositMode.Transforming);
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Transforming);
         run(
             rewardsBeforeStaking,
             taxedRewardsBeforeStaking,
@@ -525,7 +525,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         uint256 taxedRewardsAfterStaking =
             rewardsBeforeStaking - (rewardsBeforeStaking - taxedRewardsBeforeStaking) / uint256(10);
         Console.log18("taxedRewardsAfterStaking = %s.%s%s", taxedRewardsAfterStaking);
-        depositFromPool(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
         run(
             rewardsBeforeStaking,
             taxedRewardsBeforeStaking,
@@ -546,7 +546,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         uint256 taxedRewardsAfterStaking =
             rewardsBeforeStaking - (rewardsBeforeStaking - taxedRewardsBeforeStaking) / uint256(10);
         Console.log18("taxedRewardsAfterStaking = %s.%s%s", taxedRewardsAfterStaking);
-        depositFromPool(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
         run(
             rewardsBeforeStaking,
             taxedRewardsBeforeStaking,
@@ -567,7 +567,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         uint256 taxedRewardsAfterStaking =
             rewardsBeforeStaking - (rewardsBeforeStaking - taxedRewardsBeforeStaking) / uint256(10);
         Console.log18("taxedRewardsAfterStaking = %s.%s%s", taxedRewardsAfterStaking);
-        depositFromPool(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
         run(
             rewardsBeforeStaking,
             taxedRewardsBeforeStaking,
@@ -588,7 +588,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         uint256 taxedRewardsAfterStaking =
             rewardsBeforeStaking - (rewardsBeforeStaking - taxedRewardsBeforeStaking) / uint256(10);
         Console.log18("taxedRewardsAfterStaking = %s.%s%s", taxedRewardsAfterStaking);
-        depositFromPool(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
         run(
             rewardsBeforeStaking,
             taxedRewardsBeforeStaking,
@@ -611,7 +611,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         uint256 taxedRewardsAfterStaking =
             rewardsBeforeStaking - (rewardsBeforeStaking - taxedRewardsBeforeStaking) / uint256(10);
         Console.log18("taxedRewardsAfterStaking = %s.%s%s", taxedRewardsAfterStaking);
-        depositFromPool(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
         run(
             rewardsBeforeStaking,
             taxedRewardsBeforeStaking,
@@ -632,7 +632,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         uint256 taxedRewardsAfterStaking =
             rewardsBeforeStaking - (rewardsBeforeStaking - taxedRewardsBeforeStaking) / uint256(10);
         Console.log18("taxedRewardsAfterStaking = %s.%s%s", taxedRewardsAfterStaking);
-        depositFromPool(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
         run(
             rewardsBeforeStaking,
             taxedRewardsBeforeStaking,
@@ -653,7 +653,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         uint256 taxedRewardsAfterStaking =
             rewardsBeforeStaking - (rewardsBeforeStaking - taxedRewardsBeforeStaking) / uint256(10);
         Console.log18("taxedRewardsAfterStaking = %s.%s%s", taxedRewardsAfterStaking);
-        depositFromPool(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
         run(
             rewardsBeforeStaking,
             taxedRewardsBeforeStaking,
@@ -674,7 +674,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         uint256 taxedRewardsAfterStaking =
             rewardsBeforeStaking - (rewardsBeforeStaking - taxedRewardsBeforeStaking) / uint256(10);
         Console.log18("taxedRewardsAfterStaking = %s.%s%s", taxedRewardsAfterStaking);
-        depositFromPool(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
         run(
             rewardsBeforeStaking,
             taxedRewardsBeforeStaking,
@@ -697,7 +697,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         uint256 taxedRewardsAfterStaking =
             rewardsBeforeStaking - (rewardsBeforeStaking - taxedRewardsBeforeStaking) / uint256(10);
         Console.log18("taxedRewardsAfterStaking = %s.%s%s", taxedRewardsAfterStaking);
-        depositFromPool(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
         run(
             rewardsBeforeStaking,
             taxedRewardsBeforeStaking,
@@ -718,7 +718,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         uint256 taxedRewardsAfterStaking =
             rewardsBeforeStaking - (rewardsBeforeStaking - taxedRewardsBeforeStaking) / uint256(10);
         Console.log18("taxedRewardsAfterStaking = %s.%s%s", taxedRewardsAfterStaking);
-        depositFromPool(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
         run(
             rewardsBeforeStaking,
             taxedRewardsBeforeStaking,
@@ -739,7 +739,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         uint256 taxedRewardsAfterStaking =
             rewardsBeforeStaking - (rewardsBeforeStaking - taxedRewardsBeforeStaking) / uint256(10);
         Console.log18("taxedRewardsAfterStaking = %s.%s%s", taxedRewardsAfterStaking);
-        depositFromPool(BaseDelegation(delegation), depositAmount, DepositMode.Transforming);
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Transforming);
         run(
             rewardsBeforeStaking,
             taxedRewardsBeforeStaking,
@@ -760,7 +760,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         uint256 taxedRewardsAfterStaking =
             rewardsBeforeStaking - (rewardsBeforeStaking - taxedRewardsBeforeStaking) / uint256(10);
         Console.log18("taxedRewardsAfterStaking = %s.%s%s", taxedRewardsAfterStaking);
-        depositFromPool(BaseDelegation(delegation), depositAmount, DepositMode.Transforming);
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Transforming);
         run(
             rewardsBeforeStaking,
             taxedRewardsBeforeStaking,
@@ -781,7 +781,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         uint256 taxedRewardsAfterStaking =
             rewardsBeforeStaking - (rewardsBeforeStaking - taxedRewardsBeforeStaking) / uint256(10);
         Console.log18("taxedRewardsAfterStaking = %s.%s%s", taxedRewardsAfterStaking);
-        depositFromPool(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
         run(
             rewardsBeforeStaking,
             taxedRewardsBeforeStaking,
@@ -802,7 +802,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         uint256 taxedRewardsAfterStaking =
             rewardsBeforeStaking - (rewardsBeforeStaking - taxedRewardsBeforeStaking) / uint256(10);
         Console.log18("taxedRewardsAfterStaking = %s.%s%s", taxedRewardsAfterStaking);
-        depositFromPool(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
         run(
             rewardsBeforeStaking,
             taxedRewardsBeforeStaking,
@@ -825,7 +825,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         uint256 taxedRewardsAfterStaking =
             rewardsBeforeStaking - (rewardsBeforeStaking - taxedRewardsBeforeStaking) / uint256(10);
         Console.log18("taxedRewardsAfterStaking = %s.%s%s", taxedRewardsAfterStaking);
-        depositFromPool(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
         (, , , , , , , , uint256 lstPrice1, , , , , , , ) = run(
             rewardsBeforeStaking,
             taxedRewardsBeforeStaking,
@@ -840,7 +840,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         delegation = delegations[0];
         lst = lsts[0];
         depositAmount = 30_000_000 ether;
-        depositFromPool(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
         joinPool(BaseDelegation(delegation), depositAmount, makeAddr("2"), 2);
         joinPool(BaseDelegation(delegation), depositAmount, makeAddr("3"), 3);
         (, , , , , , , , uint256 lstPrice2, , , , , , , ) = run(
@@ -864,7 +864,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         uint256 taxedRewardsAfterStaking =
             rewardsBeforeStaking - (rewardsBeforeStaking - taxedRewardsBeforeStaking) / uint256(10);
         Console.log18("taxedRewardsAfterStaking = %s.%s%s", taxedRewardsAfterStaking);
-        depositFromPool(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
         (, , , , , , , , uint256 lstPrice1, , , , , , , ) = run(
             rewardsBeforeStaking,
             taxedRewardsBeforeStaking,
@@ -878,7 +878,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         // delegation and lst point to the last element of delegations and lsts by default
         delegation = delegations[0];
         lst = lsts[0];
-        depositFromPool(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
         (, , , , , , , , uint256 lstPrice2, , , , , , , ) = run(
             rewardsBeforeStaking,
             taxedRewardsBeforeStaking,
@@ -900,7 +900,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         uint256 taxedRewardsAfterStaking =
             rewardsBeforeStaking - (rewardsBeforeStaking - taxedRewardsBeforeStaking) / uint256(10);
         Console.log18("taxedRewardsAfterStaking = %s.%s%s", taxedRewardsAfterStaking);
-        depositFromPool(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
         (, , , , , , , , uint256 lstPrice1, , , , , , , ) = run(
             rewardsBeforeStaking,
             taxedRewardsBeforeStaking,
@@ -914,7 +914,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         // delegation and lst point to the last element of delegations and lsts by default
         delegation = delegations[0];
         lst = lsts[0];
-        depositFromPool(BaseDelegation(delegation), depositAmount, DepositMode.Transforming);
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Transforming);
         (, , , , , , , , uint256 lstPrice2, , , , , , , ) = run(
             rewardsBeforeStaking,
             taxedRewardsBeforeStaking,
@@ -936,7 +936,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         uint256 taxedRewardsAfterStaking =
             rewardsBeforeStaking - (rewardsBeforeStaking - taxedRewardsBeforeStaking) / uint256(10);
         Console.log18("taxedRewardsAfterStaking = %s.%s%s", taxedRewardsAfterStaking);
-        depositFromPool(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
         (, , , , , , , , , , , , , , uint256 unstakedAmount1, ) = run(
             rewardsBeforeStaking,
             taxedRewardsBeforeStaking,
@@ -950,7 +950,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         // delegation and lst point to the last element of delegations and lsts by default
         delegation = delegations[0];
         lst = lsts[0];
-        depositFromPool(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
         (, , , , , , , , , , , , , , uint256 unstakedAmount2, ) = run(
             rewardsBeforeStaking,
             taxedRewardsBeforeStaking,
@@ -972,7 +972,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         uint256 taxedRewardsAfterStaking =
             rewardsBeforeStaking - (rewardsBeforeStaking - taxedRewardsBeforeStaking) / uint256(10);
         Console.log18("taxedRewardsAfterStaking = %s.%s%s", taxedRewardsAfterStaking);
-        depositFromPool(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
         (, , , , , , , , uint256 lstPrice1, , , , , , uint256 unstakedAmount1, ) = run(
             rewardsBeforeStaking,
             taxedRewardsBeforeStaking,
@@ -986,7 +986,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         // delegation and lst point to the last element of delegations and lsts by default
         delegation = delegations[0];
         lst = lsts[0];
-        depositFromPool(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
         joinPool(BaseDelegation(delegation), depositAmount, makeAddr("2"), 2);
         vm.startPrank(makeAddr("2"));
         delegation.leavePool(validator(2));
@@ -1013,7 +1013,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         uint256 taxedRewardsAfterStaking =
             rewardsBeforeStaking - (rewardsBeforeStaking - taxedRewardsBeforeStaking) / uint256(10);
         Console.log18("taxedRewardsAfterStaking = %s.%s%s", taxedRewardsAfterStaking);
-        depositFromPool(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
         (, , , , , , , , uint256 lstPrice1, , , , , , uint256 unstakedAmount1, ) = run(
             rewardsBeforeStaking,
             taxedRewardsBeforeStaking,
@@ -1027,7 +1027,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         // delegation and lst point to the last element of delegations and lsts by default
         delegation = delegations[0];
         lst = lsts[0];
-        depositFromPool(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
         joinPool(BaseDelegation(delegation), depositAmount, makeAddr("2"), 2);
         vm.startPrank(owner);
         delegation.leavePool(validator(1));
@@ -1054,7 +1054,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         uint256 taxedRewardsAfterStaking =
             rewardsBeforeStaking - (rewardsBeforeStaking - taxedRewardsBeforeStaking) / uint256(10);
         Console.log18("taxedRewardsAfterStaking = %s.%s%s", taxedRewardsAfterStaking);
-        depositFromPool(BaseDelegation(delegation), 2 * depositAmount, DepositMode.Bootstrapping);
+        addValidator(BaseDelegation(delegation), 2 * depositAmount, DepositMode.Bootstrapping);
         (, , , , , , , , uint256 lstPrice1, , , , , , uint256 unstakedAmount1, ) = run(
             rewardsBeforeStaking,
             taxedRewardsBeforeStaking,
@@ -1068,7 +1068,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         // delegation and lst point to the last element of delegations and lsts by default
         delegation = delegations[0];
         lst = lsts[0];
-        depositFromPool(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
         joinPool(BaseDelegation(delegation), 4 * depositAmount, makeAddr("2"), 2);
         joinPool(BaseDelegation(delegation), 2 * depositAmount, makeAddr("3"), 3);
         joinPool(BaseDelegation(delegation), 5 * depositAmount, makeAddr("4"), 4);
@@ -1106,7 +1106,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         uint256 taxedRewardsAfterStaking =
             rewardsBeforeStaking - (rewardsBeforeStaking - taxedRewardsBeforeStaking) / uint256(10);
         Console.log18("taxedRewardsAfterStaking = %s.%s%s", taxedRewardsAfterStaking);
-        depositFromPool(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
         (, , , , , , , , uint256 lstPrice1, , , , , , uint256 unstakedAmount1, ) = run(
             rewardsBeforeStaking,
             taxedRewardsBeforeStaking,
@@ -1198,7 +1198,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         uint256 taxedRewardsAfterStaking =
             rewardsBeforeStaking - (rewardsBeforeStaking - taxedRewardsBeforeStaking) / uint256(10);
         Console.log18("taxedRewardsAfterStaking = %s.%s%s", taxedRewardsAfterStaking);
-        depositFromPool(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
         (, , , , , , , , uint256 lstPrice1, , , , , , uint256 unstakedAmount1, ) = run(
             rewardsBeforeStaking,
             taxedRewardsBeforeStaking,
@@ -1265,7 +1265,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         uint256 taxedRewardsAfterStaking =
             rewardsBeforeStaking - (rewardsBeforeStaking - taxedRewardsBeforeStaking) / uint256(10);
         Console.log18("taxedRewardsAfterStaking = %s.%s%s", taxedRewardsAfterStaking);
-        depositFromPool(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
         (, , , , , , , , uint256 lstPrice1, , , , , , uint256 unstakedAmount1, ) = run(
             rewardsBeforeStaking,
             taxedRewardsBeforeStaking,
@@ -1352,7 +1352,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         uint256 taxedRewardsAfterStaking =
             rewardsBeforeStaking - (rewardsBeforeStaking - taxedRewardsBeforeStaking) / uint256(10);
         Console.log18("taxedRewardsAfterStaking = %s.%s%s", taxedRewardsAfterStaking);
-        depositFromPool(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
         (, , , , , , , , uint256 lstPrice1, , , , , , uint256 unstakedAmount1, ) = run(
             rewardsBeforeStaking,
             taxedRewardsBeforeStaking,
@@ -1414,7 +1414,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         uint256 taxedRewardsAfterStaking =
             rewardsBeforeStaking - (rewardsBeforeStaking - taxedRewardsBeforeStaking) / uint256(10);
         Console.log18("taxedRewardsAfterStaking = %s.%s%s", taxedRewardsAfterStaking);
-        depositFromPool(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
         (, , , , , , , , uint256 lstPrice1, , , , , , uint256 unstakedAmount1, ) = run(
             rewardsBeforeStaking,
             taxedRewardsBeforeStaking,
@@ -1498,7 +1498,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         uint256 taxedRewardsAfterStaking =
             rewardsBeforeStaking - (rewardsBeforeStaking - taxedRewardsBeforeStaking) / uint256(10);
         Console.log18("taxedRewardsAfterStaking = %s.%s%s", taxedRewardsAfterStaking);
-        depositFromPool(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
         (, , , , , , , , uint256 lstPrice1, , , , , , uint256 unstakedAmount1, ) = run(
             rewardsBeforeStaking,
             taxedRewardsBeforeStaking,
@@ -1548,8 +1548,31 @@ contract LiquidDelegationTest is BaseDelegationTest {
         assertGt(unstakedAmount1, unstakedAmount2, "unstaked amount should decrease");
     }
 
+    function test_DepositMultipleValidatorsFromPool() public {
+        uint256 depositAmount = 10_000_000 ether;
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
+        vm.deal(stakers[0], stakers[0].balance + 200 ether);
+        vm.startPrank(stakers[0]);
+        delegation.stake{value: 100 ether}();
+        uint256 stakerBalance = stakers[0].balance;
+        delegation.unstake(lst.balanceOf(stakers[0]));
+        vm.roll(block.number + delegation.unbondingPeriod());
+        delegation.claim();
+        assertEq(stakers[0].balance - stakerBalance, 100 ether, "balance mismatch after claiming");
+        vm.stopPrank();
+        depositFromPool(BaseDelegation(delegation), depositAmount, 2);
+        vm.startPrank(stakers[0]);
+        delegation.stake{value: 100 ether}();
+        stakerBalance = stakers[0].balance;
+        delegation.unstake(lst.balanceOf(stakers[0]));
+        vm.roll(block.number + delegation.unbondingPeriod());
+        delegation.claim();
+        assertEq(stakers[0].balance - stakerBalance, 100 ether, "balance mismatch after claiming");
+        vm.stopPrank();
+    }
+
     function test_InstantUnstakeBeforeActivation() public {
-        vm.deal(stakers[0], stakers[0].balance + 110 ether);
+        vm.deal(stakers[0], stakers[0].balance + 100 ether);
         vm.startPrank(stakers[0]);
         delegation.stake{value: 100 ether}();
         uint256 stakerBalance = stakers[0].balance;
@@ -1595,12 +1618,12 @@ contract LiquidDelegationTest is BaseDelegationTest {
         vm.startPrank(stakers[0]);
         delegation.stake{value: 1000 ether}();
         vm.stopPrank();
-        depositFromPool(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
     }
 
     function test_StakeRemainingAfterAllValidatorsLeft() public {
         uint256 depositAmount = 10_000_000 ether;
-        depositFromPool(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
         joinPool(BaseDelegation(delegation), depositAmount, makeAddr("2"), 2);
         joinPool(BaseDelegation(delegation), depositAmount, makeAddr("3"), 3);
         joinPool(BaseDelegation(delegation), depositAmount, makeAddr("4"), 4);
@@ -1662,7 +1685,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
 
     function test_LargeUnstakeUndepositValidators() public {
         uint256 depositAmount = 10_000_000 ether;
-        depositFromPool(BaseDelegation(delegation), 2 * depositAmount, DepositMode.Bootstrapping);
+        addValidator(BaseDelegation(delegation), 2 * depositAmount, DepositMode.Bootstrapping);
         joinPool(BaseDelegation(delegation), 2 * depositAmount, makeAddr("2"), 2);
         joinPool(BaseDelegation(delegation), 2 * depositAmount, makeAddr("3"), 3);
         joinPool(BaseDelegation(delegation), 2 * depositAmount, makeAddr("4"), 4);
@@ -1763,59 +1786,59 @@ contract LiquidDelegationTest is BaseDelegationTest {
 
     function test_DepositTwice_Bootstrapping_Bootstrapping() public {
         uint256 depositAmount = 10_000_000 ether;
-        depositFromPool(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
-        depositFromPool(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
     }
 
     function test_DepositLeaveDeposit_Bootstrapping_Fundraising() public {
         uint256 depositAmount = 10_000_000 ether;
-        depositFromPool(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
         vm.startPrank(owner);
         delegation.leavePool(validator(1));
         vm.stopPrank();
-        depositFromPool(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
     }
 
     function test_RevertWhen_DepositTwice_Bootstrapping_Fundraising() public {
         uint256 depositAmount = 10_000_000 ether;
-        this.depositFromPool(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        this.addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
         vm.expectRevert(); //vm.expectPartialRevert(BaseDelegation.DepositContractCallFailed.selector);
-        this.depositFromPool(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
+        this.addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
     }
 
     function test_RevertWhen_DepositTwice_Fundraising_Fundraising() public {
         uint256 depositAmount = 10_000_000 ether;
-        this.depositFromPool(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
+        this.addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
         vm.expectRevert(); //vm.expectPartialRevert(BaseDelegation.DepositContractCallFailed.selector);
-        this.depositFromPool(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
+        this.addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
     }
 
     function test_DepositTwice_Fundraising_Bootstrapping() public {
         uint256 depositAmount = 10_000_000 ether;
-        depositFromPool(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
-        depositFromPool(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
     }
 
     function test_DepositTwice_Transforming_Bootstrapping() public {
         uint256 depositAmount = 10_000_000 ether;
-        depositFromPool(BaseDelegation(delegation), depositAmount, DepositMode.Transforming);
-        depositFromPool(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Transforming);
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
     }
 
     function test_DepositLeaveDeposit_Transforming_Fundraising() public {
         uint256 depositAmount = 10_000_000 ether;
-        depositFromPool(BaseDelegation(delegation), depositAmount, DepositMode.Transforming);
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Transforming);
         vm.startPrank(owner);
         delegation.leavePool(validator(1));
         vm.stopPrank();
-        depositFromPool(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
     }
 
     function test_RevertWhen_DepositTwice_Transforming_Fundraising() public {
         uint256 depositAmount = 10_000_000 ether;
-        this.depositFromPool(BaseDelegation(delegation), depositAmount, DepositMode.Transforming);
+        this.addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Transforming);
         vm.expectRevert(); //vm.expectPartialRevert(BaseDelegation.DepositContractCallFailed.selector);
-        this.depositFromPool(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
+        this.addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Fundraising);
     }
 
     function test_ManyVsOneStake_UnstakeAll() public {
@@ -1827,7 +1850,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         uint256 taxedRewardsAfterStaking =
             rewardsBeforeStaking - (rewardsBeforeStaking - taxedRewardsBeforeStaking) / uint256(10);
         Console.log18("taxedRewardsAfterStaking = %s.%s%s", taxedRewardsAfterStaking);
-        depositFromPool(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
         run(
             rewardsBeforeStaking,
             taxedRewardsBeforeStaking,
@@ -1850,7 +1873,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
         uint256 taxedRewardsAfterStaking =
             rewardsBeforeStaking - (rewardsBeforeStaking - taxedRewardsBeforeStaking) / uint256(10);
         Console.log18("taxedRewardsAfterStaking = %s.%s%s", taxedRewardsAfterStaking);
-        depositFromPool(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
         run(
             rewardsBeforeStaking,
             taxedRewardsBeforeStaking,
@@ -1888,7 +1911,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
     function test_RandomStakeUnstakeClaim() external {
         uint256 totalDeposit = 5_200_000_000 ether;
         uint256 depositAmount = vm.randomUint(10_000_000 ether, 100_000_000 ether);
-        depositFromPool(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
         Console.log("%s total deposit", totalDeposit);
         Console.log("%s initial deposit", depositAmount);
         for (uint256 i = 0; i < numOfUsers; i++) {
