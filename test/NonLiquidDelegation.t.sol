@@ -2180,7 +2180,11 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         Console.log("%s unstakings", unstakingsCounter);
         Console.log("%s claimings", claimingsCounter);
         // computing the outstanding rewards is expensive, therefore only once at the end
-        assertLe(delegation.getDelegatedTotal() + outstandingRewards, delegation.getStake() + delegation.getRewards() * (delegation.DENOMINATOR() - delegation.getCommissionNumerator()) / delegation.DENOMINATOR(), "exposure greater than funds");
+        assertLe(
+            delegation.getDelegatedTotal() + outstandingRewards,
+            delegation.getStake() + (delegation.getTaxedRewards() + (int256(delegation.getRewards()) - delegation.getTaxedRewards()) * int256(delegation.DENOMINATOR() - delegation.getCommissionNumerator()) / int256(delegation.DENOMINATOR())).toUint256(), 
+            "exposure greater than funds"
+        );
     }
 
     function test_CollectCommission() external {

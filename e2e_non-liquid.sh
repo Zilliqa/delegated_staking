@@ -175,7 +175,7 @@ rewards() {
 withdraw_rewards() {
     echo "🔽🔽🔽🔽🔽🔽🔽🔽🔽🔽🔽🔽🔽🔽🔽🔽"
     echo -n "🟢 exposure: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedTotal()(uint256)" | sed 's/\[[^]]*\]//g') ether)+$(echo $(rewards))"
-    echo -n "🟢 funds: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether)+0.9*$(cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether)"
+    echo -n "🟡 funds: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether)+$(cast to-unit $(cast call $CONTRACT_ADDRESS "getTaxedRewards()(int256)" | sed 's/\[[^]]*\]//g') ether)+0.9*($(cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether)-$(cast to-unit $(cast call $CONTRACT_ADDRESS "getTaxedRewards()(int256)" | sed 's/\[[^]]*\]//g') ether))"
     echo -n "🟢 commission: " && cast to-unit $(cast balance $COMMISSION_ADDRESS) ether
     echo -n "🟢 controller balance: " && cast to-unit $(cast balance $(cast wallet address $1)) ether
     echo -n "🟢 controller rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "rewards()(uint256)" --from $(cast wallet address $1) | sed 's/\[[^]]*\]//g') ether
@@ -187,7 +187,7 @@ withdraw_rewards() {
         echo "🔴 WithdrawRewards $(cast wallet address $1) $temp"
     fi
     echo -n "🟢 exposure: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedTotal()(uint256)" | sed 's/\[[^]]*\]//g') ether)+$(echo $(rewards))"
-    echo -n "🟢 funds: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether)+0.9*$(cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether)"
+    echo -n "🟡 funds: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether)+$(cast to-unit $(cast call $CONTRACT_ADDRESS "getTaxedRewards()(int256)" | sed 's/\[[^]]*\]//g') ether)+0.9*($(cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether)-$(cast to-unit $(cast call $CONTRACT_ADDRESS "getTaxedRewards()(int256)" | sed 's/\[[^]]*\]//g') ether))"
     echo -n "🟢 commission: " && cast to-unit $(cast balance $COMMISSION_ADDRESS) ether
     echo -n "🟢 controller balance: " && cast to-unit $(cast balance $(cast wallet address $1)) ether
     echo -n "🟢 controller rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "rewards()(uint256)" --from $(cast wallet address $1) | sed 's/\[[^]]*\]//g') ether
@@ -459,28 +459,28 @@ stake_all() {
 leave_all() {
     echo "############################### LEAVING ##############################"
     echo -n "🟢 exposure: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedTotal()(uint256)" | sed 's/\[[^]]*\]//g') ether)+$(echo $(rewards))"
-    echo -n "🟢 funds: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether)+0.9*$(cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether)"
+    echo -n "🟡 funds: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether)+$(cast to-unit $(cast call $CONTRACT_ADDRESS "getTaxedRewards()(int256)" | sed 's/\[[^]]*\]//g') ether)+0.9*($(cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether)-$(cast to-unit $(cast call $CONTRACT_ADDRESS "getTaxedRewards()(int256)" | sed 's/\[[^]]*\]//g') ether))"
     echo -n "🟢 total delegated: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedTotal()(uint256)" | sed 's/\[[^]]*\]//g') ether
     echo -n "🟢 total deposited: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether
     echo -n "🟢 immutable rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getHistoricalTaxedRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
     echo -n "🟢 total rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
     leave_one $BLS_PUB_KEY_1 $CONTROL_KEY_1
     echo -n "🟢 exposure: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedTotal()(uint256)" | sed 's/\[[^]]*\]//g') ether)+$(echo $(rewards))"
-    echo -n "🟢 funds: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether)+0.9*$(cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether)"
+    echo -n "🟡 funds: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether)+$(cast to-unit $(cast call $CONTRACT_ADDRESS "getTaxedRewards()(int256)" | sed 's/\[[^]]*\]//g') ether)+0.9*($(cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether)-$(cast to-unit $(cast call $CONTRACT_ADDRESS "getTaxedRewards()(int256)" | sed 's/\[[^]]*\]//g') ether))"
     echo -n "🟢 total delegated: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedTotal()(uint256)" | sed 's/\[[^]]*\]//g') ether
     echo -n "🟢 total deposited: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether
     echo -n "🟢 immutable rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getHistoricalTaxedRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
     echo -n "🟢 total rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
     leave_one $BLS_PUB_KEY_2 $CONTROL_KEY_2
     echo -n "🟢 exposure: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedTotal()(uint256)" | sed 's/\[[^]]*\]//g') ether)+$(echo $(rewards))"
-    echo -n "🟢 funds: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether)+0.9*$(cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether)"
+    echo -n "🟡 funds: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether)+$(cast to-unit $(cast call $CONTRACT_ADDRESS "getTaxedRewards()(int256)" | sed 's/\[[^]]*\]//g') ether)+0.9*($(cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether)-$(cast to-unit $(cast call $CONTRACT_ADDRESS "getTaxedRewards()(int256)" | sed 's/\[[^]]*\]//g') ether))"
     echo -n "🟢 total delegated: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedTotal()(uint256)" | sed 's/\[[^]]*\]//g') ether
     echo -n "🟢 total deposited: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether
     echo -n "🟢 immutable rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getHistoricalTaxedRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
     echo -n "🟢 total rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
     leave_one $BLS_PUB_KEY_3 $CONTROL_KEY_3
     echo -n "🟢 exposure: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedTotal()(uint256)" | sed 's/\[[^]]*\]//g') ether)+$(echo $(rewards))"
-    echo -n "🟢 funds: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether)+0.9*$(cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether)"
+    echo -n "🟡 funds: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether)+$(cast to-unit $(cast call $CONTRACT_ADDRESS "getTaxedRewards()(int256)" | sed 's/\[[^]]*\]//g') ether)+0.9*($(cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether)-$(cast to-unit $(cast call $CONTRACT_ADDRESS "getTaxedRewards()(int256)" | sed 's/\[[^]]*\]//g') ether))"
     echo -n "🟢 total delegated: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedTotal()(uint256)" | sed 's/\[[^]]*\]//g') ether
     echo -n "🟢 total deposited: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether
     echo -n "🟢 immutable rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getHistoricalTaxedRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
@@ -489,7 +489,7 @@ leave_all() {
     #🟪 move the line below to mark the location where execution shall continue when running the script again  🟪
     #🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪'
     echo -n "🟢 exposure: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedTotal()(uint256)" | sed 's/\[[^]]*\]//g') ether)+$(echo $(rewards))"
-    echo -n "🟢 funds: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether)+0.9*$(cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether)"
+    echo -n "🟡 funds: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether)+$(cast to-unit $(cast call $CONTRACT_ADDRESS "getTaxedRewards()(int256)" | sed 's/\[[^]]*\]//g') ether)+0.9*($(cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether)-$(cast to-unit $(cast call $CONTRACT_ADDRESS "getTaxedRewards()(int256)" | sed 's/\[[^]]*\]//g') ether))"
     echo -n "🟢 total delegated: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedTotal()(uint256)" | sed 's/\[[^]]*\]//g') ether
     echo -n "🟢 total deposited: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether
     echo -n "🟢 immutable rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getHistoricalTaxedRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
@@ -526,7 +526,7 @@ unstake_all() {
     echo -n "🟢 total rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
 
     echo -n "🟢 exposure: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedTotal()(uint256)" | sed 's/\[[^]]*\]//g') ether)+$(echo $(rewards))"
-    echo -n "🟢 funds: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether)+0.9*$(cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether)"
+    echo -n "🟡 funds: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether)+$(cast to-unit $(cast call $CONTRACT_ADDRESS "getTaxedRewards()(int256)" | sed 's/\[[^]]*\]//g') ether)+0.9*($(cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether)-$(cast to-unit $(cast call $CONTRACT_ADDRESS "getTaxedRewards()(int256)" | sed 's/\[[^]]*\]//g') ether))"
 
     withdraw_rewards_one 01
 
@@ -535,7 +535,7 @@ unstake_all() {
     withdraw_rewards_one 03
 
     echo -n "🟢 exposure: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedTotal()(uint256)" | sed 's/\[[^]]*\]//g') ether)+$(echo $(rewards))"
-    echo -n "🟢 funds: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether)+0.9*$(cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether)"
+    echo -n "🟡 funds: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether)+$(cast to-unit $(cast call $CONTRACT_ADDRESS "getTaxedRewards()(int256)" | sed 's/\[[^]]*\]//g') ether)+0.9*($(cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether)-$(cast to-unit $(cast call $CONTRACT_ADDRESS "getTaxedRewards()(int256)" | sed 's/\[[^]]*\]//g') ether))"
 
     echo "############################### WITHDRAWING VALIDATOR REWARDS ##############################"
     withdraw_rewards $CONTROL_KEY_1
@@ -548,7 +548,8 @@ unstake_all() {
 
 report() {
     echo -n "🟢 exposure: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedTotal()(uint256)" | sed 's/\[[^]]*\]//g') ether)+$(echo $(rewards))"
-    echo -n "🟡 funds: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether)+0.9*$(cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether)"
+    echo -n "🟡 funds: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether)+$(cast to-unit $(cast call $CONTRACT_ADDRESS "getTaxedRewards()(int256)" | sed 's/\[[^]]*\]//g') ether)+0.9*($(cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether)-$(cast to-unit $(cast call $CONTRACT_ADDRESS "getTaxedRewards()(int256)" | sed 's/\[[^]]*\]//g') ether))"
+#   echo -n "🟡 funds: " && bc -l <<< "scale=18; $(cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether)+0.9*$(cast to-unit $(cast call $CONTRACT_ADDRESS "getRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether)"
     echo -n "🟢 total delegated: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getDelegatedTotal()(uint256)" | sed 's/\[[^]]*\]//g') ether
     echo -n "🟢 total deposited: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getStake()(uint256)" | sed 's/\[[^]]*\]//g') ether
     echo -n "🟡 immutable rewards: " && cast to-unit $(cast call $CONTRACT_ADDRESS "getHistoricalTaxedRewards()(uint256)" | sed 's/\[[^]]*\]//g') ether
