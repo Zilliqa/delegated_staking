@@ -106,6 +106,10 @@ library Console {
         return console.log(format, Strings.toString(first));
     }
 
+    function log(string memory format, int256 first) internal pure {
+        return console.log(format, Strings.toStringSigned(first));
+    }
+
     function log(string memory format, address first) internal pure {
         return console.log(format, first);
     }

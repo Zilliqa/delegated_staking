@@ -213,6 +213,11 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     */
     error StakerAlreadyExists(address staker);
 
+    /**
+    * @dev Thrown if the contract can not be upgraded `fromVersion`.
+    */
+    error IncompatibleVersion(uint64 fromVersion);
+
     // ************************************************************************
     // 
     //                                 VERSION
@@ -220,7 +225,7 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     // ************************************************************************
 
     /// @dev The current version of all upgradeable contracts in the repository.
-    uint64 internal immutable VERSION = encodeVersion(0, 6, 1);
+    uint64 internal immutable VERSION = encodeVersion(0, 7, 0);
 
     /**
     * @dev Return the contracts' version.

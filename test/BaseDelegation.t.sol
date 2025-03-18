@@ -84,7 +84,6 @@ abstract contract BaseDelegationTest is Test {
         uint256 depositAmount,
         DepositMode mode
     ) public {
-        bytes memory blsPubKey;
         currentDeploymentId = bytes1(uint8(currentDeploymentId) + 1);
         uint256 preStaked = (mode == DepositMode.Fundraising) ? depositAmount / 10 : 0;
         if (mode == DepositMode.Fundraising)

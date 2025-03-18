@@ -84,7 +84,10 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
             if (k < stakings.length - 1)
                 calculatedRewards += stakings[k+1].rewards * shares[i-1] / stakings[k].total;
             else
-                calculatedRewards += (int256(delegation.getRewards()) - delegation.getImmutableRewards()).toUint256() * shares[i-1] / stakings[k].total;
+                calculatedRewards +=
+                    (int256(delegation.getRewards()) - delegation.getHistoricalTaxedRewards()).toUint256() *
+                    shares[i-1] / stakings[k].total * 
+                    (delegation.DENOMINATOR() - delegation.getCommissionNumerator()) / delegation.DENOMINATOR();
         } 
         (
             uint64[] memory stakingIndices,
@@ -154,14 +157,14 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
             Console.log18("_calculatedRewards = %s.%s%s", _calculatedRewards);
             Console.log18("_availableRewards = %s.%s%s", _availableRewards);
             Console.log18("_withdrawnRewards = %s.%s%s", _withdrawnRewards);
-            int256 temp = int256(calculatedRewards[i-1]) - int256(withdrawnRewards[i-1] * delegation.DENOMINATOR() / (delegation.DENOMINATOR() - delegation.getCommissionNumerator()));
+            int256 temp = int256(calculatedRewards[i-1]) - int256(withdrawnRewards[i-1]);
             calculatedRewards[i-1] = (temp > 0 ? temp : -temp).toUint256();
-            int256 totalRewardsBefore = int256(delegation.getImmutableRewards());
+            int256 totalRewardsBefore = int256(delegation.getHistoricalTaxedRewards());
             int256 delegationBalanceBefore = int256(address(delegation).balance);
             Console.log18("rewards accrued until last staking: %s.%s%s", totalRewardsBefore);
             Console.log18("delegation contract balance: %s.%s%s", delegationBalanceBefore);
             //Console.log18("staker balance: %s.%s%s", stakers[i-1].balance);
-            Console.log18("calculated rewards: %s.%s%s", calculatedRewards[i-1] * (delegation.DENOMINATOR() - delegation.getCommissionNumerator()) / delegation.DENOMINATOR());
+            Console.log18("calculated rewards: %s.%s%s", calculatedRewards[i-1]);
             availableRewards[i-1] = delegation.rewards();
             Console.log18("staker rewards: %s.%s%s", availableRewards[i-1]);
             uint256 withdrawnReward =
@@ -172,13 +175,13 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
             withdrawnRewards[i-1] += withdrawnReward;
             Console.log18("staker withdrew altogether: %s.%s%s", withdrawnRewards[i-1]);
             assertApproxEqAbs(
-                calculatedRewards[i-1] * (delegation.DENOMINATOR() - delegation.getCommissionNumerator()) / delegation.DENOMINATOR(),
+                calculatedRewards[i-1],
                 availableRewards[i-1],
                 10,
                 "rewards differ from calculated value"
             );
             // TODO: add tests that withdraw an amount < delegation.rewards(step)
-            int256 totalRewardsAfter = int256(delegation.getImmutableRewards());
+            int256 totalRewardsAfter = int256(delegation.getHistoricalTaxedRewards());
             int256 delegationBalanceAfter = int256(address(delegation).balance);
             Console.log18("rewards accrued until last staking: %s.%s%s", totalRewardsAfter);
             Console.log18("delegation contract balance: %s.%s%s", delegationBalanceAfter);
@@ -2087,7 +2090,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
             address user = users[vm.randomUint(0, users.length - 1)];
             // numOfStakings is enough
             uint256 operation = vm.randomUint(stakingsCounter < numOfStakings ? 1 : 2, 10);
-            // rewards are withdrawn in 30% of the operations 
+            // rewards are withdrawn in 30% of the operations
             if (operation % 3 == 0) {
                 vm.startPrank(user);
                 uint256 amount = delegation.withdrawAllRewards();
@@ -2178,6 +2181,163 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         Console.log("%s claimings", claimingsCounter);
         // computing the outstanding rewards is expensive, therefore only once at the end
         assertLe(delegation.getDelegatedTotal() + outstandingRewards, delegation.getStake() + delegation.getRewards() * (delegation.DENOMINATOR() - delegation.getCommissionNumerator()) / delegation.DENOMINATOR(), "exposure greater than funds");
+    }
+
+    function test_CollectCommission() external {
+        Console.log("------------------------------------- stake");
+        addValidator(BaseDelegation(delegation), 10_000_000 ether, DepositMode.Bootstrapping);
+        address staker = stakers[0];
+        vm.deal(staker, staker.balance + 20_000_000 ether);
+        vm.deal(owner, owner.balance + 10_000_000 ether);
+        vm.startPrank(staker);
+        delegation.stake{value: 10_000_000 ether}();
+        vm.stopPrank();
+
+        Console.log("------------------------------------- earn");
+        vm.deal(address(delegation), address(delegation).balance + 100 ether);
+        Console.log("total rewards:    %s", delegation.getRewards());
+        Console.log("taxed rewards:    %s", delegation.getTaxedRewards());
+        Console.log("taxed historical: %s", delegation.getHistoricalTaxedRewards());
+        vm.startPrank(owner);
+        Console.log("owner rewards:    %s", delegation.rewards());
+        vm.stopPrank();
+        vm.startPrank(staker);
+        Console.log("staker rewards:   %s", delegation.rewards());
+        vm.stopPrank();
+
+        Console.log("------------------------------------- stake");
+        vm.startPrank(owner);
+        delegation.stake{value: 10_000_000 ether}();
+        vm.stopPrank();
+        vm.startPrank(staker);
+        delegation.stake{value: 10_000_000 ether}();
+        vm.stopPrank();
+        Console.log("total rewards:    %s", delegation.getRewards());
+        Console.log("taxed rewards:    %s", delegation.getTaxedRewards());
+        Console.log("taxed historical: %s", delegation.getHistoricalTaxedRewards());
+        vm.startPrank(owner);
+        Console.log("owner rewards:    %s", delegation.rewards());
+        vm.stopPrank();
+        vm.startPrank(staker);
+        Console.log("staker rewards:   %s", delegation.rewards());
+        vm.stopPrank();
+
+        Console.log("------------------------------------- earn");
+        vm.deal(address(delegation), address(delegation).balance + 100 ether);
+        Console.log("total rewards:    %s", delegation.getRewards());
+        Console.log("taxed rewards:    %s", delegation.getTaxedRewards());
+        Console.log("taxed historical: %s", delegation.getHistoricalTaxedRewards());
+        vm.startPrank(owner);
+        Console.log("owner rewards:    %s", delegation.rewards());
+        vm.stopPrank();
+        vm.startPrank(staker);
+        Console.log("staker rewards:   %s", delegation.rewards());
+        vm.stopPrank();
+
+        Console.log("------------------------------------- collect");
+        vm.startPrank(owner);
+        delegation.collectCommission();
+        vm.stopPrank();
+        Console.log("total rewards:    %s", delegation.getRewards());
+        Console.log("taxed rewards:    %s", delegation.getTaxedRewards());
+        Console.log("taxed historical: %s", delegation.getHistoricalTaxedRewards());
+        vm.startPrank(owner);
+        Console.log("owner rewards:    %s", delegation.rewards());
+        vm.stopPrank();
+        vm.startPrank(staker);
+        Console.log("staker rewards:   %s", delegation.rewards());
+        vm.stopPrank();
+
+        Console.log("------------------------------------- withdraw");
+        vm.startPrank(owner);
+        delegation.withdrawAllRewards();
+        vm.stopPrank();
+        vm.startPrank(staker);
+        delegation.withdrawAllRewards();
+        vm.stopPrank();
+        Console.log("total rewards:    %s", delegation.getRewards());
+        Console.log("taxed rewards:    %s", delegation.getTaxedRewards());
+        Console.log("taxed historical: %s", delegation.getHistoricalTaxedRewards());
+        vm.startPrank(owner);
+        Console.log("owner rewards:    %s", delegation.rewards());
+        vm.stopPrank();
+        vm.startPrank(staker);
+        Console.log("staker rewards:   %s", delegation.rewards());
+        vm.stopPrank();
+
+        Console.log("------------------------------------- earn");
+        vm.deal(address(delegation), address(delegation).balance + 100 ether);
+        Console.log("total rewards:    %s", delegation.getRewards());
+        Console.log("taxed rewards:    %s", delegation.getTaxedRewards());
+        Console.log("taxed historical: %s", delegation.getHistoricalTaxedRewards());
+        vm.startPrank(owner);
+        Console.log("owner rewards:    %s", delegation.rewards());
+        vm.stopPrank();
+        vm.startPrank(staker);
+        Console.log("staker rewards:   %s", delegation.rewards());
+        vm.stopPrank();
+
+        Console.log("------------------------------------- withdraw");
+        vm.startPrank(owner);
+        delegation.withdrawAllRewards();
+        vm.stopPrank();
+        vm.startPrank(staker);
+        delegation.withdrawAllRewards();
+        vm.stopPrank();
+        Console.log("total rewards:    %s", delegation.getRewards());
+        Console.log("taxed rewards:    %s", delegation.getTaxedRewards());
+        Console.log("taxed historical: %s", delegation.getHistoricalTaxedRewards());
+        vm.startPrank(owner);
+        Console.log("owner rewards:    %s", delegation.rewards());
+        vm.stopPrank();
+        vm.startPrank(staker);
+        Console.log("staker rewards:   %s", delegation.rewards());
+        vm.stopPrank();
+
+        Console.log("------------------------------------- collect");
+        vm.startPrank(owner);
+        delegation.collectCommission();
+        vm.stopPrank();
+        Console.log("total rewards:    %s", delegation.getRewards());
+        Console.log("taxed rewards:    %s", delegation.getTaxedRewards());
+        Console.log("taxed historical: %s", delegation.getHistoricalTaxedRewards());
+        vm.startPrank(owner);
+        Console.log("owner rewards:    %s", delegation.rewards());
+        vm.stopPrank();
+        vm.startPrank(staker);
+        Console.log("staker rewards:   %s", delegation.rewards());
+        vm.stopPrank();
+
+        Console.log("------------------------------------- collect");
+        vm.startPrank(owner);
+        delegation.collectCommission();
+        vm.stopPrank();
+        Console.log("total rewards:    %s", delegation.getRewards());
+        Console.log("taxed rewards:    %s", delegation.getTaxedRewards());
+        Console.log("taxed historical: %s", delegation.getHistoricalTaxedRewards());
+        vm.startPrank(owner);
+        Console.log("owner rewards:    %s", delegation.rewards());
+        vm.stopPrank();
+        vm.startPrank(staker);
+        Console.log("staker rewards:   %s", delegation.rewards());
+        vm.stopPrank();
+
+        Console.log("------------------------------------- withdraw");
+        vm.startPrank(owner);
+        delegation.withdrawAllRewards();
+        vm.stopPrank();
+        vm.startPrank(staker);
+        delegation.withdrawAllRewards();
+        vm.stopPrank();
+        Console.log("total rewards:    %s", delegation.getRewards());
+        Console.log("taxed rewards:    %s", delegation.getTaxedRewards());
+        Console.log("taxed historical: %s", delegation.getHistoricalTaxedRewards());
+        vm.startPrank(owner);
+        Console.log("owner rewards:    %s", delegation.rewards());
+        vm.stopPrank();
+        vm.startPrank(staker);
+        Console.log("staker rewards:   %s", delegation.rewards());
+        vm.stopPrank();
     }
 
 }

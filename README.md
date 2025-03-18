@@ -101,7 +101,7 @@ Note that the commission rate is specified as an integer to be divided by the `D
 cast call 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 "DENOMINATOR()(uint256)"  | sed 's/\[[^]]*\]//g'
 ```
 
-Once the validator is activated and starts earning rewards, the commission is deducted and transferred automatically. The commission of a non-liquid staking pool is deducted when delegators withdraw or stake their rewards. In case of a liquid staking pool, the commission is deducted each time delegators stake or unstake or the contract owner stakes the rewards accrued in the contract balance or requests the outstanding commission that hasn't been transferred yet. To collect the outstanding commission, run
+Once the validator is activated and starts earning rewards, the commission is deducted and transferred automatically each time delegators stake or unstake or the rewards accrued in the contract balance are staked. The contract owner can request the outstanding commission that hasn't been transferred yet by running:
 ```bash
 forge script script/CollectCommission.s.sol --broadcast --legacy --sig "run(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2
 ```
