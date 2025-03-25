@@ -2104,11 +2104,13 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
                     continue;
                 Console.log("block %s avg rewards %s", block.number, rewards / blocks);
                 uint256 amount = vm.randomUint(100 ether, user.balance);
+                uint256 totalStakeValue = delegation.getDelegatedTotal();
                 vm.startPrank(user);
                 delegation.stake{
                     value: amount
                 }();
                 vm.stopPrank();
+                assertEq(totalStakeValue + amount, delegation.getDelegatedTotal(), "updated total stake value incorrect");
                 stakedZil[user] += amount;
                 totalStakedZil += amount;
                 stakingsCounter++;
@@ -2124,11 +2126,13 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
                     vm.randomUint(1, stakedZil[user]):
                     stakedZil[user];
                 uint256 pendingBefore = delegation.totalPendingWithdrawals();
+                uint256 totalStakeValue = delegation.getDelegatedTotal();
                 vm.startPrank(user);
                 amount = delegation.unstake(
                     amount
                 );
                 vm.stopPrank();
+                assertEq(totalStakeValue - amount, delegation.getDelegatedTotal(), "updated total stake value incorrect");
                 uint256 totalContribution = delegation.totalPendingWithdrawals() - pendingBefore;
                 if (totalContribution < amount)
                     totalWithdrawnZil += amount - totalContribution;
@@ -2164,21 +2168,27 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
             assertLt(delegation.totalRoundingErrors(), numOfUsers * 1 ether, "rounding errors out of bounds");
         }
         uint256 outstandingRewards;
+        uint256 totalDelegated;
+        NonLiquidDelegation.Staking[] memory stakingHistory = delegation.getStakingHistory();
         for (uint256 i = 0; i < users.length; i++) {
             address user = users[i];
             vm.startPrank(user);
             uint256 userRewards = delegation.rewards();
+            (uint64[] memory stakingIndices, , , , ) = delegation.getStakingData();
             vm.stopPrank();
             outstandingRewards += userRewards;
-            totalStakedZil += stakedZil[user];
-            totalUnstakedZil += unstakedZil[user];
+            //totalStakedZil += stakedZil[user];
+            //totalUnstakedZil += unstakedZil[user];
             totalEarnedZil += earnedZil[user];
+            if (stakingIndices.length > 0)
+                totalDelegated += stakingHistory[stakingIndices[stakingIndices.length - 1]].amount;
             Console.log(stakedZil[user], unstakedZil[user], earnedZil[user], userRewards);
         }
         Console.log("%s total staked %s total unstaked %s total earned", totalStakedZil, totalUnstakedZil, totalEarnedZil);
         Console.log("%s stakings", stakingsCounter);
         Console.log("%s unstakings", unstakingsCounter);
         Console.log("%s claimings", claimingsCounter);
+        assertEq(totalDelegated + depositAmount, delegation.getDelegatedTotal(), "sum of stakes does not match delegated total");
         // computing the outstanding rewards is expensive, therefore only once at the end
         assertLe(
             delegation.getDelegatedTotal() + outstandingRewards,
