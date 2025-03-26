@@ -296,6 +296,10 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation {
             sender == $.newAddress[old],
             InvalidCaller(sender, $.newAddress[old])
         );
+        require(
+            $.stakingIndices[sender].length == 0,
+            StakerAlreadyExists(sender)
+        );
         /* keep the original staking addresses to save gas
         for (uint64 i = 0; i < $.stakingIndices[old].length; i++)
             $.stakings[$.stakingIndices[old][i]].staker = sender;
