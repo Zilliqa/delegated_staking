@@ -1947,7 +1947,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
                     value: amount
                 }();
                 vm.stopPrank();
-                assertGt(totalStakeValue + amount * 1 ether, delegation.getPrice() * lst.totalSupply(), "updated total stake value incorrect");
+                assertApproxEqRel(totalStakeValue + amount * 1 ether, delegation.getPrice() * lst.totalSupply(), 1, "updated total stake value incorrect");
                 stakedZil[user] += amount;
                 totalStakedZil += amount;
                 stakingsCounter++;
@@ -1969,7 +1969,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
                     amount
                 );
                 vm.stopPrank();
-                assertLt(totalStakeValue - amount * 1 ether, delegation.getPrice() * lst.totalSupply(), "updated total stake value incorrect");
+                assertApproxEqRel(totalStakeValue - amount * 1 ether, delegation.getPrice() * lst.totalSupply(), 1, "updated total stake value incorrect");
                 uint256 totalContribution = delegation.totalPendingWithdrawals() - pendingBefore;
                 if (totalContribution < amount)
                     totalWithdrawnZil += amount - totalContribution;

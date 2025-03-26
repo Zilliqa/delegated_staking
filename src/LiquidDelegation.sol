@@ -112,9 +112,9 @@ contract LiquidDelegation is IDelegation, BaseDelegation {
 
     /// @inheritdoc BaseDelegation
     function joinPool(
-        bytes calldata blsPubKey,
-        address controlAddress
+        bytes calldata blsPubKey
     ) public override onlyOwner {
+        address controlAddress = getRegisteredControlAddress(blsPubKey);
         // deduct the commission from the yet untaxed rewards
         // before calculating the number of shares
         _taxRewards();

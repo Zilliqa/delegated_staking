@@ -109,6 +109,7 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         uint256 nonRewards;
         uint256 undepositedClaims;
         uint256 depositedClaims;
+        mapping(bytes => address) controlAddresses;
     }
 
     // keccak256(abi.encode(uint256(keccak256("zilliqa.storage.BaseDelegation")) - 1)) & ~bytes32(uint256(0xff))
@@ -225,7 +226,7 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     // ************************************************************************
 
     /// @dev The current version of all upgradeable contracts in the repository.
-    uint64 internal immutable VERSION = encodeVersion(0, 7, 0);
+    uint64 internal immutable VERSION = encodeVersion(0, 7, 1);
 
     /**
     * @dev Return the contracts' version.
@@ -408,6 +409,63 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     }
 
     /**
+    * @dev Check and register the `controlAddress` of the validator identified
+    * by `blsPubKey` before it replaces itself with the pool contract's address
+    * in the `DEPOSIT_CONTRACT`.
+    */
+    function registerControlAddress(
+        bytes calldata blsPubKey
+    ) public virtual {
+        BaseDelegationStorage storage $ = _getBaseDelegationStorage();
+        bytes memory callData =
+            abi.encodeWithSignature("getControlAddress(bytes)",
+            blsPubKey
+            );
+        (bool success, bytes memory data) = DEPOSIT_CONTRACT.call(callData);
+        require(success, DepositContractCallFailed(callData, data));
+        address controlAddress = abi.decode(data, (address));
+        require(
+            _msgSender() == controlAddress,
+            InvalidCaller(_msgSender(), controlAddress)
+        );
+        $.controlAddresses[blsPubKey] = controlAddress;
+    }
+
+    /**
+    * @dev Return the registered `controlAddress` of the validator identified by
+    * `blsPubKey`.
+    */
+    function getRegisteredControlAddress(
+        bytes calldata blsPubKey
+    ) public virtual view returns(address) {
+        BaseDelegationStorage storage $ = _getBaseDelegationStorage();
+        return $.controlAddresses[blsPubKey];
+    }
+
+    /**
+    * @dev Reset the original `controlAddress` of the validator identified by
+    * `blsPubKey` in the `DEPOSIT_CONTRACT` before the pool contract owner calls
+    * {joinPool} to add the validator to the pool.
+    */
+    function unregisterControlAddress(
+        bytes calldata blsPubKey
+    ) public virtual {
+        BaseDelegationStorage storage $ = _getBaseDelegationStorage();
+        require(
+            _msgSender() == $.controlAddresses[blsPubKey],
+            InvalidCaller(_msgSender(), $.controlAddresses[blsPubKey])
+        );
+        bytes memory callData =
+            abi.encodeWithSignature("setControlAddress(bytes,address)",
+            blsPubKey,
+            $.controlAddresses[blsPubKey]
+            );
+        (bool success, bytes memory data) = DEPOSIT_CONTRACT.call(callData);
+        require(success, DepositContractCallFailed(callData, data));
+        delete $.controlAddresses[blsPubKey];
+    }
+
+    /**
     * @dev Turn a fully synced node into a validator using the stake in the pool's
     * balance. It must be called by the contract owner. The staking pool must have
     * at least the minimum stake required of validators in its balance including
@@ -428,8 +486,7 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     * leaves the pool later.
     */
     function joinPool(
-        bytes calldata blsPubKey,
-        address controlAddress
+        bytes calldata blsPubKey
     ) public virtual;
 
     /**
@@ -523,6 +580,8 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     ) internal onlyOwner virtual {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
         $.activated = true;
+        // the original control address can't cancel the handover after this point
+        delete $.controlAddresses[blsPubKey];
         require($.validatorIndex[blsPubKey] == 0, ValidatorAlreadyAdded(blsPubKey));
 
         bytes memory callData =

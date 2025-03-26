@@ -158,9 +158,9 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation {
 
     /// @inheritdoc BaseDelegation
     function joinPool(
-        bytes calldata blsPubKey,
-        address controlAddress
+        bytes calldata blsPubKey
     ) public override onlyOwner {
+        address controlAddress = getRegisteredControlAddress(blsPubKey);
         // when the validator joins, all available stake that is not deposited
         // yet will be added to the validator's deposit, but the stake appended
         // to the history shall only be the validator's own deposit before joining

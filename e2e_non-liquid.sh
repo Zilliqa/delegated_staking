@@ -45,17 +45,23 @@ join_one() {
     # $2 = privKey
     echo "🔽🔽🔽🔽🔽🔽🔽🔽🔽🔽🔽🔽🔽🔽🔽🔽"
     cast send --legacy --value 100ether --private-key 0x0000000000000000000000000000000000000000000000000000000000000002 $(cast wallet address $2) 1>/dev/null
+    status=$(cast send --legacy --json --private-key $2 $CONTRACT_ADDRESS "registerControlAddress(bytes)" $1 | jq '.status') 1>/dev/null
+    if [[ "$status" == "\"0x1\"" ]]; then
+        echo "🟢 registerControlAddress($1)"
+    else
+        echo "🔴 registerControlAddress($1)"
+    fi
     status=$(cast send --legacy --json --private-key $2 $DEPOSIT_ADDRESS "setControlAddress(bytes,address)" $1 $CONTRACT_ADDRESS | jq '.status') 1>/dev/null
     if [[ "$status" == "\"0x1\"" ]]; then
         echo "🟢 setControlAddress($1, $(cast wallet address $2))"
     else
         echo "🔴 setControlAddress($1, $(cast wallet address $2))"
     fi
-    status=$(cast send --legacy --json --private-key $OWNER_KEY $CONTRACT_ADDRESS "joinPool(bytes,address)" $1 $(cast wallet address $2) | jq '.status') 1>/dev/null
+    status=$(cast send --legacy --json --private-key $OWNER_KEY $CONTRACT_ADDRESS "joinPool(bytes)" $1 | jq '.status') 1>/dev/null
     if [[ "$status" == "\"0x1\"" ]]; then
-        echo "🟢 joinPool($1, $(cast wallet address $2))"
+        echo "🟢 joinPool($1)"
     else
-        echo "🔴 joinPool($1, $(cast wallet address $2))"
+        echo "🔴 joinPool($1)"
     fi
     echo -n "🟢 validators: " && cast call $CONTRACT_ADDRESS "validators()((bytes,uint256,bool,bool,bool,bool)[])" | sed 's/ \[[0-9]e[0-9][0-9]\]//g' | sed 's/, true//g' | sed 's/, false//g' | sed 's/0x[0-9a-f]*,//g' | sed 's/( //g' | sed 's/)//g'
     echo "🔼🔼🔼🔼🔼🔼🔼🔼🔼🔼🔼🔼🔼🔼🔼🔼"

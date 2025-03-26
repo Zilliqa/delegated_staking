@@ -131,18 +131,29 @@ forge script script/Configure.s.sol --broadcast --legacy --sig "commissionReceiv
 If your node has already been activated as a validator i.e. solo staker, it can join a staking pool. Run
 ```bash
 cast send --legacy --private-key 0x... \
+0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 "registertControlAddress(bytes)" \
+0x92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c
+```
+using the private key of your node's control address and your node's BLS public key, followed by 
+```bash
+cast send --legacy --private-key 0x... \
 0x00000000005a494c4445504f53495450524f5859 "setControlAddress(bytes,address)" \
 0x92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c \
 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2
 ```
-using the private key that you used to deposit your node, the BLS public key of your node and the address of the staking pool's delegation contract. Afterwards the staking pool contract owner must run
+using the same private key, BLS public key and the address of the staking pool's delegation contract. Afterwards, the staking pool contract owner must run
 ```bash
 cast send --legacy --private-key $PRIVATE_KEY \
 0x7a0b7e6d24ede78260c9ddbd98e828b0e11a8ea2 "joinPool(bytes,address)" \
-0x92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c \
-0xe0c6f3d59b8cda6ce4fd66418212404a63ad8517
+0x92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c
 ```
-using the BLS public key and the original control address that you used when you deposited the node. 
+using your node's BLS public key to add your node to the pool. If you decide to cancel the handover before the pool owner runs the above command, run
+```bash
+cast send --legacy --private-key 0x... \
+0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 "unregistertControlAddress(bytes)" \
+0x92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c
+```
+using the same private key and BLS public key as above.
 
 To leave a staking pool, run 
 ```bash
@@ -150,7 +161,7 @@ cast send --legacy --private-key 0x... \
 0x7a0b7e6d24ede78260c9ddbd98e828b0e11a8ea2 "leavePool(bytes)" \
 0x92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c
 ```
-using the private key that you used to deposit your node, the BLS public key of your node and the address of the staking pool's delegation contract. Note that your validator can't leave the staking pool as long as there are pending stake withdrawals. The following event emitted by the above transaction indicates whether it was successful or not:
+using the private key of your node's control address, your node's BLS public key and the address of the staking pool's delegation contract. Note that your validator can't leave the staking pool as long as there are pending stake withdrawals from its deposit. The following event emitted by the above transaction indicates whether the request was successful or not:
 ```solidity
 event ValidatorLeaving(bytes indexed blsPubKey, bool success);
 ```

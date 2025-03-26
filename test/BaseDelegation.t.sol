@@ -158,16 +158,17 @@ abstract contract BaseDelegationTest is Test {
             address(0x0),
             address(0x0)
         );
+        delegation.registerControlAddress(blsPubKey);
         Deposit(delegation.DEPOSIT_CONTRACT()).setControlAddress(
             blsPubKey,
             address(delegation)
         );
+        //TODO: add a test in which the controlAddress calls unregisterControlAddress(blsPubKey) and makes joinPool(blsPubKey) revert
         vm.stopPrank();
 
         vm.startPrank(owner);
         delegation.joinPool(
-            blsPubKey,
-            controlAddress
+            blsPubKey
         );
         vm.stopPrank();
     }
