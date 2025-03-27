@@ -134,7 +134,7 @@ cast send --legacy --private-key 0x... \
 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 "registertControlAddress(bytes)" \
 0x92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c
 ```
-using the private key of your node's control address and your node's BLS public key, followed by 
+using the private key of your node's control address that you used to deposit the stake of your validator or its current control address in case you changed it later, and your node's BLS public key, followed by 
 ```bash
 cast send --legacy --private-key 0x... \
 0x00000000005a494c4445504f53495450524f5859 "setControlAddress(bytes,address)" \

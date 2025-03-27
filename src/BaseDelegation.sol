@@ -95,6 +95,11 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     * paid out of the contract balance. The third part of it is the stake that
     * could not be deposited because there was no validator in the pool whose
     * deposit could have been topped up.
+    *
+    * - `controlAddresses` maps the BLS public keys of validator nodes waiting to
+    * join the pool to their original control address, which becomes a delegator
+    * once the validator is added to the pool and is also allowed to make it leave
+    * the staking pool.
     */
     /// @custom:storage-location erc7201:zilliqa.storage.BaseDelegation
     struct BaseDelegationStorage {
@@ -480,7 +485,9 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     /**
     * @dev Add the validator identified by `blsPubKey` to the staking pool. It
     * can be called by the contract owner if the `controlAddress` has called the
-    * `setControlAddress` function of the `DEPOSIT_CONTRACT` before. The joining
+    * pool contract's {registerControlAddress} function and the `setControlAddress`
+    * function of the `DEPOSIT_CONTRACT` before and the `controlAddress` has not
+    * cancelled the handover by calling {unregisterControlAddress}. The joining
     * validator's deposit is treated as if staked by the `controlAddress`. The
     * `controlAddress` is restored in the `DEPOSIT_CONTRACT` when the validator
     * leaves the pool later.
