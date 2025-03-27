@@ -536,7 +536,8 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         bytes calldata signature
     ) internal virtual {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
-        $.activated = true;
+        if (!$.activated)
+            $.activated = true;
         uint256 availableStake = $.nonRewards - $.undepositedClaims - $.depositedClaims;
         $.validators.push(Validator(
             blsPubKey,
@@ -586,7 +587,8 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         address controlAddress
     ) internal onlyOwner virtual {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
-        $.activated = true;
+        if (!$.activated)
+            $.activated = true;
         // the original control address can't cancel the handover after this point
         delete $.controlAddresses[blsPubKey];
         require($.validatorIndex[blsPubKey] == 0, ValidatorAlreadyAdded(blsPubKey));
