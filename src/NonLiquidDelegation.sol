@@ -113,7 +113,7 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation {
     /**
     * @dev Let {BaseDelegation} migrate `fromVersion` to the current `VERSION`.
     */
-    function reinitialize(uint64 fromVersion) public reinitializer(VERSION) {
+    function reinitialize(uint64 fromVersion) public onlyOwner reinitializer(VERSION) {
         _migrate(fromVersion);
         NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
         if (fromVersion < encodeVersion(0, 7, 0))

@@ -306,33 +306,33 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     */
     function _migrate(uint64 fromVersion) internal {
 
-        // the contract has been deployed but not upgraded yet
+        // the contract was just deployed but not upgraded from the initial
+        // version yet
         if (fromVersion == 1)
             return;
 
-        // the contract has been upgraded to a version which
-        // is higher or same as the current version
-        if (fromVersion >= VERSION)
-            return;
+        // incorrect fromVersion provided, reinitialize(VERSION) would have
+        // failed if the previous version was not lower than the new VERSION  
+        require(fromVersion < VERSION, IncompatibleVersion(fromVersion));
 
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
 
         if (fromVersion < encodeVersion(0, 4, 0))
-            // the contract has been upgraded to a version which may have
-            // changed the totalWithdrawals which has to be zero initially
+            // previous versions of the contract could have changed the
+            // totalWithdrawals that has to be zero initially
             $.pendingRebalancedDeposit = 0;
 
         if (fromVersion < encodeVersion(0, 3, 0))
-            // the contract has been upgraded to a version which did not
-            // set the commission receiver or allow the owner to change it
+            // previous versions of the contract did not set the commission
+            // receiver or allow the owner to change it
             $.commissionReceiver = owner();
 
         if (fromVersion >= encodeVersion(0, 2, 0))
-            // the contract has been upgraded to a version which has
-            // already migrated the blsPubKey to the validators array
+            // previous versions of the contract migrated the blsPubKey
+            // to the validators array, so there is nothing more to do
             return;
 
-        // the contract has been upgraded from the initial version but the length
+        // the contract was upgraded from the initial version but the length
         // of the peerId stored in the same slot as the activated bool is zero
         if (!$.activated)
             return;
@@ -344,7 +344,7 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
             peerIdLength := sload(add(BaseDelegationStorageLocation, 1))
         }
 
-        // if the upgraded contract hadn't been migrated yet then the
+        // if the upgraded contract hadn't been migrated before then the
         // peerIdLength stored in the same slot as activated would be larger,
         // but it was overwritten with true
         if (peerIdLength == 1)
