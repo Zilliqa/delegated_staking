@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
-pragma solidity ^0.8.28;
+pragma solidity 0.8.28;
 
 import {BaseDelegation} from "src/BaseDelegation.sol";
 import {IDelegation} from "src/IDelegation.sol";
