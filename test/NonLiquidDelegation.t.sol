@@ -6,7 +6,6 @@ import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 import { Deposit } from "@zilliqa/zq2/deposit_v5.sol";
 import { Console } from "script/Console.s.sol";
-import { Console } from "script/Console.s.sol";
 import { BaseDelegation } from "src/BaseDelegation.sol";
 import { IDelegation } from "src/IDelegation.sol";
 import { NonLiquidDelegation } from "src/NonLiquidDelegation.sol";
@@ -2351,6 +2350,48 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         vm.stopPrank();
         vm.startPrank(staker);
         Console.log("staker rewards:   %s", delegation.rewards());
+        vm.stopPrank();
+    }
+
+    function test_TooManyValidators() public {
+        uint256 depositAmount = 10_000_000 ether;
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        stakers.push(owner);
+        for (uint256 i = 2; i < 256; i++) {
+            joinPool(BaseDelegation(delegation), depositAmount, makeAddr(Strings.toString(i)), uint8(i));
+            stakers.push(makeAddr(Strings.toString(i)));
+        }
+        address staker = stakers[0];
+        vm.deal(staker, staker.balance + 1000 ether);
+        vm.startPrank(staker);
+        Console.log("pooled stake: %s", delegation.getStake());
+        delegation.stake{value: 1000 ether}();
+        Console.log("pooled stake: %s", delegation.getStake());
+        delegation.unstake(100 ether);
+        Console.log("pooled stake: %s", delegation.getStake());
+        vm.roll(block.number + delegation.unbondingPeriod());
+        delegation.claim();
+        vm.stopPrank();
+    }
+
+    function test_NotManyValidators() public {
+        uint256 depositAmount = 10_000_000 ether;
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        stakers.push(owner);
+        for (uint256 i = 2; i < 16; i++) {
+            joinPool(BaseDelegation(delegation), depositAmount, makeAddr(Strings.toString(i)), uint8(i));
+            stakers.push(makeAddr(Strings.toString(i)));
+        }
+        address staker = stakers[0];
+        vm.deal(staker, staker.balance + 1000 ether);
+        vm.startPrank(staker);
+        Console.log("pooled stake: %s", delegation.getStake());
+        delegation.stake{value: 1000 ether}();
+        Console.log("pooled stake: %s", delegation.getStake());
+        delegation.unstake(100 ether);
+        Console.log("pooled stake: %s", delegation.getStake());
+        vm.roll(block.number + delegation.unbondingPeriod());
+        delegation.claim();
         vm.stopPrank();
     }
 
