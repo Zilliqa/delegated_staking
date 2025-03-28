@@ -1256,9 +1256,6 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     /// @dev The minimum number of blocks between changes to the commission rate.
     uint256 public constant DELAY = 86_400;
 
-    /// @dev Emitted when the commission rate changes.
-    event CommissionChanged(uint256 oldNumerator, uint256 newNumerator);
-
     /**
     * @dev Return the commission rate multiplied by `DENOMINATOR`.
     */

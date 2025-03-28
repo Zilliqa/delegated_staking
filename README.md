@@ -428,6 +428,7 @@ event Staked(address indexed delegator, uint256 amount, bytes data);
 event Unstaked(address indexed delegator, uint256 amount, bytes data);
 event Claimed(address indexed delegator, uint256 amount, bytes data);
 event CommissionPaid(address indexed receiver, uint256 commission);
+event CommissionChanged(uint256 oldCommissionRate, uint256 newCommissionRate);
 
 function stake() external payable;
 function unstake(uint256) external returns(uint256 unstakedZil);

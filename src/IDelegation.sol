@@ -35,6 +35,11 @@ interface IDelegation {
     event CommissionPaid(address indexed receiver, uint256 commission);
 
     /**
+    * @notice Emit the event when changing `oldCommissionRate` to `newCommissionRate`.
+    */
+    event CommissionChanged(uint256 oldCommissionRate, uint256 newCommissionRate);
+
+    /**
     * @notice Stake the ZIL transferred in the transaction.
     */
     function stake() external payable;
