@@ -139,6 +139,8 @@ forge script script/Configure.s.sol --broadcast --legacy --sig "commissionReceiv
 
 ## Validator Addition and Removal
 
+A staking pool can operate with up to 255 validator nodes.
+
 If your node has already been activated as a validator i.e. solo staker, it can join a staking pool. Run
 ```bash
 cast send --legacy --private-key 0x... \
