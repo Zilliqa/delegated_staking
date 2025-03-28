@@ -83,7 +83,7 @@ forge script script/CheckVersion.s.sol --sig "run(address payable)" 0x7A0b7e6D24
 
 ## Contract Configuration
 
-Now or at a later time you can set the commission on the rewards the validator earns to e.g. 10% as follows:
+Now you can set the commission on the rewards the staking pool's validators earn to e.g. 10% as follows:
 ```bash
 forge script script/Configure.s.sol --broadcast --legacy --sig "commissionRate(address payable, uint16)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 1000
 ```
@@ -95,7 +95,14 @@ The output will contain the following information:
   New commission rate: 10.0%
 ```
 
-If you only want to view the current commission rate and leave it unchanged, run
+Note that if the pool has delegated stake or rewards that have not been withdrawn, you can only change the commission rate by less than 2 percentage points at once and the last change must be at least `86400` blocks old.
+
+To view the block height of the last change to the commission rate, run
+```bash
+forge script script/Configure.s.sol --broadcast --legacy --sig "commissionChange(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2
+```
+
+To view the current commission rate, run
 ```bash
 forge script script/Configure.s.sol --broadcast --legacy --sig "commissionRate(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2
 ```

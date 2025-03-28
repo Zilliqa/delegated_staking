@@ -73,6 +73,7 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     *
     * - `commissionNumerator` is the commission rate multiplied by `DENOMINATOR`
     * and `commissionReceiver` is the address the deducted commissions are sent to.
+    * `lastCommissionChange` is the block height of the last commission change.
     *
     * - `withdrawals` holds the withdrawal queues of addresses that unstaked.
     *
@@ -115,6 +116,7 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         uint256 undepositedClaims;
         uint256 depositedClaims;
         mapping(bytes => address) controlAddresses;
+        uint256 lastCommissionChange;
     }
 
     // keccak256(abi.encode(uint256(keccak256("zilliqa.storage.BaseDelegation")) - 1)) & ~bytes32(uint256(0xff))
@@ -183,9 +185,10 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     error WithdrawalsPending(bytes blsPubKey, uint256 amount);
 
     /**
-    * @dev Thrown if the commission rate specified by `numerator` is invalid.
+    * @dev Thrown if the commission rate specified by `numerator` is invalid or
+    * the requested change is too high or too early after the last change.
     */
-    error InvalidCommissionRate(uint256 numerator);
+    error InvalidCommissionChange(uint256 numerator);
 
     /**
     * @dev Thrown if the major, minor or patch `version` is invalid.
@@ -1250,6 +1253,12 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     /// @dev A power of 10 that determines the precision of the commission rate.
     uint256 public constant DENOMINATOR = 10_000;
 
+    /// @dev The minimum number of blocks between changes to the commission rate.
+    uint256 public constant DELAY = 86_400;
+
+    /// @dev Emitted when the commission rate changes.
+    event CommissionChanged(uint256 oldNumerator, uint256 newNumerator);
+
     /**
     * @dev Return the commission rate multiplied by `DENOMINATOR`.
     */
@@ -1259,16 +1268,42 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     }
 
     /**
+    * @dev Return the block height of the last change to the commission rate.
+    */
+    function getLastCommissionChange() public virtual view returns(uint256) {
+        BaseDelegationStorage storage $ = _getBaseDelegationStorage();
+        return $.lastCommissionChange;
+    }
+
+    /**
     * @dev Set the commission rate to `_commissionNumerator / DENOMINATOR`. It
     * must be called by the contract owner.
     *
-    * Revert with {InvalidCommissionRate} containing `_commissionNumerator` if
-    * it's greater or equal to the {DENOMINATOR}.
+    * Revert with {InvalidCommissionChange} containing `_commissionNumerator` if
+    * it's greater than or equal to the {DENOMINATOR}. If the pool holds stake or
+    * rewards, also revert if the absolute change is greater than or equal to 2
+    * percentage points or the last change is not at least {DELAY} blocks old.
     */
     function setCommissionNumerator(uint256 _commissionNumerator) public virtual onlyOwner {
-        require(_commissionNumerator < DENOMINATOR, InvalidCommissionRate(_commissionNumerator));
+        require(
+            _commissionNumerator < DENOMINATOR, 
+            InvalidCommissionChange(_commissionNumerator)
+        );
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
+        uint256 delta =
+            _commissionNumerator > $.commissionNumerator ?
+            _commissionNumerator - $.commissionNumerator :
+            $.commissionNumerator - _commissionNumerator;
+        require(
+            getStake() == 0 &&
+            getRewards() == 0 ||
+            delta < 2 * DENOMINATOR / 100 &&
+            block.number - $.lastCommissionChange >= DELAY,
+            InvalidCommissionChange(_commissionNumerator)
+        ); 
+        emit CommissionChanged($.commissionNumerator, _commissionNumerator);
         $.commissionNumerator = _commissionNumerator;
+        $.lastCommissionChange = block.number;
     }
 
     /// @inheritdoc IDelegation
