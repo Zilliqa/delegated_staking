@@ -1,6 +1,6 @@
 # Delegated Staking
 
-This repository contains the contracts and scripts needed to create a staking pool that users can delegate to. Currently, the contracts exist in two variants:
+Validators of the Zilliqa 2.0 network are solo stakers by default. This repository contains the contracts and scripts needed to create a staking pool operating one or more validator nodes that users can delegate to. Currently, the contracts exist in two variants:
 1. When delegating stake to the **liquid variant**, users receive a non-rebasing liquid staking token (LST) that anyone can send to the pool's contract to withdraw the stake plus the corresponding share of the staking rewards.
 1. When delegating stake to the **non-liquid variant**, users become eligible to claim their share of the staking rewards without withdrawing their stake.
 
