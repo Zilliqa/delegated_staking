@@ -4,9 +4,9 @@ This repository contains the contracts and scripts needed to create a staking po
 1. When delegating stake to the **liquid variant**, users receive a non-rebasing liquid staking token (LST) that anyone can send to the pool's contract to withdraw the stake plus the corresponding share of the staking rewards.
 1. When delegating stake to the **non-liquid variant**, users become eligible to claim their share of the staking rewards without withdrawing their stake.
 
-<div style="display: flex; flex-direction: column; align-items: center; justify-content: center;">
+<p align="center">
     <img alt="Delegated Staking Overview" src="./overview.webp" />
-</div>
+</p>
 
 
 ## Prerequisites
