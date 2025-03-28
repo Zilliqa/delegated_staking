@@ -95,7 +95,7 @@ The output will contain the following information:
   New commission rate: 10.0%
 ```
 
-Note that if the pool has delegated stake or rewards that have not been withdrawn, you can only change the commission rate by less than 2 percentage points at once and the last change must be at least `86400` blocks old.
+Note that if the pool holds delegated stake, you can only change the commission rate by less than 2 percentage points at once and the last change must be at least `86400` blocks old.
 
 To view the block height of the last change to the commission rate, run
 ```bash

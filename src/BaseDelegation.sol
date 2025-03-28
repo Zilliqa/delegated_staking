@@ -1277,9 +1277,9 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     * must be called by the contract owner.
     *
     * Revert with {InvalidCommissionChange} containing `_commissionNumerator` if
-    * it's greater than or equal to the {DENOMINATOR}. If the pool holds stake or
-    * rewards, also revert if the absolute change is greater than or equal to 2
-    * percentage points or the last change is not at least {DELAY} blocks old.
+    * it's greater than or equal to the {DENOMINATOR}. If the pool has any stake,
+    * also revert if the absolute change is greater than or equal to 2 percentage
+    * points or the last change is not at least {DELAY} blocks old.
     */
     function setCommissionNumerator(uint256 _commissionNumerator) public virtual onlyOwner {
         require(
@@ -1292,8 +1292,7 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
             _commissionNumerator - $.commissionNumerator :
             $.commissionNumerator - _commissionNumerator;
         require(
-            getStake() == 0 &&
-            getRewards() == 0 ||
+            getStake() == 0 ||
             delta < 2 * DENOMINATOR / 100 &&
             block.number - $.lastCommissionChange >= DELAY,
             InvalidCommissionChange(_commissionNumerator)

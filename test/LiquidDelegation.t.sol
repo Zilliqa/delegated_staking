@@ -2115,7 +2115,6 @@ contract LiquidDelegationTest is BaseDelegationTest {
         vm.startPrank(owner);
         delegation.unstake(lst.balanceOf(owner));
         assertEq(delegation.getStake(), 0, "there must be no stake");
-        assertEq(delegation.getRewards(), 0, "there must be no rewards");
         vm.roll(block.number + delegation.DELAY());
         delegation.setCommissionNumerator(900);
         vm.roll(block.number + delegation.DELAY() - 1);
@@ -2137,7 +2136,6 @@ contract LiquidDelegationTest is BaseDelegationTest {
         vm.startPrank(owner);
         delegation.unstake(lst.balanceOf(owner));
         assertEq(delegation.getStake(), 0, "there must be no stake");
-        assertEq(delegation.getRewards(), 0, "there must be no rewards");
         vm.roll(block.number + delegation.DELAY());
         delegation.setCommissionNumerator(800);
         vm.stopPrank();
@@ -2146,7 +2144,6 @@ contract LiquidDelegationTest is BaseDelegationTest {
     function test_commissionChangeTooEarly_NoStakeYet() public {
         vm.startPrank(owner);
         assertEq(delegation.getStake(), 0, "there must be no stake");
-        assertEq(delegation.getRewards(), 0, "there must be no rewards");
         vm.roll(block.number + delegation.DELAY());
         delegation.setCommissionNumerator(900);
         vm.roll(block.number + delegation.DELAY() - 1);
@@ -2157,8 +2154,35 @@ contract LiquidDelegationTest is BaseDelegationTest {
     function test_commissionChangeTooFast_NoStakeYet() public {
         vm.startPrank(owner);
         assertEq(delegation.getStake(), 0, "there must be no stake");
-        assertEq(delegation.getRewards(), 0, "there must be no rewards");
         vm.roll(block.number + delegation.DELAY());
+        delegation.setCommissionNumerator(800);
+        vm.stopPrank();
+    }
+
+    function test_commissionChangeTooEarly_NotActivated() public {
+        address staker = stakers[0];
+        vm.deal(staker, staker.balance + 1000 ether);
+        vm.startPrank(staker);
+        delegation.stake{value: 1000 ether}();
+        vm.stopPrank();
+        vm.startPrank(owner);
+        vm.roll(block.number + delegation.DELAY());
+        delegation.setCommissionNumerator(900);
+        vm.roll(block.number + delegation.DELAY() - 1);
+        vm.expectRevert();
+        delegation.setCommissionNumerator(800);
+        vm.stopPrank();
+    }
+
+    function test_commissionChangeTooFast_NotActivated() public {
+        address staker = stakers[0];
+        vm.deal(staker, staker.balance + 1000 ether);
+        vm.startPrank(staker);
+        delegation.stake{value: 1000 ether}();
+        vm.stopPrank();
+        vm.startPrank(owner);
+        vm.roll(block.number + delegation.DELAY());
+        vm.expectRevert();
         delegation.setCommissionNumerator(800);
         vm.stopPrank();
     }
