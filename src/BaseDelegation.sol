@@ -150,6 +150,12 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     error ValidatorNotFound(bytes blsPubKey);
 
     /**
+    * @dev Thrown if the {Validator} identified by `blsPubKey` can not be added to
+    * the validator list of the staking pool because it has reached its upper limit.
+    */
+    error TooManyValidators(bytes blsPubKey);
+
+    /**
     * @dev Thrown if the {Validator} identified by `blsPubKey` trying to join is
     * already in the staking pool.
     */
@@ -399,6 +405,9 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     /// @dev The address of the deposit contract.
     address public constant DEPOSIT_CONTRACT = address(0x5A494C4445504F53495450524F5859);
 
+    /// @dev The maximum number of validators allowed.
+    uint256 public constant MAX_VALIDATORS = 255;
+
     /// @dev Emitted when validator identified by `blsPubKey` joins the staking pool.
     event ValidatorJoined(bytes indexed blsPubKey);
     
@@ -542,6 +551,8 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         if (!$.activated)
             $.activated = true;
         uint256 availableStake = $.nonRewards - $.undepositedClaims - $.depositedClaims;
+
+        require($.validators.length < MAX_VALIDATORS, TooManyValidators(blsPubKey));
         $.validators.push(Validator(
             blsPubKey,
             availableStake,
@@ -622,6 +633,7 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         (success, data) = DEPOSIT_CONTRACT.call(callData);
         require(success, DepositContractCallFailed(callData, data));
 
+        require($.validators.length < MAX_VALIDATORS, TooManyValidators(blsPubKey));
         $.validators.push(Validator(
             blsPubKey,
             futureStake,
