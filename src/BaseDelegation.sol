@@ -233,6 +233,11 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     */
     error IncompatibleVersion(uint64 fromVersion);
 
+    /**
+    * @dev Thrown if the zero address was used where it is not allowed.
+    */
+    error ZeroAddressNotAllowed();
+
     // ************************************************************************
     // 
     //                                 VERSION
@@ -1335,8 +1340,11 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     /**
     * @dev Set the address the commission is to be transferred to. It must be
     * called by the contract owner.
+    *
+    * Throw `ZeroAddressNotAllowed` if the zero address was passed as argument.
     */
     function setCommissionReceiver(address _commissionReceiver) public virtual onlyOwner {
+        require(_commissionReceiver != address(0), ZeroAddressNotAllowed());
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
         $.commissionReceiver = _commissionReceiver;
     }

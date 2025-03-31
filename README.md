@@ -117,7 +117,7 @@ Once the validator is activated and starts earning rewards, the commission is de
 forge script script/CollectCommission.s.sol --broadcast --legacy --sig "run(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2
 ```
 
-By default, the commission is transferred to the original contract owner. The current contract owner can change the address to which the commission is transferred by running
+By default, the commission is transferred to the original contract owner. The current contract owner can change the commission receiver by running the following command with a non-zero address as the second argument:
 ```bash
 forge script script/Configure.s.sol --broadcast --legacy --sig "commissionReceiver(address payable, address)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 0xeA78aAE5Be606D2D152F00760662ac321aB8F017
 ```
@@ -131,7 +131,7 @@ The output will contain the following information:
 
 Using the above command the commission can be redirected to a cold wallet, a multisig wallet or a smart contract which splits the commission proportionally to the deposit of the validators who join the staking pool.
 
-If you only want to view the current commission receiver and leave it unchanged, run
+To view the current commission receiver, run
 ```bash
 forge script script/Configure.s.sol --broadcast --legacy --sig "commissionReceiver(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2
 ```
