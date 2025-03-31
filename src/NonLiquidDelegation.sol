@@ -203,6 +203,12 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation {
     // 
     // ************************************************************************
 
+    /// @dev Emitted when the staker with `oldAddress` sets a `newAddress`.
+    event NewAddressSet(address indexed oldAddress, address indexed newAddress);
+
+    /// @dev Emitted when `newAddress` replaces the staker's `oldAddress`.
+    event OldAddressReplaced(address indexed oldAddress, address indexed newAddress);
+
     /**
     * @dev Return the history of `stakings`.
     * See {NonLiquidDelegationStorage}.
@@ -270,16 +276,18 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation {
     * for staking with the pool yet.
     */
     function setNewAddress(address to) public {
+        address sender = _msgSender();
         NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
         require(
-            $.stakingIndices[_msgSender()].length != 0,
-            StakerNotFound(_msgSender())
+            $.stakingIndices[sender].length != 0,
+            StakerNotFound(sender)
         );
         require(
             $.stakingIndices[to].length == 0,
             StakerAlreadyExists(to)
         );
-        $.newAddress[_msgSender()] = to;
+        $.newAddress[sender] = to;
+        emit NewAddressSet(sender, to);
     }
 
     /**
@@ -290,8 +298,8 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation {
     * was not called from the address the `old` address set in {setNewAddress}. 
     */
     function replaceOldAddress(address old) public {
-        NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
         address sender = _msgSender();
+        NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
         require(
             sender == $.newAddress[old],
             InvalidCaller(sender, $.newAddress[old])
@@ -315,6 +323,7 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation {
         delete $.lastTaxedStakingIndex[old];
         delete $.taxedSinceLastStaking[old];
         delete $.newAddress[old];
+        emit OldAddressReplaced(old, sender);
     } 
 
     /**

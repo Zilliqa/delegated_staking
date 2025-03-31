@@ -1273,6 +1273,9 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     /// @dev The minimum number of blocks between changes to the commission rate.
     uint256 public constant DELAY = 86_400;
 
+    /// @dev Emitted when `oldReceiver` of the commission is changed to `newReceiver`.
+    event CommissionReceiverChanged(address indexed oldReceiver, address indexed newReceiver);
+
     /**
     * @dev Return the commission rate multiplied by `DENOMINATOR`.
     */
@@ -1346,6 +1349,7 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     function setCommissionReceiver(address _commissionReceiver) public virtual onlyOwner {
         require(_commissionReceiver != address(0), ZeroAddressNotAllowed());
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
+        emit CommissionReceiverChanged($.commissionReceiver, _commissionReceiver);
         $.commissionReceiver = _commissionReceiver;
     }
 
