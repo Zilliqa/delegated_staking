@@ -318,13 +318,11 @@ In the non-liquid variant of staking, delegators can stake or withdraw their sha
 cast to-unit $(cast call 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 "rewards()(uint256)" --from 0xd819fFcE7A58b1E835c25617Db7b46a00888B013 --block latest | sed 's/\[[^]]*\]//g') ether
 ```
 
-If a delegator hasn't withdrawn rewards while thousands of delegators staked or unstaked, the gas used by the above function might hit the block limit. In this case it's possible to withdraw only the rewards accrued during the next `n` subsequent stakings or unstaking that have not been withdrawn yet. This can be repeated several times to withdraw all rewards using multiple transactions. To calculate the rewards that can be withdrawn in the next transaction using e.g. `n = 100` run
+If a user hasn't withdrawn rewards while thousands of delegators staked or unstaked, the gas used by the above function might hit the block limit. In this case it's also possible to withdraw only the rewards accrued during the next `n` staking periods recorded in the staking history that have not been withdrawn yet. Note that every time a delegator stakes or unstakes, a new staking period is appended to the staking history. Reward withdrawals from `n` staking periods can be repeated to withdraw all rewards through multiple transactions. To calculate the rewards that can be withdrawn in the next transaction using e.g. `n = 100` run
 ```bash
 cast to-unit $(cast call 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 "rewards(uint64)(uint256)" 100 --from 0xd819fFcE7A58b1E835c25617Db7b46a00888B013 --block latest | sed 's/\[[^]]*\]//g') ether
 ```
-Note that `n` actually denotes the number of additional stakings or unstakings so that at least one is always reflected in the result, even if you specify `n = 0`.
-
-To find the number `n` that would be needed to withdraw all rewards of a delegator, run
+Note that `n` is actually the number of additional stakings periods so that at least one period is always reflected in the result, even if you specify `n = 0`. To estimate the upper bound on `n` that would be sufficient to withdraw all rewards of delegator `0xd819fFcE7A58b1E835c25617Db7b46a00888B013`, run
 ```bash
 cast call 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 "getAdditionalSteps()(uint256)" --from 0xd819fFcE7A58b1E835c25617Db7b46a00888B013
 ```
@@ -333,7 +331,7 @@ If the result is less than `10000` then it is safe to withdraw all rewards at on
 ```bash
 cast estimate 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 "withdrawlAllRewards()" --from 0xd819fFcE7A58b1E835c25617Db7b46a00888B013 --gas-limit 84000000
 ```
-If the estimation fails due to the gas exceeding the block limit, divide `n` between several partial withdrawal transactions.
+If the estimation fails due to the gas exceeding the block limit, divide `n` between several partial withdrawal transactions. Note that even if `n` appears to be very high, it's still worth doing the gas estimation, as the reward calculation will skip the staking periods included in `n` during which the delegator had zero stake. 
 
 You can also specify the exact amount you want to withdraw. To withdraw e.g. 1000 ZIL using `n = 100`, run
 ```bash
@@ -345,7 +343,7 @@ Last but not least, in order to stake rewards instead of withdrawing them, run
 ```bash
 forge script script/StakeRewards.s.sol --broadcast --legacy --sig "run(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 --private-key 0x...
 ```
-using the private key of their account.
+using the private key of the delegator account.
 
 
 ## Replacing the Delegator Address

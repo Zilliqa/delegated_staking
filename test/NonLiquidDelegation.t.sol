@@ -90,13 +90,13 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         } 
         (
             uint64[] memory stakingIndices,
-            uint64 firstStakingIndex,
+            uint64 firstPosInStakingIndices,
             uint256 availableTaxedRewards,
             uint64 lastWithdrawnRewardIndex,
             uint256 taxedSinceLastStaking
         ) = delegation.getStakingData();
         Console.log("stakingIndices = [ %s]", stakingIndices);
-        Console.log("firstStakingIndex = %s   lastWithdrawnRewardIndex = %s", uint256(firstStakingIndex), uint256(lastWithdrawnRewardIndex));
+        Console.log("firstPosInStakingIndices = %s   lastWithdrawnRewardIndex = %s", uint256(firstPosInStakingIndices), uint256(lastWithdrawnRewardIndex));
         Console.log("availableTaxedRewards = %s   taxedSinceLastStaking = %s", availableTaxedRewards, taxedSinceLastStaking);
     } 
 
@@ -1990,13 +1990,13 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
 
         (
         uint64[] memory stakingIndices,
-        uint64 firstStakingIndex,
+        uint64 firstPosInStakingIndices,
         uint256 availableTaxedRewards,
         uint64 lastWithdrawnRewardIndex,
         uint256 taxedSinceLastStaking
         ) = delegation.getStakingData();
         Console.log("stakingIndices = [ %s]", stakingIndices);
-        Console.log("firstStakingIndex = %s   lastWithdrawnRewardIndex = %s", uint256(firstStakingIndex), uint256(lastWithdrawnRewardIndex));
+        Console.log("firstPosInStakingIndices = %s   lastWithdrawnRewardIndex = %s", uint256(firstPosInStakingIndices), uint256(lastWithdrawnRewardIndex));
         Console.log("availableTaxedRewards = %s   taxedSinceLastStaking = %s", availableTaxedRewards, taxedSinceLastStaking);
 
         vm.recordLogs();
@@ -2015,13 +2015,13 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
 
         (
         stakingIndices,
-        firstStakingIndex,
+        firstPosInStakingIndices,
         availableTaxedRewards,
         lastWithdrawnRewardIndex,
         taxedSinceLastStaking
         ) = delegation.getStakingData();
         Console.log("stakingIndices = [ %s]", stakingIndices);
-        Console.log("firstStakingIndex = %s   lastWithdrawnRewardIndex = %s", uint256(firstStakingIndex), uint256(lastWithdrawnRewardIndex));
+        Console.log("firstPosInStakingIndices = %s   lastWithdrawnRewardIndex = %s", uint256(firstPosInStakingIndices), uint256(lastWithdrawnRewardIndex));
         Console.log("availableTaxedRewards = %s   taxedSinceLastStaking = %s", availableTaxedRewards, taxedSinceLastStaking);
 
         Console.log18("contract balance: %s.%s%s", address(delegation).balance);
@@ -2400,9 +2400,9 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         vm.startPrank(staker);
         vm.deal(address(delegation), address(delegation).balance + 1000 ether);
         assertEq(delegation.rewards() + withdrawn, 2000 ether * (delegation.DENOMINATOR() - delegation.getCommissionNumerator()) / delegation.DENOMINATOR(), "incorrect reward amount");
-        // additional steps = all steps - 1 where all steps: staker unstaked, owner 10 times staked and 10 times unstaked, staker staked and unstaked, owner staked
+        // additional steps = all steps - 1 where all steps = staker staked and unstaked, owner staked 10 times and unstaked 10 times, staker staked and unstaked, owner staked
         // thereof withdrawn: 0
-        assertEq(delegation.getAdditionalSteps(), 10 + 10 + 1 + 1 + 1, "incorrect number of additional steps");
+        assertEq(delegation.getAdditionalSteps(), 1 + 10 + 10 + 1 + 1 + 1, "incorrect number of additional steps");
         withdrawn += delegation.withdrawAllRewards();
         assertEq(delegation.rewards() + withdrawn, 2000 ether * (delegation.DENOMINATOR() - delegation.getCommissionNumerator()) / delegation.DENOMINATOR(), "incorrect reward amount");
         assertEq(delegation.getAdditionalSteps(), 0, "incorrect number of additional steps");
@@ -2459,9 +2459,9 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         vm.startPrank(staker);
         vm.deal(address(delegation), address(delegation).balance + 1000 ether);
         assertEq(delegation.rewards() + withdrawn, 2000 ether * (delegation.DENOMINATOR() - delegation.getCommissionNumerator()) / delegation.DENOMINATOR(), "incorrect reward amount");
-        // additional steps = all steps - 1 where all steps: staker unstaked, owner 10 times staked and 10 times unstaked, staker staked and unstaked, owner staked
+        // additional steps = all steps - 1 where all steps = staker staked and unstaked, owner staked 10 times and unstaked 10 times, staker staked and unstaked, owner staked
         // thereof withdrawn: everything until withdrawAllRewards() was called, i.e. everything but the last time when staker staked and unstaked and the owner staked
-        assertEq(delegation.getAdditionalSteps() + 10 + 10, 10 + 10 + 1 + 1 + 1, "incorrect number of additional steps");
+        assertEq(delegation.getAdditionalSteps() + 1 + 10 + 10, 1 + 10 + 10 + 1 + 1 + 1, "incorrect number of additional steps");
         withdrawn += delegation.withdrawAllRewards();
         assertEq(delegation.rewards() + withdrawn, 2000 ether * (delegation.DENOMINATOR() - delegation.getCommissionNumerator()) / delegation.DENOMINATOR(), "incorrect reward amount");
         assertEq(delegation.getAdditionalSteps(), 0, "incorrect number of additional steps");
@@ -2518,9 +2518,9 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         vm.startPrank(staker);
         vm.deal(address(delegation), address(delegation).balance + 1000 ether);
         assertEq(delegation.rewards() + withdrawn, 2000 ether * (delegation.DENOMINATOR() - delegation.getCommissionNumerator()) / delegation.DENOMINATOR(), "incorrect reward amount");
-        // additional steps = all steps - 1 where all steps: staker unstaked, owner 10 times staked and 10 times unstaked, staker staked and unstaked, owner staked
+        // additional steps = all steps - 1 where all steps = staker staked and unstaked, owner staked 10 times and unstaked 10 times, staker staked and unstaked, owner staked
         // thereof withdrawn: everything until withdrawAllRewards() was called, i.e. everything but the last time when staker staked and unstaked and the owner staked
-        assertEq(delegation.getAdditionalSteps() + 10 + 10, 10 + 10 + 1 + 1 + 1, "incorrect number of additional steps");
+        assertEq(delegation.getAdditionalSteps() + 1 + 10 + 10, 1 + 10 + 10 + 1 + 1 + 1, "incorrect number of additional steps");
         withdrawn += delegation.withdrawAllRewards();
         assertEq(delegation.rewards() + withdrawn, 2000 ether * (delegation.DENOMINATOR() - delegation.getCommissionNumerator()) / delegation.DENOMINATOR(), "incorrect reward amount");
         assertEq(delegation.getAdditionalSteps(), 0, "incorrect number of additional steps");
@@ -2529,7 +2529,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
 
     function test_rewardsWhenAllUnstaked_WithdrawSpecifiedSteps() public {
         uint256 depositAmount = 10_000_000 ether;
-        uint64 steps = 25;
+        uint64 additionalSteps = 25;
         addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
         vm.deal(address(delegation), address(delegation).balance + 1000 ether);
         vm.startPrank(owner);
@@ -2561,9 +2561,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         vm.stopPrank();        
         vm.startPrank(staker);
         vm.deal(address(delegation), address(delegation).balance + 1000 ether);
-        withdrawn += delegation.withdrawAllRewards(steps);
-        if (steps > 20)
-            steps = 20;
+        withdrawn += delegation.withdrawAllRewards(additionalSteps);
         vm.deal(address(delegation), address(delegation).balance + 1000 ether);
         assertEq(delegation.rewards() + withdrawn, 1000 ether * (delegation.DENOMINATOR() - delegation.getCommissionNumerator()) / delegation.DENOMINATOR(), "incorrect reward amount");
         delegation.stake{value: depositAmount}();
@@ -2580,9 +2578,12 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         vm.startPrank(staker);
         vm.deal(address(delegation), address(delegation).balance + 1000 ether);
         assertEq(delegation.rewards() + withdrawn, 2000 ether * (delegation.DENOMINATOR() - delegation.getCommissionNumerator()) / delegation.DENOMINATOR(), "incorrect reward amount");
-        // additional steps = all steps - 1 where all steps: staker unstaked, owner 10 times staked and 10 times unstaked, staker staked and unstaked, owner staked
-        // thereof withdrawn: see steps
-        assertEq(delegation.getAdditionalSteps() + steps, 10 + 10 + 1 + 1 + 1, "incorrect number of additional steps");
+        // additional steps = all steps - 1 where all steps = staker staked and unstaked, owner staked 10 times and unstaked 10 times, staker staked and unstaked, owner staked
+        // if we withdrew any additional step, we also skipped all steps that had existed at that point i.e. staker unstaked, owner staked 10 times and unstaked 10 times
+        // because the first additional step rendered a zero amount and there was no other staking by the staker
+        if (additionalSteps > 0)
+            additionalSteps = 1 + 10 + 10;
+        assertEq(delegation.getAdditionalSteps() + additionalSteps, 1 + 10 + 10 + 1 + 1 + 1, "incorrect number of additional steps");
         withdrawn += delegation.withdrawAllRewards();
         assertEq(delegation.rewards() + withdrawn, 2000 ether * (delegation.DENOMINATOR() - delegation.getCommissionNumerator()) / delegation.DENOMINATOR(), "incorrect reward amount");
         assertEq(delegation.getAdditionalSteps(), 0, "incorrect number of additional steps");
@@ -2591,7 +2592,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
 
     function test_rewardsWhenAllUnstaked_WithdrawSpecifiedAmountAndSteps() public {
         uint256 depositAmount = 10_000_000 ether;
-        uint64 steps = 10;
+        uint64 additionalSteps = 10;
         addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
         vm.deal(address(delegation), address(delegation).balance + 1000 ether);
         vm.startPrank(owner);
@@ -2623,9 +2624,7 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         vm.stopPrank();        
         vm.startPrank(staker);
         vm.deal(address(delegation), address(delegation).balance + 1000 ether);
-        withdrawn += delegation.withdrawRewards(800 ether, steps);
-        if (steps > 20)
-            steps = 20;
+        withdrawn += delegation.withdrawRewards(800 ether, additionalSteps);
         vm.deal(address(delegation), address(delegation).balance + 1000 ether);
         assertEq(delegation.rewards() + withdrawn, 1000 ether * (delegation.DENOMINATOR() - delegation.getCommissionNumerator()) / delegation.DENOMINATOR(), "incorrect reward amount");
         delegation.stake{value: depositAmount}();
@@ -2642,12 +2641,46 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         vm.startPrank(staker);
         vm.deal(address(delegation), address(delegation).balance + 1000 ether);
         assertEq(delegation.rewards() + withdrawn, 2000 ether * (delegation.DENOMINATOR() - delegation.getCommissionNumerator()) / delegation.DENOMINATOR(), "incorrect reward amount");
-        // additional steps = all steps - 1 where all steps: staker unstaked, owner 10 times staked and 10 times unstaked, staker staked and unstaked, owner staked
-        // thereof withdrawn: see steps
-        assertEq(delegation.getAdditionalSteps() + steps, 10 + 10 + 1 + 1 + 1, "incorrect number of additional steps");
+        // additional steps = all steps - 1 where all steps = staker staked and unstaked, owner staked 10 times and unstaked 10 times, staker staked and unstaked, owner staked
+        // if we withdrew any additional step, we also skipped all steps that had existed at that point i.e. staked unstaked, owner staked 10 times and unstaked 10 times
+        // because the first additional step rendered a zero amount and there was no other staking by the staker
+        if (additionalSteps > 0)
+            additionalSteps = 1 + 10 + 10;
+        assertEq(delegation.getAdditionalSteps() + additionalSteps, 1 + 10 + 10 + 1 + 1 + 1, "incorrect number of additional steps");
         withdrawn += delegation.withdrawAllRewards();
         assertEq(delegation.rewards() + withdrawn, 2000 ether * (delegation.DENOMINATOR() - delegation.getCommissionNumerator()) / delegation.DENOMINATOR(), "incorrect reward amount");
         assertEq(delegation.getAdditionalSteps(), 0, "incorrect number of additional steps");
+        vm.stopPrank();
+    }
+
+    function test_withdrawAllRewardsVsMaxAdditionalSteps() public {
+        uint256 depositAmount = 10_000_000 ether;
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        vm.deal(owner, owner.balance + 10 * depositAmount);
+        vm.startPrank(owner);
+        //vm.deal(address(delegation), address(delegation).balance + 1000 ether);
+        //delegation.withdrawAllRewards();
+        for (uint256 i = 0; i < 10; i++) {
+            vm.deal(address(delegation), address(delegation).balance + 1000 ether);
+            delegation.stake{value: depositAmount / 10}();
+        }
+        vm.deal(address(delegation), address(delegation).balance + 1000 ether);
+        assertEq(
+            delegation.rewards(uint64(delegation.getAdditionalSteps())), 
+            delegation.rewards(), 
+            "reward amount mismatch"
+        );
+        assertEq(
+            delegation.withdrawAllRewards(uint64(delegation.getAdditionalSteps())), 
+            11 * 1000 ether * (delegation.DENOMINATOR() - delegation.getCommissionNumerator()) / delegation.DENOMINATOR(),
+            "incorrect reward amount"
+        );
+        assertEq(delegation.getAdditionalSteps(), 0, "incorrect number of additional steps");
+        assertEq(
+            delegation.withdrawAllRewards(), 
+            0, 
+            "incorrect reward amount"
+        );
         vm.stopPrank();
     }
 

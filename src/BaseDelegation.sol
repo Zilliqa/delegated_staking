@@ -319,9 +319,12 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     * error data returned if the call to the `DEPOSIT_CONTRACT` fails.
     */
     function _migrate(uint64 fromVersion) internal {
+        // the contract was just deployed, now upgrading from the initial version
+        require(fromVersion == 1, IncompatibleVersion(fromVersion));
 
-        // the contract was just deployed but not upgraded from the initial
-        // version yet
+/*TODO: remove from the audited version 1.0.0
+
+        // the contract was just deployed, now upgrading from the initial version
         if (fromVersion == 1)
             return;
 
@@ -394,6 +397,7 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         // remove the blsPubKey stored in the same slot at the validatorIndex
         // of 0x before the migration 
         delete $.validatorIndex[""];
+*/
     }
 
     /**
