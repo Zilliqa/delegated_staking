@@ -903,15 +903,16 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     }
 
     /**
-    * @dev Unstake `amount` from the deposits proportionally to the validators'
-    * surplus deposit exceeding the required minimum stake.
+    * @dev Unstake `amount` from the deposits in proportion to the validators'
+    * surplus deposit exceeding the required minimum stake, unless the contract
+    * balance reserved for `nonRewards` plus the total surplus of all validators'
+    * deposits is less than the claims already unstaked plus the `amount` to be
+    * unstaked. In the latter case, unstake the last validator's entire deposit
+    * and reduce the `amount` to be unstaked until the remaining `amount` is
+    * fully covered by the unstaked deposit. 
     *
     * Revert with {DepositContractCallFailed} containing the call data and the
     * error data returned if the call to the `DEPOSIT_CONTRACT` fails.
-    *
-    * Revert with {InsufficientUndepositedStake} containing the balance available
-    * to cover unstaked claims and the total claims that can't be withdrawn from
-    * the pool's deposits if the latter is greater than the former.  
     */
     function _decreaseDeposit(uint256 amount) internal virtual {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
