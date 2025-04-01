@@ -179,7 +179,6 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
                 10,
                 "rewards differ from calculated value"
             );
-            // TODO: add tests that withdraw an amount < delegation.rewards(step)
             int256 totalRewardsAfter = int256(delegation.getHistoricalTaxedRewards());
             int256 delegationBalanceAfter = int256(address(delegation).balance);
             Console.log18("rewards accrued until last staking: %s.%s%s", totalRewardsAfter);
@@ -2350,6 +2349,305 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         vm.stopPrank();
         vm.startPrank(staker);
         Console.log("staker rewards:   %s", delegation.rewards());
+        vm.stopPrank();
+    }
+
+    function test_rewardsWhenAllUnstaked_WithdrawNoRewards() public {
+        uint256 depositAmount = 10_000_000 ether;
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        vm.deal(address(delegation), address(delegation).balance + 1000 ether);
+        vm.startPrank(owner);
+        delegation.withdrawAllRewards();
+        vm.stopPrank();
+        uint256 withdrawn;
+        address staker = stakers[0];
+        vm.deal(staker, staker.balance + 2 * depositAmount);
+        vm.startPrank(staker);
+        delegation.stake{value: depositAmount}();
+        assertEq(2 * delegation.getDelegatedAmount(), delegation.getDelegatedTotal(), "delegated amount must be half of the total delegated");
+        vm.deal(address(delegation), address(delegation).balance + 1000 ether);
+        assertEq(delegation.rewards() + withdrawn, 500 ether * (delegation.DENOMINATOR() - delegation.getCommissionNumerator()) / delegation.DENOMINATOR(), "incorrect reward amount");
+        vm.deal(address(delegation), address(delegation).balance + 1000 ether);
+        delegation.unstake(delegation.getDelegatedAmount());
+        assertEq(delegation.getDelegatedAmount(), 0, "delegated amount must be zero");
+        assertEq(delegation.rewards() + withdrawn, 1000 ether * (delegation.DENOMINATOR() - delegation.getCommissionNumerator()) / delegation.DENOMINATOR(), "incorrect reward amount");
+        vm.stopPrank();
+        vm.deal(owner, owner.balance + 3 * depositAmount);
+        vm.startPrank(owner);
+        for (uint256 i = 0; i < 10; i++) {
+            vm.deal(address(delegation), address(delegation).balance + 1000 ether);
+            delegation.stake{value: depositAmount / 10}();
+        }
+        for (uint256 i = 0; i < 10; i++) {
+            vm.deal(address(delegation), address(delegation).balance + 1000 ether);
+            delegation.unstake(depositAmount / 10);
+        }
+        vm.stopPrank();        
+        vm.startPrank(staker);
+        vm.deal(address(delegation), address(delegation).balance + 1000 ether);
+        assertEq(delegation.rewards() + withdrawn, 1000 ether * (delegation.DENOMINATOR() - delegation.getCommissionNumerator()) / delegation.DENOMINATOR(), "incorrect reward amount");
+        delegation.stake{value: depositAmount}();
+        assertEq(2 * delegation.getDelegatedAmount(), delegation.getDelegatedTotal(), "delegated amount must be half of the total delegated");
+        vm.deal(address(delegation), address(delegation).balance + 1000 ether);
+        assertEq(delegation.rewards() + withdrawn, 1500 ether * (delegation.DENOMINATOR() - delegation.getCommissionNumerator()) / delegation.DENOMINATOR(), "incorrect reward amount");
+        vm.deal(address(delegation), address(delegation).balance + 1000 ether);
+        delegation.unstake(delegation.getDelegatedAmount());
+        vm.deal(address(delegation), address(delegation).balance + 1000 ether);
+        vm.stopPrank();
+        vm.startPrank(owner);
+        delegation.stake{value: depositAmount}();
+        vm.stopPrank();        
+        vm.startPrank(staker);
+        vm.deal(address(delegation), address(delegation).balance + 1000 ether);
+        assertEq(delegation.rewards() + withdrawn, 2000 ether * (delegation.DENOMINATOR() - delegation.getCommissionNumerator()) / delegation.DENOMINATOR(), "incorrect reward amount");
+        // additional steps = all steps - 1 where all steps: staker unstaked, owner 10 times staked and 10 times unstaked, staker staked and unstaked, owner staked
+        // thereof withdrawn: 0
+        assertEq(delegation.getAdditionalSteps(), 10 + 10 + 1 + 1 + 1, "incorrect number of additional steps");
+        withdrawn += delegation.withdrawAllRewards();
+        assertEq(delegation.rewards() + withdrawn, 2000 ether * (delegation.DENOMINATOR() - delegation.getCommissionNumerator()) / delegation.DENOMINATOR(), "incorrect reward amount");
+        assertEq(delegation.getAdditionalSteps(), 0, "incorrect number of additional steps");
+        vm.stopPrank();
+    }
+
+    function test_rewardsWhenAllUnstaked_WithdrawAllRewards() public {
+        uint256 depositAmount = 10_000_000 ether;
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        vm.deal(address(delegation), address(delegation).balance + 1000 ether);
+        vm.startPrank(owner);
+        delegation.withdrawAllRewards();
+        vm.stopPrank();
+        uint256 withdrawn;
+        address staker = stakers[0];
+        vm.deal(staker, staker.balance + 2 * depositAmount);
+        vm.startPrank(staker);
+        delegation.stake{value: depositAmount}();
+        assertEq(2 * delegation.getDelegatedAmount(), delegation.getDelegatedTotal(), "delegated amount must be half of the total delegated");
+        vm.deal(address(delegation), address(delegation).balance + 1000 ether);
+        assertEq(delegation.rewards() + withdrawn, 500 ether * (delegation.DENOMINATOR() - delegation.getCommissionNumerator()) / delegation.DENOMINATOR(), "incorrect reward amount");
+        vm.deal(address(delegation), address(delegation).balance + 1000 ether);
+        delegation.unstake(delegation.getDelegatedAmount());
+        assertEq(delegation.getDelegatedAmount(), 0, "delegated amount must be zero");
+        assertEq(delegation.rewards() + withdrawn, 1000 ether * (delegation.DENOMINATOR() - delegation.getCommissionNumerator()) / delegation.DENOMINATOR(), "incorrect reward amount");
+        vm.stopPrank();
+        vm.deal(owner, owner.balance + 3 * depositAmount);
+        vm.startPrank(owner);
+        for (uint256 i = 0; i < 10; i++) {
+            vm.deal(address(delegation), address(delegation).balance + 1000 ether);
+            delegation.stake{value: depositAmount / 10}();
+        }
+        for (uint256 i = 0; i < 10; i++) {
+            vm.deal(address(delegation), address(delegation).balance + 1000 ether);
+            delegation.unstake(depositAmount / 10);
+        }
+        vm.stopPrank();        
+        vm.startPrank(staker);
+        vm.deal(address(delegation), address(delegation).balance + 1000 ether);
+        withdrawn += delegation.withdrawAllRewards();
+        vm.deal(address(delegation), address(delegation).balance + 1000 ether);
+        assertEq(delegation.rewards() + withdrawn, 1000 ether * (delegation.DENOMINATOR() - delegation.getCommissionNumerator()) / delegation.DENOMINATOR(), "incorrect reward amount");
+        delegation.stake{value: depositAmount}();
+        assertEq(2 * delegation.getDelegatedAmount(), delegation.getDelegatedTotal(), "delegated amount must be half of the total delegated");
+        vm.deal(address(delegation), address(delegation).balance + 1000 ether);
+        assertEq(delegation.rewards() + withdrawn, 1500 ether * (delegation.DENOMINATOR() - delegation.getCommissionNumerator()) / delegation.DENOMINATOR(), "incorrect reward amount");
+        vm.deal(address(delegation), address(delegation).balance + 1000 ether);
+        delegation.unstake(delegation.getDelegatedAmount());
+        vm.deal(address(delegation), address(delegation).balance + 1000 ether);
+        vm.stopPrank();
+        vm.startPrank(owner);
+        delegation.stake{value: depositAmount}();
+        vm.stopPrank();        
+        vm.startPrank(staker);
+        vm.deal(address(delegation), address(delegation).balance + 1000 ether);
+        assertEq(delegation.rewards() + withdrawn, 2000 ether * (delegation.DENOMINATOR() - delegation.getCommissionNumerator()) / delegation.DENOMINATOR(), "incorrect reward amount");
+        // additional steps = all steps - 1 where all steps: staker unstaked, owner 10 times staked and 10 times unstaked, staker staked and unstaked, owner staked
+        // thereof withdrawn: everything until withdrawAllRewards() was called, i.e. everything but the last time when staker staked and unstaked and the owner staked
+        assertEq(delegation.getAdditionalSteps() + 10 + 10, 10 + 10 + 1 + 1 + 1, "incorrect number of additional steps");
+        withdrawn += delegation.withdrawAllRewards();
+        assertEq(delegation.rewards() + withdrawn, 2000 ether * (delegation.DENOMINATOR() - delegation.getCommissionNumerator()) / delegation.DENOMINATOR(), "incorrect reward amount");
+        assertEq(delegation.getAdditionalSteps(), 0, "incorrect number of additional steps");
+        vm.stopPrank();
+    }
+
+    function test_rewardsWhenAllUnstaked_WithdrawSpecifiedAmount() public {
+        uint256 depositAmount = 10_000_000 ether;
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        vm.deal(address(delegation), address(delegation).balance + 1000 ether);
+        vm.startPrank(owner);
+        delegation.withdrawAllRewards();
+        vm.stopPrank();
+        uint256 withdrawn;
+        address staker = stakers[0];
+        vm.deal(staker, staker.balance + 2 * depositAmount);
+        vm.startPrank(staker);
+        delegation.stake{value: depositAmount}();
+        assertEq(2 * delegation.getDelegatedAmount(), delegation.getDelegatedTotal(), "delegated amount must be half of the total delegated");
+        vm.deal(address(delegation), address(delegation).balance + 1000 ether);
+        assertEq(delegation.rewards() + withdrawn, 500 ether * (delegation.DENOMINATOR() - delegation.getCommissionNumerator()) / delegation.DENOMINATOR(), "incorrect reward amount");
+        vm.deal(address(delegation), address(delegation).balance + 1000 ether);
+        delegation.unstake(delegation.getDelegatedAmount());
+        assertEq(delegation.getDelegatedAmount(), 0, "delegated amount must be zero");
+        assertEq(delegation.rewards() + withdrawn, 1000 ether * (delegation.DENOMINATOR() - delegation.getCommissionNumerator()) / delegation.DENOMINATOR(), "incorrect reward amount");
+        vm.stopPrank();
+        vm.deal(owner, owner.balance + 3 * depositAmount);
+        vm.startPrank(owner);
+        for (uint256 i = 0; i < 10; i++) {
+            vm.deal(address(delegation), address(delegation).balance + 1000 ether);
+            delegation.stake{value: depositAmount / 10}();
+        }
+        for (uint256 i = 0; i < 10; i++) {
+            vm.deal(address(delegation), address(delegation).balance + 1000 ether);
+            delegation.unstake(depositAmount / 10);
+        }
+        vm.stopPrank();        
+        vm.startPrank(staker);
+        vm.deal(address(delegation), address(delegation).balance + 1000 ether);
+        withdrawn += delegation.withdrawRewards(800 ether);
+        vm.deal(address(delegation), address(delegation).balance + 1000 ether);
+        assertEq(delegation.rewards() + withdrawn, 1000 ether * (delegation.DENOMINATOR() - delegation.getCommissionNumerator()) / delegation.DENOMINATOR(), "incorrect reward amount");
+        delegation.stake{value: depositAmount}();
+        assertEq(2 * delegation.getDelegatedAmount(), delegation.getDelegatedTotal(), "delegated amount must be half of the total delegated");
+        vm.deal(address(delegation), address(delegation).balance + 1000 ether);
+        assertEq(delegation.rewards() + withdrawn, 1500 ether * (delegation.DENOMINATOR() - delegation.getCommissionNumerator()) / delegation.DENOMINATOR(), "incorrect reward amount");
+        vm.deal(address(delegation), address(delegation).balance + 1000 ether);
+        delegation.unstake(delegation.getDelegatedAmount());
+        vm.deal(address(delegation), address(delegation).balance + 1000 ether);
+        vm.stopPrank();
+        vm.startPrank(owner);
+        delegation.stake{value: depositAmount}();
+        vm.stopPrank();        
+        vm.startPrank(staker);
+        vm.deal(address(delegation), address(delegation).balance + 1000 ether);
+        assertEq(delegation.rewards() + withdrawn, 2000 ether * (delegation.DENOMINATOR() - delegation.getCommissionNumerator()) / delegation.DENOMINATOR(), "incorrect reward amount");
+        // additional steps = all steps - 1 where all steps: staker unstaked, owner 10 times staked and 10 times unstaked, staker staked and unstaked, owner staked
+        // thereof withdrawn: everything until withdrawAllRewards() was called, i.e. everything but the last time when staker staked and unstaked and the owner staked
+        assertEq(delegation.getAdditionalSteps() + 10 + 10, 10 + 10 + 1 + 1 + 1, "incorrect number of additional steps");
+        withdrawn += delegation.withdrawAllRewards();
+        assertEq(delegation.rewards() + withdrawn, 2000 ether * (delegation.DENOMINATOR() - delegation.getCommissionNumerator()) / delegation.DENOMINATOR(), "incorrect reward amount");
+        assertEq(delegation.getAdditionalSteps(), 0, "incorrect number of additional steps");
+        vm.stopPrank();
+    }
+
+    function test_rewardsWhenAllUnstaked_WithdrawSpecifiedSteps() public {
+        uint256 depositAmount = 10_000_000 ether;
+        uint64 steps = 25;
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        vm.deal(address(delegation), address(delegation).balance + 1000 ether);
+        vm.startPrank(owner);
+        delegation.withdrawAllRewards();
+        vm.stopPrank();
+        uint256 withdrawn;
+        address staker = stakers[0];
+        vm.deal(staker, staker.balance + 2 * depositAmount);
+        vm.startPrank(staker);
+        delegation.stake{value: depositAmount}();
+        assertEq(2 * delegation.getDelegatedAmount(), delegation.getDelegatedTotal(), "delegated amount must be half of the total delegated");
+        vm.deal(address(delegation), address(delegation).balance + 1000 ether);
+        assertEq(delegation.rewards() + withdrawn, 500 ether * (delegation.DENOMINATOR() - delegation.getCommissionNumerator()) / delegation.DENOMINATOR(), "incorrect reward amount");
+        vm.deal(address(delegation), address(delegation).balance + 1000 ether);
+        delegation.unstake(delegation.getDelegatedAmount());
+        assertEq(delegation.getDelegatedAmount(), 0, "delegated amount must be zero");
+        assertEq(delegation.rewards() + withdrawn, 1000 ether * (delegation.DENOMINATOR() - delegation.getCommissionNumerator()) / delegation.DENOMINATOR(), "incorrect reward amount");
+        vm.stopPrank();
+        vm.deal(owner, owner.balance + 3 * depositAmount);
+        vm.startPrank(owner);
+        for (uint256 i = 0; i < 10; i++) {
+            vm.deal(address(delegation), address(delegation).balance + 1000 ether);
+            delegation.stake{value: depositAmount / 10}();
+        }
+        for (uint256 i = 0; i < 10; i++) {
+            vm.deal(address(delegation), address(delegation).balance + 1000 ether);
+            delegation.unstake(depositAmount / 10);
+        }
+        vm.stopPrank();        
+        vm.startPrank(staker);
+        vm.deal(address(delegation), address(delegation).balance + 1000 ether);
+        withdrawn += delegation.withdrawAllRewards(steps);
+        if (steps > 20)
+            steps = 20;
+        vm.deal(address(delegation), address(delegation).balance + 1000 ether);
+        assertEq(delegation.rewards() + withdrawn, 1000 ether * (delegation.DENOMINATOR() - delegation.getCommissionNumerator()) / delegation.DENOMINATOR(), "incorrect reward amount");
+        delegation.stake{value: depositAmount}();
+        assertEq(2 * delegation.getDelegatedAmount(), delegation.getDelegatedTotal(), "delegated amount must be half of the total delegated");
+        vm.deal(address(delegation), address(delegation).balance + 1000 ether);
+        assertEq(delegation.rewards() + withdrawn, 1500 ether * (delegation.DENOMINATOR() - delegation.getCommissionNumerator()) / delegation.DENOMINATOR(), "incorrect reward amount");
+        vm.deal(address(delegation), address(delegation).balance + 1000 ether);
+        delegation.unstake(delegation.getDelegatedAmount());
+        vm.deal(address(delegation), address(delegation).balance + 1000 ether);
+        vm.stopPrank();
+        vm.startPrank(owner);
+        delegation.stake{value: depositAmount}();
+        vm.stopPrank();        
+        vm.startPrank(staker);
+        vm.deal(address(delegation), address(delegation).balance + 1000 ether);
+        assertEq(delegation.rewards() + withdrawn, 2000 ether * (delegation.DENOMINATOR() - delegation.getCommissionNumerator()) / delegation.DENOMINATOR(), "incorrect reward amount");
+        // additional steps = all steps - 1 where all steps: staker unstaked, owner 10 times staked and 10 times unstaked, staker staked and unstaked, owner staked
+        // thereof withdrawn: see steps
+        assertEq(delegation.getAdditionalSteps() + steps, 10 + 10 + 1 + 1 + 1, "incorrect number of additional steps");
+        withdrawn += delegation.withdrawAllRewards();
+        assertEq(delegation.rewards() + withdrawn, 2000 ether * (delegation.DENOMINATOR() - delegation.getCommissionNumerator()) / delegation.DENOMINATOR(), "incorrect reward amount");
+        assertEq(delegation.getAdditionalSteps(), 0, "incorrect number of additional steps");
+        vm.stopPrank();
+    }
+
+    function test_rewardsWhenAllUnstaked_WithdrawSpecifiedAmountAndSteps() public {
+        uint256 depositAmount = 10_000_000 ether;
+        uint64 steps = 10;
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        vm.deal(address(delegation), address(delegation).balance + 1000 ether);
+        vm.startPrank(owner);
+        delegation.withdrawAllRewards();
+        vm.stopPrank();
+        uint256 withdrawn;
+        address staker = stakers[0];
+        vm.deal(staker, staker.balance + 2 * depositAmount);
+        vm.startPrank(staker);
+        delegation.stake{value: depositAmount}();
+        assertEq(2 * delegation.getDelegatedAmount(), delegation.getDelegatedTotal(), "delegated amount must be half of the total delegated");
+        vm.deal(address(delegation), address(delegation).balance + 1000 ether);
+        assertEq(delegation.rewards() + withdrawn, 500 ether * (delegation.DENOMINATOR() - delegation.getCommissionNumerator()) / delegation.DENOMINATOR(), "incorrect reward amount");
+        vm.deal(address(delegation), address(delegation).balance + 1000 ether);
+        delegation.unstake(delegation.getDelegatedAmount());
+        assertEq(delegation.getDelegatedAmount(), 0, "delegated amount must be zero");
+        assertEq(delegation.rewards() + withdrawn, 1000 ether * (delegation.DENOMINATOR() - delegation.getCommissionNumerator()) / delegation.DENOMINATOR(), "incorrect reward amount");
+        vm.stopPrank();
+        vm.deal(owner, owner.balance + 3 * depositAmount);
+        vm.startPrank(owner);
+        for (uint256 i = 0; i < 10; i++) {
+            vm.deal(address(delegation), address(delegation).balance + 1000 ether);
+            delegation.stake{value: depositAmount / 10}();
+        }
+        for (uint256 i = 0; i < 10; i++) {
+            vm.deal(address(delegation), address(delegation).balance + 1000 ether);
+            delegation.unstake(depositAmount / 10);
+        }
+        vm.stopPrank();        
+        vm.startPrank(staker);
+        vm.deal(address(delegation), address(delegation).balance + 1000 ether);
+        withdrawn += delegation.withdrawRewards(800 ether, steps);
+        if (steps > 20)
+            steps = 20;
+        vm.deal(address(delegation), address(delegation).balance + 1000 ether);
+        assertEq(delegation.rewards() + withdrawn, 1000 ether * (delegation.DENOMINATOR() - delegation.getCommissionNumerator()) / delegation.DENOMINATOR(), "incorrect reward amount");
+        delegation.stake{value: depositAmount}();
+        assertEq(2 * delegation.getDelegatedAmount(), delegation.getDelegatedTotal(), "delegated amount must be half of the total delegated");
+        vm.deal(address(delegation), address(delegation).balance + 1000 ether);
+        assertEq(delegation.rewards() + withdrawn, 1500 ether * (delegation.DENOMINATOR() - delegation.getCommissionNumerator()) / delegation.DENOMINATOR(), "incorrect reward amount");
+        vm.deal(address(delegation), address(delegation).balance + 1000 ether);
+        delegation.unstake(delegation.getDelegatedAmount());
+        vm.deal(address(delegation), address(delegation).balance + 1000 ether);
+        vm.stopPrank();
+        vm.startPrank(owner);
+        delegation.stake{value: depositAmount}();
+        vm.stopPrank();        
+        vm.startPrank(staker);
+        vm.deal(address(delegation), address(delegation).balance + 1000 ether);
+        assertEq(delegation.rewards() + withdrawn, 2000 ether * (delegation.DENOMINATOR() - delegation.getCommissionNumerator()) / delegation.DENOMINATOR(), "incorrect reward amount");
+        // additional steps = all steps - 1 where all steps: staker unstaked, owner 10 times staked and 10 times unstaked, staker staked and unstaked, owner staked
+        // thereof withdrawn: see steps
+        assertEq(delegation.getAdditionalSteps() + steps, 10 + 10 + 1 + 1 + 1, "incorrect number of additional steps");
+        withdrawn += delegation.withdrawAllRewards();
+        assertEq(delegation.rewards() + withdrawn, 2000 ether * (delegation.DENOMINATOR() - delegation.getCommissionNumerator()) / delegation.DENOMINATOR(), "incorrect reward amount");
+        assertEq(delegation.getAdditionalSteps(), 0, "incorrect number of additional steps");
         vm.stopPrank();
     }
 

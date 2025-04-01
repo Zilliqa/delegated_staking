@@ -414,11 +414,14 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation {
     * {withdrawAllRewards} to withdraw all rewards the caller is entitled to.
     * Note that this number of steps may be too high to withdraw at once, in
     * which case the rewards can be withdrawn in multiple transactions using a
-    * lower number of steps each.
+    * lower number of steps in each.
     */
     function getAdditionalSteps() public view returns(uint256) {
         NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
-        return $.stakings.length - $.lastTaxedStakingIndex[_msgSender()] - 1;
+        uint256 first = $.lastTaxedStakingIndex[_msgSender()];
+        if (first == 0)
+            first = $.stakingIndices[_msgSender()][0] + 1;
+        return $.stakings.length - first - 1;
     }
 
     /**
@@ -470,23 +473,23 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation {
 
     /**
     * @dev Withdraw the taxed rewards of the caller calculated by traversing the
-    * {Staking} history in `1 + additionalSteps` and return the withdrawn amount.
+    * {Staking} history in `1 + additionalSteps` and return the transferred amount.
     */
     function withdrawAllRewards(uint64 additionalSteps) public whenNotPaused returns(uint256) {
         return withdrawRewards(type(uint256).max, additionalSteps);
     }
 
     /**
-    * @dev Withdraw the total amount of taxed rewards of the caller and return
-    * the withdrawn amount.
+    * @dev Withdraw the total available taxed rewards of the caller and return the
+    * transferred amount.
     */
     function withdrawAllRewards() public whenNotPaused returns(uint256) {
         return withdrawRewards(type(uint256).max, type(uint64).max);
     }
 
     /**
-    * @dev Withdraw `amount` from the taxed rewards of the caller and return
-    * the withdrawn amount.
+    * @dev Withdraw `amount` from the taxed rewards of the caller and return the
+    * transferred amount.
     */
     function withdrawRewards(uint256 amount) public whenNotPaused returns(uint256) {
         return withdrawRewards(amount, type(uint64).max);
@@ -506,12 +509,13 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation {
     function withdrawRewards(uint256 amount, uint64 additionalSteps)
         public
         whenNotPaused
-        returns(uint256 taxedRewards)
+        returns(uint256)
     {
-        (amount, taxedRewards) = _useRewards(amount, additionalSteps);
+        amount = _useRewards(amount, additionalSteps);
         (bool success, ) = _msgSender().call{value: amount}("");
         require(success, TransferFailed(_msgSender(), amount));
         emit RewardPaid(_msgSender(), amount);
+        return amount;
     }
 
     /**
@@ -520,7 +524,7 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation {
     * @dev Emit {Staked} containing the caller address and the amount of rewards staked.
     */
     function stakeRewards() public override(BaseDelegation, IDelegation) whenNotPaused {
-        (uint256 amount, ) = _useRewards(type(uint256).max, type(uint64).max);
+        uint256 amount = _useRewards(type(uint256).max, type(uint64).max);
         _increaseStake(amount);
         _increaseDeposit(amount);
         _appendToHistory(int256(amount), _msgSender());
@@ -569,7 +573,7 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation {
     function _useRewards(
         uint256 amount,
         uint64 additionalSteps
-    ) internal returns(uint256, uint256) {
+    ) internal returns(uint256) {
         NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
         uint256 oldRoundingError = $.roundingErrors[_msgSender()];
         (
@@ -586,7 +590,7 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation {
         $.totalRoundingErrors += roundingError;
         // the caller has not delegated any stake yet
         if (nextStakingIndex == 0)
-            return (0, 0);
+            return 0;
         // store the rewards accrued since the last staking in order to know how
         // much the caller has already withdrawn, and reduce the current withdrawal
         // by the amount that was stored last time, because the reward since the 
@@ -599,20 +603,20 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation {
             resultAfterLastStaking,
             resultInTotal - $.taxedSinceLastStaking[_msgSender()]
         );
-        uint256 taxedRewards = resultInTotal;
-        $.availableTaxedRewards[_msgSender()] += taxedRewards;
+        $.availableTaxedRewards[_msgSender()] += resultInTotal;
         $.firstStakingIndex[_msgSender()] = posInStakingIndices;
         $.lastTaxedStakingIndex[_msgSender()] = nextStakingIndex - 1;
         if (amount == type(uint256).max)
             amount = $.availableTaxedRewards[_msgSender()];
-        require(
-            amount <= $.availableTaxedRewards[_msgSender()], 
-            RequestedAmountTooHigh(amount, $.availableTaxedRewards[_msgSender()])
-        );
+        else
+            require(
+                amount <= $.availableTaxedRewards[_msgSender()], 
+                RequestedAmountTooHigh(amount, $.availableTaxedRewards[_msgSender()])
+            );
         $.availableTaxedRewards[_msgSender()] -= amount;
         $.historicalTaxedRewards -= int256(amount);
         $.taxedRewards -= int256(amount);
-        return (amount, taxedRewards);
+        return amount;
     }
 
     /**
@@ -659,11 +663,11 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation {
             if (firstStakingIndex == 0)
                 firstStakingIndex = nextStakingIndex;
             while (
-                posInStakingIndices == $.stakingIndices[_msgSender()].length - 1 ?
+                posInStakingIndices == len - 1 ?
                 nextStakingIndex < $.stakings.length :
                 nextStakingIndex <= $.stakingIndices[_msgSender()][posInStakingIndices + 1]
             ) {
-                if (total > 0) {
+                if (total > 0 && amount > 0) {
                     resultInTotal += $.stakings[nextStakingIndex].rewards * amount / total;
                     roundingError +=
                         1 ether * $.stakings[nextStakingIndex].rewards * amount / total -
