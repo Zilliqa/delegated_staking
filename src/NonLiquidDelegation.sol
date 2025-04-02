@@ -420,12 +420,12 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation {
     * will be skipped because the caller's stake was zero in the respective
     * entries in the {Staking} history. 
     */
-    function getAdditionalSteps() public view returns(uint256) {
+    function getAdditionalSteps() public view returns(uint64) {
         NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
         uint256 first = $.lastStakingIndex[_msgSender()];
         if (first == 0)
             first = $.stakingIndices[_msgSender()][0];
-        return $.stakings.length - first - 1;
+        return uint64($.stakings.length - first - 1);
     }
 
     /**

@@ -2666,12 +2666,12 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
         }
         vm.deal(address(delegation), address(delegation).balance + 1000 ether);
         assertEq(
-            delegation.rewards(uint64(delegation.getAdditionalSteps())), 
+            delegation.rewards(delegation.getAdditionalSteps()), 
             delegation.rewards(), 
             "reward amount mismatch"
         );
         assertEq(
-            delegation.withdrawAllRewards(uint64(delegation.getAdditionalSteps())), 
+            delegation.withdrawAllRewards(delegation.getAdditionalSteps()), 
             11 * 1000 ether * (delegation.DENOMINATOR() - delegation.getCommissionNumerator()) / delegation.DENOMINATOR(),
             "incorrect reward amount"
         );
