@@ -320,7 +320,9 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     */
     function _migrate(uint64 fromVersion) internal {
         // the contract was just deployed, now upgrading from the initial version
-        require(fromVersion == 1, IncompatibleVersion(fromVersion));
+        if (fromVersion == 1)
+            return;
+        require(fromVersion >= encodeVersion(0, 6, 1), IncompatibleVersion(fromVersion));
     }
 
     /**
