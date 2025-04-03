@@ -1,8 +1,12 @@
 # Delegated Staking
 
-This repository contains the contracts and scripts needed to create a staking pool that users can delegate to. Currently, the contracts exist in two variants:
+Validators of the Zilliqa 2.0 network are solo stakers by default. This repository contains the contracts and scripts needed to create a staking pool operating one or more validator nodes that users can delegate to. Currently, the contracts exist in two variants:
 1. When delegating stake to the **liquid variant**, users receive a non-rebasing liquid staking token (LST) that anyone can send to the pool's contract to withdraw the stake plus the corresponding share of the staking rewards.
 1. When delegating stake to the **non-liquid variant**, users become eligible to claim their share of the staking rewards without withdrawing their stake.
+
+<p align="center">
+    <img alt="Delegated Staking Overview" src="./overview.webp" />
+</p>
 
 
 ## Prerequisites
@@ -49,7 +53,7 @@ You will see an output like this:
   Proxy deployed: 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 
   Implementation deployed: 0x7C623e01c5ce2e313C223ef2aEc1Ae5C6d12D9DD
   Owner is 0x15fc323DFE5D5DCfbeEdc25CEcbf57f676634d77
-  Upgraded to version: 0.4.0
+  Upgraded to version: 0.9.0
 ```
 
 You will need the proxy address from the above output in all commands below. If you know the address of a proxy contract but don't know which variant of staking it supports, run
@@ -66,10 +70,10 @@ forge script script/Upgrade.s.sol --broadcast --legacy --sig "run(address payabl
 The output will look like this:
 ```
   Signer is 0x15fc323DFE5D5DCfbeEdc25CEcbf57f676634d77
-  Upgrading from version: 0.3.6
+  Upgrading from version: 0.8.3
   Owner is 0x15fc323DFE5D5DCfbeEdc25CEcbf57f676634d77
   New implementation deployed: 0x64Fa96a67910956141cc481a43f242C045c10165
-  Upgraded to version: 0.4.0
+  Upgraded to version: 0.9.0
 ```
 
 If you want to check the current version your contract was upgraded to, run
@@ -79,19 +83,26 @@ forge script script/CheckVersion.s.sol --sig "run(address payable)" 0x7A0b7e6D24
 
 ## Contract Configuration
 
-Now or at a later time you can set the commission on the rewards the validator earns to e.g. 10% as follows:
+Now you can set the commission on the rewards the staking pool's validators earn to e.g. 10% as follows:
 ```bash
 forge script script/Configure.s.sol --broadcast --legacy --sig "commissionRate(address payable, uint16)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 1000
 ```
 
 The output will contain the following information:
 ```
-  Running version: 0.4.0
+  Running version: 0.9.0
   Commission rate: 0.0%
   New commission rate: 10.0%
 ```
 
-If you only want to view the current commission rate and leave it unchanged, run
+Note that if the pool holds delegated stake, you can only change the commission rate by less than 2 percentage points at once and the last change must be at least `86400` blocks old.
+
+To view the block height of the last change to the commission rate, run
+```bash
+forge script script/Configure.s.sol --broadcast --legacy --sig "commissionChange(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2
+```
+
+To view the current commission rate, run
 ```bash
 forge script script/Configure.s.sol --broadcast --legacy --sig "commissionRate(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2
 ```
@@ -106,21 +117,21 @@ Once the validator is activated and starts earning rewards, the commission is de
 forge script script/CollectCommission.s.sol --broadcast --legacy --sig "run(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2
 ```
 
-By default, the commission is transferred to the original contract owner. The current contract owner can change the address to which the commission is transferred by running
+By default, the commission is transferred to the original contract owner. The current contract owner can change the commission receiver by running the following command with a non-zero address as the second argument:
 ```bash
 forge script script/Configure.s.sol --broadcast --legacy --sig "commissionReceiver(address payable, address)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 0xeA78aAE5Be606D2D152F00760662ac321aB8F017
 ```
 
 The output will contain the following information:
 ```
-  Running version: 0.4.0
+  Running version: 0.9.0
   Commission receiver: 0x15fc323DFE5D5DCfbeEdc25CEcbf57f676634d77
   New commission receiver: 0xeA78aAE5Be606D2D152F00760662ac321aB8F017
 ```
 
 Using the above command the commission can be redirected to a cold wallet, a multisig wallet or a smart contract which splits the commission proportionally to the deposit of the validators who join the staking pool.
 
-If you only want to view the current commission receiver and leave it unchanged, run
+To view the current commission receiver, run
 ```bash
 forge script script/Configure.s.sol --broadcast --legacy --sig "commissionReceiver(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2
 ```
@@ -128,21 +139,34 @@ forge script script/Configure.s.sol --broadcast --legacy --sig "commissionReceiv
 
 ## Validator Addition and Removal
 
+A staking pool can operate with up to 255 validator nodes.
+
 If your node has already been activated as a validator i.e. solo staker, it can join a staking pool. Run
+```bash
+cast send --legacy --private-key 0x... \
+0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 "registertControlAddress(bytes)" \
+0x92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c
+```
+using the private key of your node's control address that you used to deposit the stake of your validator or its current control address in case you changed it later, and your node's BLS public key, followed by 
 ```bash
 cast send --legacy --private-key 0x... \
 0x00000000005a494c4445504f53495450524f5859 "setControlAddress(bytes,address)" \
 0x92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c \
 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2
 ```
-using the private key that you used to deposit your node, the BLS public key of your node and the address of the staking pool's delegation contract. Afterwards the staking pool contract owner must run
+using the same private key, BLS public key and the address of the staking pool's delegation contract. Afterwards, the staking pool contract owner must run
 ```bash
 cast send --legacy --private-key $PRIVATE_KEY \
 0x7a0b7e6d24ede78260c9ddbd98e828b0e11a8ea2 "joinPool(bytes,address)" \
-0x92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c \
-0xe0c6f3d59b8cda6ce4fd66418212404a63ad8517
+0x92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c
 ```
-using the BLS public key and the original control address that you used when you deposited the node. 
+using your node's BLS public key to add your node to the pool. If you decide to cancel the handover before the pool owner runs the above command, run
+```bash
+cast send --legacy --private-key 0x... \
+0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 "unregistertControlAddress(bytes)" \
+0x92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c
+```
+using the same private key and BLS public key as above.
 
 To leave a staking pool, run 
 ```bash
@@ -150,7 +174,7 @@ cast send --legacy --private-key 0x... \
 0x7a0b7e6d24ede78260c9ddbd98e828b0e11a8ea2 "leavePool(bytes)" \
 0x92fbe50544dce63cfdcc88301d7412f0edea024c91ae5d6a04c7cd3819edfc1b9d75d9121080af12e00f054d221f876c
 ```
-using the private key that you used to deposit your node, the BLS public key of your node and the address of the staking pool's delegation contract. Note that your validator can't leave the staking pool as long as there are pending stake withdrawals. The following event emitted by the above transaction indicates whether it was successful or not:
+using the private key of your node's control address, your node's BLS public key and the address of the staking pool's delegation contract. Note that your validator can't leave the staking pool as long as there are pending stake withdrawals from its deposit. The following event emitted by the above transaction indicates whether the request was successful or not:
 ```solidity
 event ValidatorLeaving(bytes indexed blsPubKey, bool success);
 ```
@@ -206,7 +230,7 @@ with the private key of delegator account. It's important to make sure the accou
 
 The output will look like this for liquid staking:
 ```
-  Running version: 0.4.0
+  Running version: 0.9.0
   Current stake: 10000000000000000000000000 wei
   Current rewards: 110314207650273223687 wei
   LST address: 0x9e5c257D1c6dF74EaA54e58CdccaCb924669dc83
@@ -215,7 +239,7 @@ The output will look like this for liquid staking:
 ```
 and like this for the non-liquid variant:
 ```
-  Running version: 0.4.0
+  Running version: 0.9.0
   Current stake: 10000000000000000000000000 wei
   Current rewards: 110314207650273223687 wei
   Staker balance before: 99899145245801454561224 wei
@@ -242,7 +266,7 @@ using the private key of an account that holds some LST in case of the liquid va
 
 The output will look like this for liquid staking:
 ```
-  Running version: 0.4.0
+  Running version: 0.9.0
   Current stake: 10000000000000000000000000 wei
   Current rewards: 331912568306010928520 wei
   LST address: 0x9e5c257D1c6dF74EaA54e58CdccaCb924669dc83
@@ -251,7 +275,7 @@ The output will look like this for liquid staking:
 ```
 and like this for the non-liquid variant:
 ```
-  Running version: 0.4.0
+  Running version: 0.9.0
   Current stake: 10000000000000000000000000 wei
   Current rewards: 331912568306010928520 wei
   Staker balance before: 99698814298179759361224 wei
@@ -266,7 +290,7 @@ with the private key of the account that unstaked in the previous step.
 
 The output will look like this:
 ```
-  Running version: 0.4.0
+  Running version: 0.9.0
   Staker balance before: 99698086421983460161224 wei
   Staker balance after: 99798095485861371162343 wei
 ```
@@ -294,22 +318,20 @@ In the non-liquid variant of staking, delegators can stake or withdraw their sha
 cast to-unit $(cast call 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 "rewards()(uint256)" --from 0xd819fFcE7A58b1E835c25617Db7b46a00888B013 --block latest | sed 's/\[[^]]*\]//g') ether
 ```
 
-If a delegator hasn't withdrawn rewards while thousands of delegators staked or unstaked, the gas used by the above function might hit the block limit. In this case it's possible to withdraw only the rewards accrued during the next `n` subsequent stakings or unstaking that have not been withdrawn yet. This can be repeated several times to withdraw all rewards using multiple transactions. To calculate the rewards that can be withdrawn in the next transaction using e.g. `n = 100` run
+If a user hasn't withdrawn rewards while thousands of delegators staked or unstaked, the gas used by the above function might hit the block limit. In this case it's also possible to withdraw only the rewards accrued during the next `n` staking periods recorded in the staking history that have not been withdrawn yet. Note that every time a delegator stakes or unstakes, a new staking period is appended to the staking history. Reward withdrawals from `n` staking periods can be repeated to withdraw all rewards through multiple transactions. To calculate the rewards that can be withdrawn in the next transaction using e.g. `n = 100` run
 ```bash
 cast to-unit $(cast call 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 "rewards(uint64)(uint256)" 100 --from 0xd819fFcE7A58b1E835c25617Db7b46a00888B013 --block latest | sed 's/\[[^]]*\]//g') ether
 ```
-Note that `n` actually denotes the number of additional stakings or unstakings so that at least one is always reflected in the result, even if you specify `n = 0`.
-
-To find the number `n` that would be needed to withdraw all rewards of a delegator, run
+Note that `n` is actually the number of additional stakings periods so that at least one period is always reflected in the result, even if you specify `n = 0`. To estimate the upper bound on `n` that would be sufficient to withdraw all rewards of delegator `0xd819fFcE7A58b1E835c25617Db7b46a00888B013`, run
 ```bash
-cast call 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 "getAdditionalSteps()(uint256)" --from 0xd819fFcE7A58b1E835c25617Db7b46a00888B013
+cast call 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 "getAdditionalSteps()(uint64)" --from 0xd819fFcE7A58b1E835c25617Db7b46a00888B013
 ```
 
 If the result is less than `10000` then it is safe to withdraw all rewards at once, otherwise you can simulate the withdrawal transaction without submitting it by running
 ```bash
 cast estimate 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 "withdrawlAllRewards()" --from 0xd819fFcE7A58b1E835c25617Db7b46a00888B013 --gas-limit 84000000
 ```
-If the estimation fails due to the gas exceeding the block limit, divide `n` between several partial withdrawal transactions.
+If the estimation fails due to the gas exceeding the block limit, divide `n` between several partial withdrawal transactions. Note that even if `n` appears to be very high, it's still worth doing the gas estimation, as the reward calculation will skip the staking periods included in `n` during which the delegator had zero stake. 
 
 You can also specify the exact amount you want to withdraw. To withdraw e.g. 1000 ZIL using `n = 100`, run
 ```bash
@@ -321,7 +343,7 @@ Last but not least, in order to stake rewards instead of withdrawing them, run
 ```bash
 forge script script/StakeRewards.s.sol --broadcast --legacy --sig "run(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 --private-key 0x...
 ```
-using the private key of their account.
+using the private key of the delegator account.
 
 
 ## Replacing the Delegator Address
@@ -358,7 +380,7 @@ To enable the tests to interact with the Zilliqa 2.0 deposit contract, the contr
 @zilliqa/zq2/=/home/user/zq2/zilliqa/src/contracts/
 ```
 
-To execute end-to-end tests on a local network, set the funds of the first item in `consensus.genesis_accounts` to `5000000000000000000000000`, `consensus.staker_withdrawal_period` to 5 and `consensus.blocks_per_epoch` to 3 in `config_docker.toml` and run
+To execute end-to-end tests on a local network, set the funds of the first item in `nodes.consensus.genesis_accounts` to `5000000000000000000000000`, `nodes.consensus.contract_upgrades.deposit_v5.reinitialise_params.withdrawal_period` to 5 and `nodes.consensus.blocks_per_epoch` to 3 in `config_docker.toml` and run
 ```bash
 chmod +x e2e_liquid.sh && ./e2e_liquid.sh
 chmod +x e2e_non-liquid.sh && ./e2e_non-liquid.sh
@@ -406,6 +428,7 @@ event Staked(address indexed delegator, uint256 amount, bytes data);
 event Unstaked(address indexed delegator, uint256 amount, bytes data);
 event Claimed(address indexed delegator, uint256 amount, bytes data);
 event CommissionPaid(address indexed receiver, uint256 commission);
+event CommissionChanged(uint256 oldCommissionRate, uint256 newCommissionRate);
 
 function stake() external payable;
 function unstake(uint256) external returns(uint256 unstakedZil);
@@ -437,5 +460,5 @@ and a few more for the non-liquid variant.
 
 To generate and view the comprehensive NatSpec documentation, run
 ```bash
-forge doc --serve --open --port 3111
+forge doc --serve --open
 ```

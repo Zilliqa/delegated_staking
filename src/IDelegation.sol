@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
-pragma solidity ^0.8.28;
+pragma solidity 0.8.28;
 
 /**
  * @notice The minimum interface delegation contracts are supposed to implement.
@@ -33,6 +33,11 @@ interface IDelegation {
     * @notice Emit the event when transferring `commission` to `receiver`.
     */
     event CommissionPaid(address indexed receiver, uint256 commission);
+
+    /**
+    * @notice Emit the event when changing `oldCommissionRate` to `newCommissionRate`.
+    */
+    event CommissionChanged(uint256 oldCommissionRate, uint256 newCommissionRate);
 
     /**
     * @notice Stake the ZIL transferred in the transaction.

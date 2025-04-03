@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
-pragma solidity ^0.8.28;
+pragma solidity 0.8.28;
 
 /* solhint-disable no-console */
+import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 import { Deposit } from "@zilliqa/zq2/deposit_v5.sol";
 import { Vm } from "forge-std/Test.sol";
-import { Console } from "script/Console.s.sol";
 import { Console } from "script/Console.s.sol";
 import { BaseDelegation } from "src/BaseDelegation.sol";
 import { IDelegation } from "src/IDelegation.sol";
@@ -1919,6 +1919,7 @@ contract LiquidDelegationTest is BaseDelegationTest {
             users.push(user);
             vm.deal(user, vm.randomUint(100 ether, 100_000_000 ether));
         }
+        uint256 lastPrice = 1 ether;
         uint256 totalStakedZil;
         uint256 totalUnstakedZil;
         uint256 totalWithdrawnZil;
@@ -1940,11 +1941,13 @@ contract LiquidDelegationTest is BaseDelegationTest {
                     continue;
                 Console.log("block %s avg rewards %s price %s", block.number, rewards / blocks, delegation.getPrice());
                 uint256 amount = vm.randomUint(100 ether, user.balance);
+                uint256 totalStakeValue = delegation.getPrice() * lst.totalSupply();
                 vm.startPrank(user);
                 delegation.stake{
                     value: amount
                 }();
                 vm.stopPrank();
+                assertApproxEqRel(totalStakeValue + amount * 1 ether, delegation.getPrice() * lst.totalSupply(), 1, "updated total stake value incorrect");
                 stakedZil[user] += amount;
                 totalStakedZil += amount;
                 stakingsCounter++;
@@ -1960,11 +1963,13 @@ contract LiquidDelegationTest is BaseDelegationTest {
                     vm.randomUint(1, lst.balanceOf(user)):
                     lst.balanceOf(user);
                 uint256 pendingBefore = delegation.totalPendingWithdrawals();
+                uint256 totalStakeValue = delegation.getPrice() * lst.totalSupply();
                 vm.startPrank(user);
                 amount = delegation.unstake(
                     amount
                 );
                 vm.stopPrank();
+                assertApproxEqRel(totalStakeValue - amount * 1 ether, delegation.getPrice() * lst.totalSupply(), 1, "updated total stake value incorrect");
                 uint256 totalContribution = delegation.totalPendingWithdrawals() - pendingBefore;
                 if (totalContribution < amount)
                     totalWithdrawnZil += amount - totalContribution;
@@ -2001,17 +2006,18 @@ contract LiquidDelegationTest is BaseDelegationTest {
                 Console.log("%s claimed %s and has %s unstaked", user, amount, unstakedZil[user]);
             }
             Console.log("round %s of %s", i, numOfRounds);
-            assertGe(delegation.getPrice(), 1 ether, "price too low");
-            assertLt(delegation.getPrice(), 1 ether + 1_000_000 gwei, "price too high");
+            assertGe(delegation.getPrice(), lastPrice, "price too low");
+            lastPrice = delegation.getPrice();
+            assertLt(lastPrice, 1 ether + 1_000_000 gwei, "price too high");
             if (lst.totalSupply() == depositAmount)
                 assertEq(totalStakedZil, 0, "stake more than initial deposit");
-            assertLe(lst.totalSupply() * delegation.getPrice() / 1 ether, delegation.getStake() + delegation.getTaxedRewards() + (delegation.getRewards() - delegation.getTaxedRewards()) * (delegation.DENOMINATOR() - delegation.getCommissionNumerator()) / delegation.DENOMINATOR(), "exposure greater than funds");
+            assertLe(lst.totalSupply() * lastPrice / 1 ether, delegation.getStake() + delegation.getTaxedRewards() + (delegation.getRewards() - delegation.getTaxedRewards()) * (delegation.DENOMINATOR() - delegation.getCommissionNumerator()) / delegation.DENOMINATOR(), "exposure greater than funds");
             assertEq(totalWithdrawnZil + delegation.totalPendingWithdrawals(), totalUnstakedZil, "owned does not match owed");
         }
         for (uint256 i = 0; i < users.length; i++) {
             address user = users[i];
-            totalStakedZil += stakedZil[user];
-            totalUnstakedZil += unstakedZil[user];
+            //totalStakedZil += stakedZil[user];
+            //totalUnstakedZil += unstakedZil[user];
             totalEarnedZil += earnedZil[user];
             Console.log(stakedZil[user], unstakedZil[user], earnedZil[user]);
         }
@@ -2019,6 +2025,166 @@ contract LiquidDelegationTest is BaseDelegationTest {
         Console.log("%s stakings", stakingsCounter);
         Console.log("%s unstakings", unstakingsCounter);
         Console.log("%s claimings", claimingsCounter);
+    }
+
+    function test_TooManyValidators() public {
+        uint256 depositAmount = 10_000_000 ether;
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        stakers.push(owner);
+        for (uint256 i = 2; i < 256; i++) {
+            joinPool(BaseDelegation(delegation), depositAmount, makeAddr(Strings.toString(i)), uint8(i));
+        }
+        address staker = stakers[0];
+        vm.deal(staker, staker.balance + 1000 ether);
+        vm.startPrank(staker);
+        Console.log("pooled stake: %s", delegation.getStake());
+        delegation.stake{value: 1000 ether}();
+        Console.log("pooled stake: %s", delegation.getStake());
+        delegation.unstake(100 ether);
+        Console.log("pooled stake: %s", delegation.getStake());
+        vm.roll(block.number + delegation.unbondingPeriod());
+        delegation.claim();
+        vm.stopPrank();
+    }
+
+    function test_NotManyValidators() public {
+        uint256 depositAmount = 10_000_000 ether;
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        stakers.push(owner);
+        for (uint256 i = 2; i < 16; i++) {
+            joinPool(BaseDelegation(delegation), depositAmount, makeAddr(Strings.toString(i)), uint8(i));
+        }
+        address staker = stakers[0];
+        vm.deal(staker, staker.balance + 1000 ether);
+        vm.startPrank(staker);
+        Console.log("pooled stake: %s", delegation.getStake());
+        delegation.stake{value: 1000 ether}();
+        Console.log("pooled stake: %s", delegation.getStake());
+        delegation.unstake(100 ether);
+        Console.log("pooled stake: %s", delegation.getStake());
+        vm.roll(block.number + delegation.unbondingPeriod());
+        delegation.claim();
+        vm.stopPrank();
+    }
+
+    function test_commissionChangeTooEarly() public {
+        uint256 depositAmount = 10_000_000 ether;
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        stakers.push(owner);
+        address staker = stakers[0];
+        vm.deal(staker, staker.balance + 1000 ether);
+        vm.startPrank(staker);
+        delegation.stake{value: 1000 ether}();
+        vm.stopPrank();
+        vm.startPrank(owner);
+        vm.roll(block.number + delegation.DELAY());
+        delegation.setCommissionNumerator(900);
+        vm.roll(block.number + delegation.DELAY() - 1);
+        vm.expectRevert();
+        delegation.setCommissionNumerator(800);
+        vm.stopPrank();
+    }
+
+    function test_commissionChangeTooFast() public {
+        uint256 depositAmount = 10_000_000 ether;
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        stakers.push(owner);
+        address staker = stakers[0];
+        vm.deal(staker, staker.balance + 1000 ether);
+        vm.startPrank(staker);
+        delegation.stake{value: 1000 ether}();
+        vm.stopPrank();
+        vm.startPrank(owner);
+        vm.roll(block.number + delegation.DELAY());
+        vm.expectRevert();
+        delegation.setCommissionNumerator(800);
+        vm.stopPrank();
+    }
+
+    function test_commissionChangeTooEarly_NoStakeLeft() public {
+        uint256 depositAmount = 10_000_000 ether;
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        stakers.push(owner);
+        addValidator(BaseDelegation(delegations[0]), depositAmount, DepositMode.Bootstrapping);
+        address staker = stakers[0];
+        vm.deal(staker, staker.balance + 1000 ether);
+        vm.startPrank(staker);
+        delegation.stake{value: 1000 ether}();
+        delegation.unstake(lst.balanceOf(staker));
+        vm.stopPrank();
+        vm.startPrank(owner);
+        delegation.unstake(lst.balanceOf(owner));
+        assertEq(delegation.getStake(), 0, "there must be no stake");
+        vm.roll(block.number + delegation.DELAY());
+        delegation.setCommissionNumerator(900);
+        vm.roll(block.number + delegation.DELAY() - 1);
+        delegation.setCommissionNumerator(800);
+        vm.stopPrank();
+    }
+
+    function test_commissionChangeTooFast_NoStakeLeft() public {
+        uint256 depositAmount = 10_000_000 ether;
+        addValidator(BaseDelegation(delegation), depositAmount, DepositMode.Bootstrapping);
+        stakers.push(owner);
+        addValidator(BaseDelegation(delegations[0]), depositAmount, DepositMode.Bootstrapping);
+        address staker = stakers[0];
+        vm.deal(staker, staker.balance + 1000 ether);
+        vm.startPrank(staker);
+        delegation.stake{value: 1000 ether}();
+        delegation.unstake(lst.balanceOf(staker));
+        vm.stopPrank();
+        vm.startPrank(owner);
+        delegation.unstake(lst.balanceOf(owner));
+        assertEq(delegation.getStake(), 0, "there must be no stake");
+        vm.roll(block.number + delegation.DELAY());
+        delegation.setCommissionNumerator(800);
+        vm.stopPrank();
+    }
+
+    function test_commissionChangeTooEarly_NoStakeYet() public {
+        vm.startPrank(owner);
+        assertEq(delegation.getStake(), 0, "there must be no stake");
+        vm.roll(block.number + delegation.DELAY());
+        delegation.setCommissionNumerator(900);
+        vm.roll(block.number + delegation.DELAY() - 1);
+        delegation.setCommissionNumerator(800);
+        vm.stopPrank();
+    }
+
+    function test_commissionChangeTooFast_NoStakeYet() public {
+        vm.startPrank(owner);
+        assertEq(delegation.getStake(), 0, "there must be no stake");
+        vm.roll(block.number + delegation.DELAY());
+        delegation.setCommissionNumerator(800);
+        vm.stopPrank();
+    }
+
+    function test_commissionChangeTooEarly_NotActivated() public {
+        address staker = stakers[0];
+        vm.deal(staker, staker.balance + 1000 ether);
+        vm.startPrank(staker);
+        delegation.stake{value: 1000 ether}();
+        vm.stopPrank();
+        vm.startPrank(owner);
+        vm.roll(block.number + delegation.DELAY());
+        delegation.setCommissionNumerator(900);
+        vm.roll(block.number + delegation.DELAY() - 1);
+        vm.expectRevert();
+        delegation.setCommissionNumerator(800);
+        vm.stopPrank();
+    }
+
+    function test_commissionChangeTooFast_NotActivated() public {
+        address staker = stakers[0];
+        vm.deal(staker, staker.balance + 1000 ether);
+        vm.startPrank(staker);
+        delegation.stake{value: 1000 ether}();
+        vm.stopPrank();
+        vm.startPrank(owner);
+        vm.roll(block.number + delegation.DELAY());
+        vm.expectRevert();
+        delegation.setCommissionNumerator(800);
+        vm.stopPrank();
     }
 
 }

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
-pragma solidity ^0.8.28;
+pragma solidity 0.8.28;
 
 /* solhint-disable no-console */
 import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
@@ -10,6 +10,25 @@ import { BaseDelegation } from "src/BaseDelegation.sol";
 
 contract Configure is Script {
     using Strings for string;
+
+    function commissionChange(address payable proxy) external view {
+        BaseDelegation delegation = BaseDelegation(
+            proxy
+        );
+
+        (uint24 major, uint24 minor, uint24 patch) = delegation.decodedVersion();
+        Console.log("Running version: %s.%s.%s",
+            uint256(major),
+            uint256(minor),
+            uint256(patch)
+        );
+
+        uint256 lastChange = delegation.getLastCommissionChange();
+        if (lastChange == 0)
+            Console.log("Commission rate has not been set");
+        else
+            Console.log("Commission rate changed in block %s", lastChange);
+    }
 
     function commissionRate(address payable proxy) external view {
         BaseDelegation delegation = BaseDelegation(

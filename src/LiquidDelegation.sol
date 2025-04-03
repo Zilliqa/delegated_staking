@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
-pragma solidity ^0.8.28;
+pragma solidity 0.8.28;
 
 import {BaseDelegation} from "src/BaseDelegation.sol";
 import {IDelegation} from "src/IDelegation.sol";
@@ -65,7 +65,7 @@ contract LiquidDelegation is IDelegation, BaseDelegation {
     /**
     * @dev Let {BaseDelegation} migrate `fromVersion` to the current  `VERSION`.
     */
-    function reinitialize(uint64 fromVersion) public reinitializer(VERSION) {
+    function reinitialize(uint64 fromVersion) public onlyOwner reinitializer(VERSION) {
         _migrate(fromVersion);
     }
 
@@ -112,9 +112,9 @@ contract LiquidDelegation is IDelegation, BaseDelegation {
 
     /// @inheritdoc BaseDelegation
     function joinPool(
-        bytes calldata blsPubKey,
-        address controlAddress
+        bytes calldata blsPubKey
     ) public override onlyOwner {
+        address controlAddress = getRegisteredControlAddress(blsPubKey);
         // deduct the commission from the yet untaxed rewards
         // before calculating the number of shares
         _taxRewards();

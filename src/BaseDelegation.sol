@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
-pragma solidity ^0.8.28;
+pragma solidity 0.8.28;
 
 import { Ownable2StepUpgradeable } from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
@@ -73,6 +73,7 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     *
     * - `commissionNumerator` is the commission rate multiplied by `DENOMINATOR`
     * and `commissionReceiver` is the address the deducted commissions are sent to.
+    * `lastCommissionChange` is the block height of the last commission change.
     *
     * - `withdrawals` holds the withdrawal queues of addresses that unstaked.
     *
@@ -95,6 +96,11 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     * paid out of the contract balance. The third part of it is the stake that
     * could not be deposited because there was no validator in the pool whose
     * deposit could have been topped up.
+    *
+    * - `controlAddresses` maps the BLS public keys of validator nodes waiting to
+    * join the pool to their original control address, which becomes a delegator
+    * once the validator is added to the pool and is also allowed to make it leave
+    * the staking pool.
     */
     /// @custom:storage-location erc7201:zilliqa.storage.BaseDelegation
     struct BaseDelegationStorage {
@@ -109,6 +115,8 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         uint256 nonRewards;
         uint256 undepositedClaims;
         uint256 depositedClaims;
+        mapping(bytes => address) controlAddresses;
+        uint256 lastCommissionChange;
     }
 
     // keccak256(abi.encode(uint256(keccak256("zilliqa.storage.BaseDelegation")) - 1)) & ~bytes32(uint256(0xff))
@@ -140,6 +148,12 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     * in the validator list of the staking pool.
     */
     error ValidatorNotFound(bytes blsPubKey);
+
+    /**
+    * @dev Thrown if the {Validator} identified by `blsPubKey` can not be added to
+    * the validator list of the staking pool because it has reached its upper limit.
+    */
+    error TooManyValidators(bytes blsPubKey);
 
     /**
     * @dev Thrown if the {Validator} identified by `blsPubKey` trying to join is
@@ -177,9 +191,10 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     error WithdrawalsPending(bytes blsPubKey, uint256 amount);
 
     /**
-    * @dev Thrown if the commission rate specified by `numerator` is invalid.
+    * @dev Thrown if the commission rate specified by `numerator` is invalid or
+    * the requested change is too high or too early after the last change.
     */
-    error InvalidCommissionRate(uint256 numerator);
+    error InvalidCommissionChange(uint256 numerator);
 
     /**
     * @dev Thrown if the major, minor or patch `version` is invalid.
@@ -218,6 +233,11 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     */
     error IncompatibleVersion(uint64 fromVersion);
 
+    /**
+    * @dev Thrown if the zero address was used where it is not allowed.
+    */
+    error ZeroAddressNotAllowed();
+
     // ************************************************************************
     // 
     //                                 VERSION
@@ -225,7 +245,7 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     // ************************************************************************
 
     /// @dev The current version of all upgradeable contracts in the repository.
-    uint64 internal immutable VERSION = encodeVersion(0, 7, 0);
+    uint64 internal immutable VERSION = encodeVersion(1, 0, 0);
 
     /**
     * @dev Return the contracts' version.
@@ -299,81 +319,8 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     * error data returned if the call to the `DEPOSIT_CONTRACT` fails.
     */
     function _migrate(uint64 fromVersion) internal {
-
-        // the contract has been deployed but not upgraded yet
-        if (fromVersion == 1)
-            return;
-
-        // the contract has been upgraded to a version which
-        // is higher or same as the current version
-        if (fromVersion >= VERSION)
-            return;
-
-        BaseDelegationStorage storage $ = _getBaseDelegationStorage();
-
-        if (fromVersion < encodeVersion(0, 4, 0))
-            // the contract has been upgraded to a version which may have
-            // changed the totalWithdrawals which has to be zero initially
-            $.pendingRebalancedDeposit = 0;
-
-        if (fromVersion < encodeVersion(0, 3, 0))
-            // the contract has been upgraded to a version which did not
-            // set the commission receiver or allow the owner to change it
-            $.commissionReceiver = owner();
-
-        if (fromVersion >= encodeVersion(0, 2, 0))
-            // the contract has been upgraded to a version which has
-            // already migrated the blsPubKey to the validators array
-            return;
-
-        // the contract has been upgraded from the initial version but the length
-        // of the peerId stored in the same slot as the activated bool is zero
-        if (!$.activated)
-            return;
-
-        DeprecatedStorage storage temp;
-        uint256 peerIdLength;
-        assembly {
-            temp.slot := BaseDelegationStorageLocation
-            peerIdLength := sload(add(BaseDelegationStorageLocation, 1))
-        }
-
-        // if the upgraded contract hadn't been migrated yet then the
-        // peerIdLength stored in the same slot as activated would be larger,
-        // but it was overwritten with true
-        if (peerIdLength == 1)
-            return;
-
-        bytes memory callData =
-            abi.encodeWithSignature("getFutureStake(bytes)",
-            temp.blsPubKey
-            );
-        (bool success, bytes memory data) = DEPOSIT_CONTRACT.call(callData);
-        require(success, DepositContractCallFailed(callData, data));
-        uint256 futureStake = abi.decode(data, (uint256));
-
-        // validators migrated from version < 0.2.0 use the contract owner
-        // as their original reward address and control address, i.e. after
-        // leaving the staking pool the contract owner must set the actual
-        // control address, which can then set the actual reward address 
-        $.validators.push(Validator(
-            temp.blsPubKey,
-            futureStake,
-            owner(),
-            owner(),
-            0,
-            ValidatorStatus.Active
-        ));
-
-        $.validatorIndex[temp.blsPubKey] = $.validators.length;
-
-        // it overwrites the peerId length with 1 and prevents repeating the
-        // whole migration again
-        $.activated = true;
-
-        // remove the blsPubKey stored in the same slot at the validatorIndex
-        // of 0x before the migration 
-        delete $.validatorIndex[""];
+        // the contract was just deployed, now upgrading from the initial version
+        require(fromVersion == 1, IncompatibleVersion(fromVersion));
     }
 
     /**
@@ -389,6 +336,9 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
 
     /// @dev The address of the deposit contract.
     address public constant DEPOSIT_CONTRACT = address(0x5A494C4445504F53495450524F5859);
+
+    /// @dev The maximum number of validators allowed.
+    uint256 public constant MAX_VALIDATORS = 255;
 
     /// @dev Emitted when validator identified by `blsPubKey` joins the staking pool.
     event ValidatorJoined(bytes indexed blsPubKey);
@@ -408,6 +358,63 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     }
 
     /**
+    * @dev Check and register the `controlAddress` of the validator identified
+    * by `blsPubKey` before it replaces itself with the pool contract's address
+    * in the `DEPOSIT_CONTRACT`.
+    */
+    function registerControlAddress(
+        bytes calldata blsPubKey
+    ) public virtual {
+        BaseDelegationStorage storage $ = _getBaseDelegationStorage();
+        bytes memory callData =
+            abi.encodeWithSignature("getControlAddress(bytes)",
+            blsPubKey
+            );
+        (bool success, bytes memory data) = DEPOSIT_CONTRACT.call(callData);
+        require(success, DepositContractCallFailed(callData, data));
+        address controlAddress = abi.decode(data, (address));
+        require(
+            _msgSender() == controlAddress,
+            InvalidCaller(_msgSender(), controlAddress)
+        );
+        $.controlAddresses[blsPubKey] = controlAddress;
+    }
+
+    /**
+    * @dev Return the registered `controlAddress` of the validator identified by
+    * `blsPubKey`.
+    */
+    function getRegisteredControlAddress(
+        bytes calldata blsPubKey
+    ) public virtual view returns(address) {
+        BaseDelegationStorage storage $ = _getBaseDelegationStorage();
+        return $.controlAddresses[blsPubKey];
+    }
+
+    /**
+    * @dev Reset the original `controlAddress` of the validator identified by
+    * `blsPubKey` in the `DEPOSIT_CONTRACT` before the pool contract owner calls
+    * {joinPool} to add the validator to the pool.
+    */
+    function unregisterControlAddress(
+        bytes calldata blsPubKey
+    ) public virtual {
+        BaseDelegationStorage storage $ = _getBaseDelegationStorage();
+        require(
+            _msgSender() == $.controlAddresses[blsPubKey],
+            InvalidCaller(_msgSender(), $.controlAddresses[blsPubKey])
+        );
+        bytes memory callData =
+            abi.encodeWithSignature("setControlAddress(bytes,address)",
+            blsPubKey,
+            $.controlAddresses[blsPubKey]
+            );
+        (bool success, bytes memory data) = DEPOSIT_CONTRACT.call(callData);
+        require(success, DepositContractCallFailed(callData, data));
+        delete $.controlAddresses[blsPubKey];
+    }
+
+    /**
     * @dev Turn a fully synced node into a validator using the stake in the pool's
     * balance. It must be called by the contract owner. The staking pool must have
     * at least the minimum stake required of validators in its balance including
@@ -422,14 +429,15 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     /**
     * @dev Add the validator identified by `blsPubKey` to the staking pool. It
     * can be called by the contract owner if the `controlAddress` has called the
-    * `setControlAddress` function of the `DEPOSIT_CONTRACT` before. The joining
+    * pool contract's {registerControlAddress} function and the `setControlAddress`
+    * function of the `DEPOSIT_CONTRACT` before and the `controlAddress` has not
+    * cancelled the handover by calling {unregisterControlAddress}. The joining
     * validator's deposit is treated as if staked by the `controlAddress`. The
     * `controlAddress` is restored in the `DEPOSIT_CONTRACT` when the validator
     * leaves the pool later.
     */
     function joinPool(
-        bytes calldata blsPubKey,
-        address controlAddress
+        bytes calldata blsPubKey
     ) public virtual;
 
     /**
@@ -472,8 +480,11 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         bytes calldata signature
     ) internal virtual {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
-        $.activated = true;
+        if (!$.activated)
+            $.activated = true;
         uint256 availableStake = $.nonRewards - $.undepositedClaims - $.depositedClaims;
+
+        require($.validators.length < MAX_VALIDATORS, TooManyValidators(blsPubKey));
         $.validators.push(Validator(
             blsPubKey,
             availableStake,
@@ -522,7 +533,10 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         address controlAddress
     ) internal onlyOwner virtual {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
-        $.activated = true;
+        if (!$.activated)
+            $.activated = true;
+        // the original control address can't cancel the handover after this point
+        delete $.controlAddresses[blsPubKey];
         require($.validatorIndex[blsPubKey] == 0, ValidatorAlreadyAdded(blsPubKey));
 
         bytes memory callData =
@@ -551,6 +565,7 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         (success, data) = DEPOSIT_CONTRACT.call(callData);
         require(success, DepositContractCallFailed(callData, data));
 
+        require($.validators.length < MAX_VALIDATORS, TooManyValidators(blsPubKey));
         $.validators.push(Validator(
             blsPubKey,
             futureStake,
@@ -815,15 +830,16 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     }
 
     /**
-    * @dev Unstake `amount` from the deposits proportionally to the validators'
-    * surplus deposit exceeding the required minimum stake.
+    * @dev Unstake `amount` from the deposits in proportion to the validators'
+    * surplus deposit exceeding the required minimum stake, unless the contract
+    * balance reserved for `nonRewards` plus the total surplus of all validators'
+    * deposits is less than the claims already unstaked plus the `amount` to be
+    * unstaked. In the latter case, unstake the last validator's entire deposit
+    * and reduce the `amount` to be unstaked until the remaining `amount` is
+    * fully covered by the unstaked deposit. 
     *
     * Revert with {DepositContractCallFailed} containing the call data and the
     * error data returned if the call to the `DEPOSIT_CONTRACT` fails.
-    *
-    * Revert with {InsufficientUndepositedStake} containing the balance available
-    * to cover unstaked claims and the total claims that can't be withdrawn from
-    * the pool's deposits if the latter is greater than the former.  
     */
     function _decreaseDeposit(uint256 amount) internal virtual {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
@@ -1182,6 +1198,12 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     /// @dev A power of 10 that determines the precision of the commission rate.
     uint256 public constant DENOMINATOR = 10_000;
 
+    /// @dev The minimum number of blocks between changes to the commission rate.
+    uint256 public constant DELAY = 86_400;
+
+    /// @dev Emitted when `oldReceiver` of the commission is changed to `newReceiver`.
+    event CommissionReceiverChanged(address indexed oldReceiver, address indexed newReceiver);
+
     /**
     * @dev Return the commission rate multiplied by `DENOMINATOR`.
     */
@@ -1191,16 +1213,41 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     }
 
     /**
+    * @dev Return the block height of the last change to the commission rate.
+    */
+    function getLastCommissionChange() public virtual view returns(uint256) {
+        BaseDelegationStorage storage $ = _getBaseDelegationStorage();
+        return $.lastCommissionChange;
+    }
+
+    /**
     * @dev Set the commission rate to `_commissionNumerator / DENOMINATOR`. It
     * must be called by the contract owner.
     *
-    * Revert with {InvalidCommissionRate} containing `_commissionNumerator` if
-    * it's greater or equal to the {DENOMINATOR}.
+    * Revert with {InvalidCommissionChange} containing `_commissionNumerator` if
+    * it's greater than or equal to the {DENOMINATOR}. If the pool has any stake,
+    * also revert if the absolute change is greater than or equal to 2 percentage
+    * points or the last change is not at least {DELAY} blocks old.
     */
     function setCommissionNumerator(uint256 _commissionNumerator) public virtual onlyOwner {
-        require(_commissionNumerator < DENOMINATOR, InvalidCommissionRate(_commissionNumerator));
+        require(
+            _commissionNumerator < DENOMINATOR, 
+            InvalidCommissionChange(_commissionNumerator)
+        );
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
+        uint256 delta =
+            _commissionNumerator > $.commissionNumerator ?
+            _commissionNumerator - $.commissionNumerator :
+            $.commissionNumerator - _commissionNumerator;
+        require(
+            getStake() == 0 ||
+            delta < 2 * DENOMINATOR / 100 &&
+            block.number - $.lastCommissionChange >= DELAY,
+            InvalidCommissionChange(_commissionNumerator)
+        ); 
+        emit CommissionChanged($.commissionNumerator, _commissionNumerator);
         $.commissionNumerator = _commissionNumerator;
+        $.lastCommissionChange = block.number;
     }
 
     /// @inheritdoc IDelegation
@@ -1224,9 +1271,13 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     /**
     * @dev Set the address the commission is to be transferred to. It must be
     * called by the contract owner.
+    *
+    * Throw `ZeroAddressNotAllowed` if the zero address was passed as argument.
     */
     function setCommissionReceiver(address _commissionReceiver) public virtual onlyOwner {
+        require(_commissionReceiver != address(0), ZeroAddressNotAllowed());
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
+        emit CommissionReceiverChanged($.commissionReceiver, _commissionReceiver);
         $.commissionReceiver = _commissionReceiver;
     }
 
