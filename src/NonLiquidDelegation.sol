@@ -115,11 +115,6 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation {
     */
     function reinitialize(uint64 fromVersion) public onlyOwner reinitializer(VERSION) {
         _migrate(fromVersion);
-/*TODO: remove from the audited version 1.0.0
-        NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
-        if (fromVersion < encodeVersion(0, 7, 0))
-            require($.stakings.length == 0, IncompatibleVersion(fromVersion));
-*/
     }
 
     /**
