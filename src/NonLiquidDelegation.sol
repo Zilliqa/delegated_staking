@@ -755,9 +755,8 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation {
 
     /**
     * @inheritdoc IDelegation
-    * @dev Commission is deducted when delegators withdraw their share of the rewards.
     */
-    function collectCommission() public override(BaseDelegation, IDelegation) {
+    function collectCommission() public override(BaseDelegation, IDelegation) onlyOwner {
         NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
         // deduct the commission from the yet untaxed rewards
         _taxRewards((int(getRewards()) - $.taxedRewards).toUint256());
