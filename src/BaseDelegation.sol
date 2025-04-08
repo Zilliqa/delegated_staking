@@ -245,7 +245,7 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     // ************************************************************************
 
     /// @dev The current version of all upgradeable contracts in the repository.
-    uint64 internal immutable VERSION = encodeVersion(1, 0, 0);
+    uint64 internal immutable VERSION = encodeVersion(1, 0, 1);
 
     /**
     * @dev Return the contracts' version.
@@ -357,6 +357,29 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     function validators() public view returns(Validator[] memory) {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
         return $.validators;
+    }
+
+    function restoreControlAddress(
+        bytes calldata blsPubKey,
+        address controlAddress
+    ) public onlyOwner virtual {
+        bytes memory callData =
+            abi.encodeWithSignature("getControlAddress(bytes)",
+            blsPubKey
+            );
+        (bool success, bytes memory data) = DEPOSIT_CONTRACT.call(callData);
+        require(success, DepositContractCallFailed(callData, data));
+        require(
+            address(this) == abi.decode(data, (address)),
+            "control address mismatch"
+        );
+        callData =
+            abi.encodeWithSignature("setControlAddress(bytes,address)",
+            blsPubKey,
+            controlAddress
+            );
+        (success, ) = DEPOSIT_CONTRACT.call(callData);
+        require(success, DepositContractCallFailed(callData, data));
     }
 
     /**
