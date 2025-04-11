@@ -9,21 +9,8 @@ import { LIQUID_VARIANT } from "src/LiquidDelegation.sol";
 import { NONLIQUID_VARIANT } from "src/NonLiquidDelegation.sol";
 
 function variant(address proxy) view returns(bytes32) {
-        BaseDelegation delegation = BaseDelegation(payable(proxy));
-        uint64 version = delegation.version();
-        if (version < delegation.encodeVersion(0, 5, 2)) {
-            (bool success, bytes memory result) = proxy.staticcall(abi.encodeWithSignature("interfaceId()"));
-            if (!success)
-                return 0;
-            bytes4 interfaceId = abi.decode(result, (bytes4));
-            if (interfaceId == 0x88826e8e)
-                return LIQUID_VARIANT;
-            else if (interfaceId == 0xa2adf26a)
-                return NONLIQUID_VARIANT;
-            else
-                return 0;
-        } else 
-            return delegation.variant();
+    BaseDelegation delegation = BaseDelegation(payable(proxy));
+    return delegation.variant();
 }
 
 contract CheckVariant is Script {
