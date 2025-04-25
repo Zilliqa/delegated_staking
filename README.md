@@ -81,6 +81,25 @@ If you want to check the current version your contract was upgraded to, run
 forge script script/CheckVersion.s.sol --sig "run(address payable)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2
 ```
 
+Depending on which variant you deployed, you can verify your contract on Sourcify by running 
+```bash
+forge verify-contract 0x7C623e01c5ce2e313C223ef2aEc1Ae5C6d12D9DD LiquidDelegation --verifier sourcify
+```
+or
+```bash
+forge verify-contract 0x7C623e01c5ce2e313C223ef2aEc1Ae5C6d12D9DD NonLiquidDelegation --verifier sourcify
+```
+using the address of the implementation. Note that you have to repeat this with the address of the new implementation each time you upgrade your delegation contract. You have to verify the proxy contract separately and only once after the initial deployment by running
+```bash
+forge verify-contract 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 ERC1967Proxy --verifier sourcify --constructor-args $(cast abi-encode "_(address,bytes)" 0x7C623e01c5ce2e313C223ef2aEc1Ae5C6d12D9DD $(cast calldata "initialize(address,string,string)" 0x15fc323DFE5D5DCfbeEdc25CEcbf57f676634d77 Name Symbol))
+```
+using the address of the proxy contract, the address of the implementation contract and the signer address of the deployment transaction as well as the token `Name` and `Symbol` that you specified during deployment, or
+```bash
+forge verify-contract 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 ERC1967Proxy --verifier sourcify --constructor-args $(cast abi-encode "_(address,bytes)" 0x7C623e01c5ce2e313C223ef2aEc1Ae5C6d12D9DD $(cast calldata "initialize(address)" 0x15fc323DFE5D5DCfbeEdc25CEcbf57f676634d77))
+```
+using the address of the proxy contract, the address of the implementation contract and the signer address of the deployment transaction.
+
+
 ## Contract Configuration
 
 Now you can set the commission on the rewards the staking pool's validators earn to e.g. 10% as follows:
