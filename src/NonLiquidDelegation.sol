@@ -21,6 +21,7 @@ bytes32 constant NONLIQUID_VARIANT = 0x66c8dc4f9c8663296597cb1e39500488e05713d82
  */
 contract NonLiquidDelegation is IDelegation, BaseDelegation {
     using SafeCast for int256;
+    using SafeCast for uint256;
 
     // ************************************************************************
     // 
@@ -346,8 +347,8 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation {
         whenNotPaused
         returns(uint256 amount)
     {
-        _appendToHistory(-int256(value), _msgSender());
-        _decreaseDeposit(uint256(value));
+        _appendToHistory(-value.toInt256(), _msgSender());
+        _decreaseDeposit(value);
         _enqueueWithdrawal(value);
         emit Unstaked(_msgSender(), value, "");
         return value;
@@ -357,15 +358,17 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation {
     * @dev Append an entry to the {Staking} history based on the currently
     * staked (positive) or unstaked (negative) `value`.
     *
-    * Revert with {DelegatedAmountTooLow} containing `value` if it's lower
+    * Revert with {AmountTooLow} containing `value` if it's lower
     * than `MIN_DELEGATION`.
     *
     * Revert with {RequestedAmountTooHigh} containing the negative `value` and the
     * caller's stake if the `value` to be unstaked is greater than the current stake.
     */
     function _appendToHistory(int256 value, address staker) internal {
-        if (value > 0)
-            require(uint256(value) >= MIN_DELEGATION, DelegatedAmountTooLow(uint256(value)));
+        if (value >= 0)
+            require(uint256(value) >= MIN_DELEGATION, AmountTooLow(uint256(value)));
+        else
+            require(uint256(-value) >= MIN_DELEGATION, AmountTooLow(uint256(-value)));
         NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
         int256 amount = value;
         if ($.stakingIndices[staker].length > 0)

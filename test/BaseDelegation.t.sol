@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 /* solhint-disable no-console */
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import { Deposit } from "@zilliqa/zq2/deposit_v5.sol";
+import { Deposit } from "@zilliqa/zq2/deposit_v6.sol";
 import { Test } from "forge-std/Test.sol";
 import { Console } from "script/Console.s.sol";
 import { BaseDelegation } from "src/BaseDelegation.sol";
@@ -60,11 +60,11 @@ abstract contract BaseDelegationTest is Test {
             delegation.DEPOSIT_CONTRACT(),
             address(new Deposit()).code
         );
-        vm.store(delegation.DEPOSIT_CONTRACT(), bytes32(uint256(0x958a6cf6390bd7165e3519675caa670ab90f0161508a9ee714d3db7edc50740b)), bytes32(uint256(block.number / 10)));
-        vm.store(delegation.DEPOSIT_CONTRACT(), bytes32(uint256(0x958a6cf6390bd7165e3519675caa670ab90f0161508a9ee714d3db7edc50740c)), bytes32(uint256(10_000_000 ether)));
-        vm.store(delegation.DEPOSIT_CONTRACT(), bytes32(uint256(0x958a6cf6390bd7165e3519675caa670ab90f0161508a9ee714d3db7edc50740d)), bytes32(uint256(256)));
-        vm.store(delegation.DEPOSIT_CONTRACT(), bytes32(uint256(0x958a6cf6390bd7165e3519675caa670ab90f0161508a9ee714d3db7edc50740e)), bytes32(uint256(10)));
-        vm.store(delegation.DEPOSIT_CONTRACT(), bytes32(uint256(0x958a6cf6390bd7165e3519675caa670ab90f0161508a9ee714d3db7edc50740f)), bytes32(uint256(300)));
+        vm.store(delegation.DEPOSIT_CONTRACT(), bytes32(uint256(0x958a6cf6390bd7165e3519675caa670ab90f0161508a9ee714d3db7edc50740a)), bytes32(uint256(block.number / 10)));
+        vm.store(delegation.DEPOSIT_CONTRACT(), bytes32(uint256(0x958a6cf6390bd7165e3519675caa670ab90f0161508a9ee714d3db7edc50740b)), bytes32(uint256(10_000_000 ether)));
+        vm.store(delegation.DEPOSIT_CONTRACT(), bytes32(uint256(0x958a6cf6390bd7165e3519675caa670ab90f0161508a9ee714d3db7edc50740c)), bytes32(uint256(256)));
+        vm.store(delegation.DEPOSIT_CONTRACT(), bytes32(uint256(0x958a6cf6390bd7165e3519675caa670ab90f0161508a9ee714d3db7edc50740d)), bytes32(uint256(10)));
+        vm.store(delegation.DEPOSIT_CONTRACT(), bytes32(uint256(0x958a6cf6390bd7165e3519675caa670ab90f0161508a9ee714d3db7edc50740e)), bytes32(uint256(300)));
         /*
         Console.log("Deposit.minimimStake() =", Deposit(delegation.DEPOSIT_CONTRACT()).minimumStake());
         Console.log("Deposit.maximumStakers() =", Deposit(delegation.DEPOSIT_CONTRACT()).maximumStakers());
@@ -184,6 +184,7 @@ abstract contract BaseDelegationTest is Test {
     function claimsAfterManyUnstakings(BaseDelegation delegation, uint64 steps) internal {
         uint256 i;
         uint256 x;
+        uint256 min = 2 ether; // this is the minimum to avoid unstaking less than MIN_DELEGATION
 
         addValidator(BaseDelegation(delegation), 10_000_000 ether, DepositMode.Bootstrapping);
 
@@ -191,12 +192,12 @@ abstract contract BaseDelegationTest is Test {
         vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
 
         for (i = 0; i < 4; i++) {
-            vm.deal(stakers[i], 100_000 ether);
+            vm.deal(stakers[i], 100_000 * min);
             Console.log("staker %s: %s", i+1, stakers[i]);
         }
 
         // rewards accrued so far
-        vm.deal(address(delegation), 50_000 ether);
+        vm.deal(address(delegation), 50_000 * min);
         x = 50;
         i = 1;
 
@@ -214,11 +215,11 @@ abstract contract BaseDelegationTest is Test {
             steps * x * 1 ether,
             ""
         );
-        delegation.stake{value: 2 * steps * x * 1 ether}();
+        delegation.stake{value: 2 * steps * x * min}();
         // wait 2 epochs for the change to the deposit to take affect
         vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
         vm.stopPrank();
-        vm.deal(address(delegation), address(delegation).balance + 10_000 ether);
+        vm.deal(address(delegation), address(delegation).balance + 10_000 * min);
 
         uint256 totalUnstaked;
         uint256 totalPending;
@@ -228,7 +229,7 @@ abstract contract BaseDelegationTest is Test {
             Console.log("--------------------------------------------------------------------");
             vm.startPrank(stakers[i-1]);
 
-            uint256 amount = delegation.unstake(x * 1 ether);
+            uint256 amount = delegation.unstake(x * min);
             Console.log("%s unstaked %s in block %s", stakers[i-1], amount, block.number);
             totalUnstaked += amount;
 
@@ -246,7 +247,7 @@ abstract contract BaseDelegationTest is Test {
             // wait 2 epochs for the change to the deposit to take affect
             vm.roll(block.number + Deposit(delegation.DEPOSIT_CONTRACT()).blocksPerEpoch() * 2);
             vm.stopPrank();
-            vm.deal(address(delegation), address(delegation).balance + 10_000 ether);
+            vm.deal(address(delegation), address(delegation).balance + 10_000 * min);
         }
 
         vm.startPrank(stakers[i-1]);
@@ -292,5 +293,31 @@ abstract contract BaseDelegationTest is Test {
         assertEq(delegation.getClaimable() + totalPending, totalUnstaked, "claims must match unstaked amount");
 
         vm.stopPrank();
+    }
+
+    function getVariables(BaseDelegation delegation) internal view returns (
+        uint256 nonRewards, 
+        uint256 withdrawnDepositedClaims, 
+        uint256 nonDepositedClaims,
+        uint256 pendingRebalancedDeposit
+    ) {
+        nonRewards = uint256(vm.load(address(delegation), bytes32(uint256(0xc8ff0e571ef581b660c1651f85bbac921a40f9489bd04631c07fa723c13c6007))));
+        withdrawnDepositedClaims = uint256(vm.load(address(delegation), bytes32(uint256(0xc8ff0e571ef581b660c1651f85bbac921a40f9489bd04631c07fa723c13c6008))));
+        nonDepositedClaims = uint256(vm.load(address(delegation), bytes32(uint256(0xc8ff0e571ef581b660c1651f85bbac921a40f9489bd04631c07fa723c13c6009))));
+        pendingRebalancedDeposit = uint256(vm.load(address(delegation), bytes32(uint256(0xc8ff0e571ef581b660c1651f85bbac921a40f9489bd04631c07fa723c13c6004))));
+    }
+
+    function printStatus(BaseDelegation delegation) internal view {
+        (uint256 nonRewards, uint256 withdrawnDepositedClaims, uint256 nonDepositedClaims, uint256 pendingRebalancedDeposit) = getVariables(delegation);
+        Console.log("withdrawnDepositedClaims  ", withdrawnDepositedClaims);
+        Console.log("nonDepositedClaims        ", nonDepositedClaims);
+        Console.log("pendingRebalancedDeposit  ", pendingRebalancedDeposit);
+        Console.log("nonRewards                ", nonRewards);
+        Console.log("balance                   ", address(delegation).balance);
+        Console.log("getStake()                ", delegation.getStake());
+        Console.log("getRewards()              ", delegation.getRewards());
+        BaseDelegation.Validator[] memory validators = delegation.validators();
+        for (uint256 i = 0; i < validators.length; i++)
+            Console.log("validator-%s (%s)            %s", i, uint256(validators[i].status), validators[i].futureStake);
     }
 }

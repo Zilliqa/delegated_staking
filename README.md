@@ -27,6 +27,11 @@ Alternatively, you can specify the RPC in each command below by adding the follo
 --rpc-url http://localhost:4202
 ```
 
+Specify the local folder containing the Solidity contracts of the Zilliqa 2.0 repository in `remappings.txt`:
+```
+@zilliqa/zq2/=/home/user/zq2/zilliqa/src/contracts/
+```
+
 ## Contract Deployment
 
 The delegation contract manages the stake delegated to the staking pool. It acts as the validator node's control address and interacts with the Zilliqa 2.0 protocol's deposit contract.
@@ -395,12 +400,12 @@ forge test -vv
 ```
 if you want to see the values calculated in the tests.
 
-To enable the tests to interact with the Zilliqa 2.0 deposit contract, the contract must be compiled along with the test contracts. Specify the folder containing the Solidity file in `remappings.txt`:
-```
-@zilliqa/zq2/=/home/user/zq2/zilliqa/src/contracts/
-```
+To execute end-to-end tests on a local network, open `config_docker.toml` and change
+* the funds of the first item in `nodes.consensus.genesis_accounts` to `5000000000000000000000000`
+* the `withdrawal_period` in `nodes.consensus.contract_upgrades` to `5`
+* the `nodes.consensus.blocks_per_epoch` to `3`
 
-To execute end-to-end tests on a local network, set the funds of the first item in `nodes.consensus.genesis_accounts` to `5000000000000000000000000`, `nodes.consensus.contract_upgrades.deposit_v5.reinitialise_params.withdrawal_period` to 5 and `nodes.consensus.blocks_per_epoch` to 3 in `config_docker.toml` and run
+and run
 ```bash
 chmod +x e2e_liquid.sh && ./e2e_liquid.sh
 chmod +x e2e_non-liquid.sh && ./e2e_non-liquid.sh
@@ -496,7 +501,7 @@ If the execution reverts, you can look up the error based on the first 4 bytes o
 0xe243fe9d   WithdrawalsPending(bytes,uint256)
 0x37471911   InvalidCommissionChange(uint256)
 0x6dcaa249   InvalidVersionNumber(uint256)
-0xf8a0eddd   DelegatedAmountTooLow(uint256)
+0x7640cbd7   AmountTooLow(uint256)
 0xf6d81a2c   RequestedAmountTooHigh(uint256,uint256)
 0x0474d3b0   StakingPoolNotActivated()
 0x2adad5a5   StakerNotFound(address)

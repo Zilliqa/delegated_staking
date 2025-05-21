@@ -182,11 +182,11 @@ contract LiquidDelegation is IDelegation, BaseDelegation {
     * Emit {Staked} containing the `staker` address, the `value` staked, and
     * the corresponding amount of LST minted to the `staker`.
     *
-    * Revert with {DelegatedAmountTooLow} containing the `value` lower
+    * Revert with {AmountTooLow} containing the `value` lower
     * than {MIN_DELEGATION}.
     */
     function _stake(uint256 value, address staker) internal {
-        require(value >= MIN_DELEGATION, DelegatedAmountTooLow(value));
+        require(value >= MIN_DELEGATION, AmountTooLow(value));
         uint256 shares;
         LiquidDelegationStorage storage $ = _getLiquidDelegationStorage();
         if (NonRebasingLST($.lst).totalSupply() == 0)
