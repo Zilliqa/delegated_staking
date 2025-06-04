@@ -365,16 +365,19 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation {
     * caller's stake if the `value` to be unstaked is greater than the current stake.
     */
     function _appendToHistory(int256 value, address staker) internal {
-        if (value >= 0)
-            require(uint256(value) >= MIN_DELEGATION, AmountTooLow(uint256(value)));
-        else
-            require(uint256(-value) >= MIN_DELEGATION, AmountTooLow(uint256(-value)));
         NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
         int256 amount = value;
         if ($.stakingIndices[staker].length > 0)
             amount += int256($.stakings[
                 $.stakingIndices[staker][$.stakingIndices[staker].length - 1]
             ].amount);
+        if (value >= 0)
+            require(uint256(value) >= MIN_DELEGATION, AmountTooLow(uint256(value)));
+        else
+            require(
+                uint256(-value) >= MIN_DELEGATION || amount == 0,
+                AmountTooLow(uint256(-value))
+            );
         if (value < 0)
             require(
                 amount >= 0,
