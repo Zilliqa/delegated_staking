@@ -2304,8 +2304,8 @@ contract NonLiquidDelegationTest is BaseDelegationTest {
                     continue;
                 Console.log("block %s avg rewards %s", block.number, rewards / blocks);
                 uint256 amount =
-                    operation % 2 == 0 && stakedZil[user] > 2 * delegation.MIN_DELEGATION() ?
-                    vm.randomUint(delegation.MIN_DELEGATION(), stakedZil[user] / 2):
+                    operation % 2 == 0 && stakedZil[user] >= delegation.MIN_DELEGATION() ?
+                    vm.randomUint(delegation.MIN_DELEGATION(), stakedZil[user]):
                     stakedZil[user];
                 uint256 pendingBefore = delegation.totalPendingWithdrawals();
                 uint256 totalStakeValue = delegation.getDelegatedTotal();
