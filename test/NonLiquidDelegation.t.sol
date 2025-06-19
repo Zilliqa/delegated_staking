@@ -4,7 +4,7 @@ pragma solidity 0.8.28;
 /* solhint-disable no-console */
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
-import { Deposit } from "@zilliqa/zq2/deposit_v6.sol";
+import { Deposit } from "@zilliqa/zq2/deposit_v5.sol";
 import { Console } from "script/Console.s.sol";
 import { BaseDelegation } from "src/BaseDelegation.sol";
 import { IDelegation } from "src/IDelegation.sol";
