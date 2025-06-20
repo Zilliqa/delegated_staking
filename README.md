@@ -283,6 +283,8 @@ To query the current price of an LST, run
 cast to-unit $(cast call 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 "getPrice()(uint256)" --block latest | sed 's/\[[^]]*\]//g') ether
 ```
 
+Note that the minimum amount that can be staked in one transaction is 100 ZIL. In the non-liquid variant, the same minimum amount of ZIL applies to unstaking as well, unless everything is unstaked, which can be less than 100 ZIL.
+
 To unstake e.g. 100 LST (liquid variant) or 100 ZIL (non-liquid variant), run
 ```bash
 forge script script/Unstake.s.sol --broadcast --legacy --sig "run(address payable, uint256)" 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 100000000000000000000 --private-key 0x...
