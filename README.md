@@ -513,4 +513,4 @@ If the execution reverts, you can look up the error based on the first 4 bytes o
 
 ## Audit
 
-Version `1.0.0` of the contracts was audited in March 2025: [audit report](https://hacken.io/audits/zilliqa/sca-zilliqa-delegated-staking-mar2025/)
+Version `1.0.0` of the contracts was audited in March 2025, and version `1.1.1` was retested in June 2025: [audit report](https://hacken.io/audits/zilliqa/sca-zilliqa-delegated-staking-mar2025/)
