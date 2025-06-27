@@ -94,9 +94,11 @@ or
 ```bash
 forge verify-contract 0x7C623e01c5ce2e313C223ef2aEc1Ae5C6d12D9DD NonLiquidDelegation --verifier sourcify
 ```
-using the address of the implementation. Note that you have to repeat this with the address of the new implementation each time you upgrade your delegation contract. You have to verify the proxy contract separately and only once after the initial deployment by running
+using the address of the implementation. Note that you have to repeat this with the address of the new implementation each time you upgrade your delegation contract. You have to verify the proxy contract (and its LST contract in case of the liquid variant) separately and only once after the initial deployment by running
 ```bash
 forge verify-contract 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 ERC1967Proxy --verifier sourcify --constructor-args $(cast abi-encode "_(address,bytes)" 0x7C623e01c5ce2e313C223ef2aEc1Ae5C6d12D9DD $(cast calldata "initialize(address,string,string)" 0x15fc323DFE5D5DCfbeEdc25CEcbf57f676634d77 Name Symbol))
+
+forge verify-contract $(cast call 0x7A0b7e6D24eDe78260c9ddBD98e828B0e11A8EA2 "getLST()(address)") NonRebasingLST --verifier sourcify --constructor-args $(cast abi-encode "_(string,string)" Name Symbol)
 ```
 using the address of the proxy contract, the address of the implementation contract and the signer address of the deployment transaction as well as the token `Name` and `Symbol` that you specified during deployment, or
 ```bash
