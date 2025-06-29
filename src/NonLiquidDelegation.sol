@@ -146,7 +146,28 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation {
         _depositAndAddToPool(
             blsPubKey,
             peerId,
-            signature
+            signature,
+            0
+        );
+        // the owner's deposit must also be recorded as staking otherwise
+        // the owner would not benefit from the rewards accrued by the deposit
+        if (msg.value > 0)
+            _appendToHistory(int256(msg.value), _msgSender());
+    }
+
+    /// @inheritdoc BaseDelegation
+    function depositFromPool(
+        bytes calldata blsPubKey,
+        bytes calldata peerId,
+        bytes calldata signature,
+        uint256 amount
+    ) public payable override onlyOwner {
+        _increaseStake(msg.value);
+        _depositAndAddToPool(
+            blsPubKey,
+            peerId,
+            signature,
+            amount
         );
         // the owner's deposit must also be recorded as staking otherwise
         // the owner would not benefit from the rewards accrued by the deposit
