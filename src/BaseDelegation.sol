@@ -237,6 +237,11 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     */
     error ZeroAddressNotAllowed();
 
+    /**
+    * @dev Thrown if the `amount` to be deposited exceeds the `availableStake`.
+    */
+    error InsufficientAvailableStake(uint256 amount, uint256 availableStake);
+
     // ************************************************************************
     // 
     //                                 VERSION
@@ -244,7 +249,7 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     // ************************************************************************
 
     /// @dev The current version of all upgradeable contracts in the repository.
-    uint64 internal immutable VERSION = encodeVersion(1, 1, 1);
+    uint64 internal immutable VERSION = encodeVersion(1, 1, 2);
 
     /**
     * @dev Return the contracts' version.
@@ -429,6 +434,20 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     ) public virtual payable;
 
     /**
+    * @dev Turn a fully synced node into a validator using `amount` from the stake
+    * in the pool's balance. It must be called by the contract owner. The staking
+    * pool must have `amount`  in its balance including the amount transferred by
+    * the contract owner in the current transaction and `amount` must be at least
+    * the minimum stake required of validators.
+    */
+    function depositFromPool(
+        bytes calldata blsPubKey,
+        bytes calldata peerId,
+        bytes calldata signature,
+        uint256 amount
+    ) public virtual payable;
+
+    /**
     * @dev Add the validator identified by `blsPubKey` to the staking pool. It
     * can be called by the contract owner if the `controlAddress` has called the
     * pool contract's {registerControlAddress} function and the `setControlAddress`
@@ -469,10 +488,16 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     /**
     * @dev Append an entry to the staking pool's list of validators. Use the pool
     * contract's owner address as reward address and control address in the entry.
-    * Register a validator by transferring the stake available in the contract
-    * balance to `DEPOSIT_CONTRACT`.
+    * Register a validator by transferring `amount` or the entire stake available
+    * in the contract balance if `amount` is zero to the `DEPOSIT_CONTRACT`.
     *
     * Emit {ValidatorJoined} containing the `blsPubKey` of the validator.
+    *
+    * Revert with {TooManyValidators} containing the `blsPubKey` of the validator
+    * if the pool has already reached the maximum number of validators.
+    *
+    * Revert with {InsufficientAvailableStake} containing the `amount` of stake
+    * to be deposited and the maximum `availableStake` that can be deposited.  
     *
     * Revert with {DepositContractCallFailed} containing the call data and the
     * error data returned if the call to the `DEPOSIT_CONTRACT` fails.
@@ -480,17 +505,22 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     function _depositAndAddToPool(
         bytes calldata blsPubKey,
         bytes calldata peerId,
-        bytes calldata signature
+        bytes calldata signature,
+        uint256 amount
     ) internal virtual {
         BaseDelegationStorage storage $ = _getBaseDelegationStorage();
         if (!$.activated)
             $.activated = true;
         uint256 availableStake = $.nonRewards - $.withdrawnDepositedClaims - $.nonDepositedClaims;
+        if (amount == 0)
+            amount = availableStake;
+        else
+            require(amount <= availableStake, InsufficientAvailableStake(amount, availableStake));
 
         require($.validators.length < MAX_VALIDATORS, TooManyValidators(blsPubKey));
         $.validators.push(Validator(
             blsPubKey,
-            availableStake,
+            amount,
             owner(),
             owner(),
             0,
@@ -508,11 +538,11 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
                 owner()
             );
         (bool success, bytes memory data) = DEPOSIT_CONTRACT.call{
-            value: availableStake
+            value: amount
         }(callData);
         require(success, DepositContractCallFailed(callData, data));
 
-        $.nonRewards = $.withdrawnDepositedClaims + $.nonDepositedClaims;
+        $.nonRewards -= amount;
         emit ValidatorJoined(blsPubKey);
     }
 

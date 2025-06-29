@@ -106,7 +106,27 @@ contract LiquidDelegation is IDelegation, BaseDelegation {
         _depositAndAddToPool(
             blsPubKey,
             peerId,
-            signature
+            signature,
+            0
+        );
+    } 
+
+    /// @inheritdoc BaseDelegation
+    function depositFromPool(
+        bytes calldata blsPubKey,
+        bytes calldata peerId,
+        bytes calldata signature,
+        uint256 amount
+    ) public override payable onlyOwner {
+        if (msg.value > 0)
+            _stake(msg.value, _msgSender());
+        // the total stake must not be increased before the price is determined
+        _increaseStake(msg.value);
+        _depositAndAddToPool(
+            blsPubKey,
+            peerId,
+            signature,
+            amount
         );
     } 
 
