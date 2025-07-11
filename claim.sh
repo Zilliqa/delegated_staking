@@ -14,6 +14,12 @@ if [[ "$variant" == "$temp" ]]; then
     exit 1
 fi
 
+# ensure there are no other transactions from the staker in 5 block before the forge script is executed
+# because we will compare the stakers balance after the forge script and before the forge script and
+# the latter is queried from 5 blocks before the first block number we get after the script execution 
+echo "Waiting 10 seconds..."
+sleep 10
+
 forge script script/Claim.s.sol --broadcast --legacy --sig "run(address payable)" $1 --private-key $2 -vvvv
 
 block=$(cast rpc eth_blockNumber)
@@ -35,12 +41,11 @@ if [[ "$tmp" != "" ]]; then
     d2=${tmp[1]}
     #d1=$(echo $tmp | sed -n -e 1p | sed 's/\[[^]]*\]//g')
     #d2=$(echo $tmp | sed -n -e 2p | sed 's/\[[^]]*\]//g')
-
 fi
 
 echo $(date +"%T,%3N") $block_num
 
-block_num=$((block_num-1))
+block_num=$((block_num - 5))
 block=$(echo $block_num | cast to-hex --base-in 10)
 
 echo rewardsBeforeClaiming = $(cast call $1 "getRewards()(uint256)" --block $block_num | sed 's/\[[^]]*\]//g')
