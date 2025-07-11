@@ -30,6 +30,12 @@ if [[ "$variant" != "NonLiquidStaking" ]]; then
     exit 1
 fi
 
+# ensure there are no other transactions from the staker in 5 block before the forge script is executed
+# because we will compare the stakers balance after the forge script and before the forge script and
+# the latter is queried from 5 blocks before the first block number we get after the script execution 
+echo "Waiting 10 seconds..."
+sleep 10
+
 forge script script/WithdrawRewards.s.sol --broadcast --legacy --sig "run(address payable, string, string)" $1 $amount $steps --private-key $2
 
 block=$(cast rpc eth_blockNumber)
@@ -66,7 +72,7 @@ staker_rewards_after_withdrawal=$(cast to-unit $x ether)
 
 echo $(date +"%T,%3N") $block_num
 
-block_num=$((block_num-1))
+block_num=$((block_num - 5))
 block=$(echo $block_num | cast to-hex --base-in 10)
 
 rewardsBeforeWithdrawal=$(cast call $1 "getRewards()(uint256)" --block $block_num | sed 's/\[[^]]*\]//g')

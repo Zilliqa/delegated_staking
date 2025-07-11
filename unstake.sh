@@ -43,6 +43,9 @@ fi
 
 echo $(date +"%T,%3N") $block_num
 
+# if block_num retrieved after the forge script was higher that the block in which the transaction submitted by
+# the script was included, decrementing block_num by only 1 will lead to fetching all values below from the state
+# after the script execution 
 block_num=$((block_num-1))
 block=$(echo $block_num | cast to-hex --base-in 10)
 

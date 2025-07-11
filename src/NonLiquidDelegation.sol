@@ -445,9 +445,9 @@ contract NonLiquidDelegation is IDelegation, BaseDelegation {
     function getAdditionalSteps() public view returns(uint64) {
         NonLiquidDelegationStorage storage $ = _getNonLiquidDelegationStorage();
         uint256 first = $.lastStakingIndex[_msgSender()];
-        if (first == 0)
+        if (first == 0 && $.stakingIndices[_msgSender()].length > 0)
             first = $.stakingIndices[_msgSender()][0];
-        return uint64($.stakings.length - first - 1);
+        return $.stakings.length > first ? uint64($.stakings.length - first - 1) : 0;
     }
 
     /**
