@@ -13,8 +13,8 @@ Validators of the Zilliqa 2.0 network are solo stakers by default. This reposito
 
 To deploy and interact with the contracts throught the CLI, use the Forge scripts provided in this repository and described further below. First, install Foundry (https://book.getfoundry.sh/getting-started/installation) and the OpenZeppelin contracts before proceeding with the deployment:
 ```
-forge install OpenZeppelin/openzeppelin-contracts-upgradeable --no-commit
-forge install OpenZeppelin/openzeppelin-contracts --no-commit
+forge install OpenZeppelin/openzeppelin-contracts-upgradeable
+forge install OpenZeppelin/openzeppelin-contracts
 ```
 
 Set the `FOUNDRY_ETH_RPC_URL` environment variable to point to your RPC node:
