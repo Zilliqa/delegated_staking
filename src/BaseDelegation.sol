@@ -297,7 +297,6 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
         __Pausable_init_unchained();
         __Ownable2Step_init_unchained();
         __Ownable_init_unchained(initialOwner);
-        __UUPSUpgradeable_init_unchained();
         __BaseDelegation_init_unchained(initialOwner);
     }
 
@@ -323,7 +322,7 @@ abstract contract BaseDelegation is IDelegation, PausableUpgradeable, Ownable2St
     * before the ongoing upgrade if it is not the initial upgrade during deployment
     * and `fromVersion` is not upgradeable to the current {VERSION}.
     */
-    function _migrate(uint64 fromVersion) internal {
+    function _migrate(uint64 fromVersion) internal pure{
         // the contract was just deployed, now upgrading from the initial version
         if (fromVersion == 1)
             return;
